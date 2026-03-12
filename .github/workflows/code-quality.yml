@@ -1,0 +1,46 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        
+    - name: Get dependencies
+      run: flutter pub get
+      
+    - name: Run Flutter analyzer
+      run: flutter analyze > analysis-results.txt
+      continue-on-error: true
+      
+    - name: Check formatting
+      run: dart format --set-exit-if-changed . > format-results.txt
+      continue-on-error: true
+      
+    - name: Check for TODO/FIXME comments
+      run: |
+        echo "Scanning for TODO/FIXME comments..."
+        grep -r "TODO\|FIXME" lib/ || echo "No TODO/FIXME found"
+      continue-on-error: true
+      
+    - name: Upload analysis results
+      uses: actions/upload-artifact@v3
+      with:
+        name: code-quality-results
+        path: |
+          analysis-results.txt
+          format-results.txt
+        retention-days: 30

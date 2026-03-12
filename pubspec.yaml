@@ -1,0 +1,156 @@
+name: vottery
+description: A new Flutter project.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:       # CRITICAL: Required for every Flutter project - DO NOT REMOVE
+    sdk: flutter # CRITICAL: Required for every Flutter project - DO NOT REMOVE
+  flutter_localizations: # Multi-language localization infrastructure for 80+ languages
+    sdk: flutter
+  
+  # CRITICAL: Core UI and responsive design - DO NOT REMOVE OR MODIFY
+  supabase_flutter: ^2.9.1
+  sizer: ^2.0.15              # Required for responsive design system
+  flutter_svg: ^2.0.9        # Required for SVG icon support
+  google_fonts: ^6.1.0       # Required for typography (replaces local fonts)
+  shared_preferences: ^2.2.2 # Store user dashboard filters and chart preferences locally for cross-dashboard filtering persistence
+  web: ^1.1.1
+  
+  # Feature dependencies - safe to modify
+  cached_network_image: ^3.4.1
+  connectivity_plus: ^7.0.0   # Network connectivity monitoring for offline error handling
+  dio: ^5.8.0                 # OpenAI HTTP requests for SMS optimization
+  fluttertoast: ^8.2.4
+  fl_chart: 0.68.0           # Required for LineChart, BarChart, PieChart analytics visualizations in SMS Delivery Analytics Dashboard
+  local_auth: ^2.3.0          # Biometric authentication for emergency action confirmation
+  flutter_slidable: ^4.0.3
+  image_picker: ^1.1.2        # Image attachment selection in ticket creation
+  intl: ^0.20.2                # Required for date/time formatting and number localization in analytics
+  google_sign_in: ^6.2.1
+  flutter_local_notifications: ^17.2.3
+  http: ^1.2.0                # HTTP client for Telnyx REST API calls
+  google_generative_ai: ^0.4.7
+  dart_openai: ^6.1.1
+  geolocator: ^14.0.2
+  google_maps_flutter: ^2.2.8 # Geographic revenue heatmap visualization for admin revenue analytics dashboard
+  google_maps_flutter_web: '^0.5.14+3' # Web platform support for Google Maps integration
+  flutter_map: ^8.2.2
+  flutter_stripe: ^12.2.0     # Stripe payment processing for creator payouts and subscription billing
+  flutter_stripe_web: ^7.2.1  # Web support for Stripe payment integration
+  geocoding: ^3.0.0
+  video_player: ^2.10.1       # Jolt video playback and video playback with watch time tracking for election video requirements
+  pretty_qr_code: ^3.6.0     # Branded QR code generation with logo overlay support
+  realtime_client: ^2.0.0
+  awesome_notifications: ^0.10.1  # Push notifications for support ticket responses and AI failover alerts
+  lottie: ^3.1.0              # Animated confetti effect replacement for onboarding completion (confetti package is outdated)
+  device_info_plus: ^12.3.0   # Device capabilities detection for performance monitoring and collecting device metadata for ticket creation
+  package_info_plus: ^9.0.0   # App version for Datadog
+  go_router: ^13.2.0
+  speech_to_text: ^7.0.0      # Voice command integration for hands-free operations
+  flutter_tts: ^4.2.0         # Text-to-speech for voice feedback
+  timeago: ^3.7.0             # Human-readable timestamps for failover history
+  json_annotation: ^4.10.0
+  sentry_flutter: ^9.14.0     # Comprehensive crash reporting and error tracking with breadcrumbs
+  camera: ^0.10.5+5
+  permission_handler: ^11.1.0
+  crypto: ^3.0.3              # Cryptographic hashing for vote receipts
+  battery_plus: ^7.0.0        # Battery level and drain rate monitoring
+  pointycastle: ^3.9.1        # RSA encryption and digital signatures for vote verification
+  web3dart: ^2.7.3           # Blockchain integration for vote receipts on Polygon network
+  uuid: ^4.5.2                # Cryptographic UUID generation for encrypted votes
+  record: ^6.0.0
+  audioplayers: ^6.5.1       # Voice message playbook with speed controls
+  file_picker: ^8.1.7
+  pdf: 3.10.0                # Required for PDF report generation in analytics dashboard
+  share_plus: ^7.2.1          # Social sharing for achievement unlocks
+  path_provider: ^2.1.5       # File system access for mobile receipt storage
+  google_mobile_ads: ^7.0.0   # Google Mobile Ads SDK for Flutter to enable AdSense integration with live ad serving functionality
+  mobile_scanner: ^3.5.0      # QR code scanning in mobile app for quick election access
+  url_launcher: ^6.2.0        # Phone call and SMS launching from on-call team cards
+  country_picker: ^2.0.27     # Multi-country selector with searchable dropdown and flags for election permission controls
+  country_flags: ^4.1.2       # Display country flags in admin revenue sharing management panel (195+ countries) - NOTE: Web-incompatible, requires conditional imports
+  workmanager: ^0.9.0+3       # Background sync orchestration for offline vote submission (15-minute intervals when connectivity restored)
+  passkeys: ^2.8.2           # WebAuthn passkey authentication with biometric support
+  provider: 6.1.0             # Required for state management across collaborative workspace and real-time updates
+  flutter_animate: ^4.2.0     # Sequential reveal animations for multiple prize winners
+  flutter_image_compress: ^2.3.0  # Image optimization pipeline with WebP conversion
+  visibility_detector: ^0.4.0+2   # Lazy image loading based on viewport visibility
+  shimmer: ^3.0.0             # Shimmer loading effect for skeleton loaders
+  resend: ^1.0.0              # Scheduled email reports for compliance, analytics, billing, and settlement confirmations via Resend API
+  tutorial_coach_mark: ^1.2.11    # Contextual tooltip overlays with highlight animations for guided onboarding tutorials
+  dart_jsonwebtoken: ^3.3.1   # JWT token generation and validation for REST API authentication
+  yoti_flutter: ^0.0.8        # AI-powered facial age estimation and government ID verification (requires conditional imports for web)
+  syncfusion_flutter_pdfviewer: ^32.2.5  # PDF rendering with web support for presentation slides viewer
+  syncfusion_flutter_charts: ^32.2.5  # Required for advanced analytics visualizations (heatmaps, scatter plots, waterfall charts)
+  syncfusion_flutter_gauges: ^32.2.7  # System health gauges
+  datadog_flutter_plugin: ^3.1.0  # Datadog APM distributed tracing
+  logrocket_flutter: ^1.62.0  # Session replay, performance regression detection, and user interaction capture for comprehensive monitoring across 103+ screens
+  flutter_secure_storage: ^9.2.2  # Secure credential storage for tokens, API keys
+  hive: ^2.2.3                # Local storage for offline voting hub
+  hive_flutter: ^1.1.0        # Hive integration with Flutter for offline vote caching
+  livekit_client: ^2.6.3      # LiveKit video conferencing SDK for live streaming debates with viewer count, interactive Q&A, participant controls, and recording functionality (Twilio Video alternative compatible with Dart 3.9.0)
+  statistics: ^1.2.1          # Statistical significance calculations for A/B testing (Chi-square tests, p-values, confidence intervals)
+  cloudflare: ^8.0.0          # CDN integration for image optimization, WebP/AVIF conversion, adaptive bitrate streaming
+  solana: ^0.32.0             # Solana blockchain integration for NFT minting (requires conditional imports for web compatibility)
+  blockchain_utils: ^6.0.0    # Comprehensive blockchain toolkit with BIP32, hex encoding, cryptography, and address management (replaces bip32 and hex packages)
+  emoji_picker_flutter: ^4.4.0  # Universal emoji reactions system with 3000+ emojis across elections, posts, Jolts, comments, and DMs
+  qr_flutter: ^4.1.0          # Generate QR codes for shareable achievement badges with blockchain verification URLs
+  signature: ^5.5.0           # Signature capture for W-9/W-8BEN tax form signing
+  table_calendar: ^3.0.9      # Calendar view for payout scheduling
+  web_socket_channel: ^3.0.3  # WebSocket integration for Real-Time Notifications with live delivery status
+  csv: 6.0.0                 # Required for CSV export functionality in analytics dashboard
+  markdown: 7.1.1             # Required for markdown rendering in annotations and insights
+  screenshot: 2.1.0           # Required for chart export as PNG images
+  photo_view: 0.14.0          # Full-screen image viewing with pinch-to-zoom for media gallery
+  video_thumbnail: 0.5.3      # Generate video thumbnails for message previews
+  flutter_markdown: ^0.7.7+1   # Markdown support in Team Incident War Room chat messages
+  graphview: ^1.5.1           # Force-directed graph visualization for fraud evidence correlation maps
+  faker: ^2.1.0               # Generate realistic synthetic incident data (random user IDs, IP addresses, timestamps) for stress testing
+  flutter_reorderable_list: ^1.3.1  # Enable draggable Kanban board for war room investigation task management
+  confetti: ^0.7.0            # Winner announcement animations for sequential lottery reveals
+  google_ml_kit: ^0.21.0      # Speech recognition for auto-captions in Jolts video editing
+  giphy_get: ^3.6.1+1         # GIF search for Moments stickers and interactive elements
+  showcaseview: ^5.0.1        # Interactive tutorial overlays with step-by-step walkthroughs
+  tflite_flutter: ^0.12.1     # TensorFlow Lite for ML-powered carousel type prediction (web-incompatible, requires conditional imports) - Purpose: Enable ML model inference for personalized carousel recommendations
+  redis: ^4.0.0               # Redis client connectivity for caching layer
+
+  universal_html: ^2.2.4
+  firebase_analytics: any
+  firebase_core: any
+  responsive_sizer: any
+
+  postgrest: any
+  flutter_riverpod: any
+dev_dependencies:
+  flutter_test:    # CRITICAL: Required for Flutter project testing - DO NOT REMOVE
+    sdk: flutter   # CRITICAL: Required for Flutter project testing - DO NOT REMOVE
+  flutter_lints: ^5.0.0 # CRITICAL: Required for code quality - DO NOT REMOVE
+  build_runner: ^2.4.13
+  json_serializable: ^6.8.0
+  integration_test:    # E2E integration testing framework for gamification flows (VP earning, prediction pools, ad mini-games)
+    sdk: flutter
+
+dependency_overrides:
+  pointycastle: ^3.9.1
+
+flutter:
+  uses-material-design: true # CRITICAL: Required for Material icon font - DO NOT REMOVE
+  assets:
+    - assets/
+    - assets/images/
+  # CRITICAL ASSET MANAGEMENT RULES:
+  # - DO NOT ADD NEW ASSET DIRECTORIES (assets/svg/, assets/icons/, etc.)
+  # - ONLY USE EXISTING AND ITEMS AVAILABLE IN THE DIRECTORIES LISTED ABOVE (assets/, assets/images/)
+  
+  # CRITICAL FONTS RULE: 
+  # - THIS PROJECT USES GOOGLE FONTS INSTEAD OF LOCAL FONTS
+  # - DO NOT ADD ANY LOCAL FONTS SECTION OR FONT FILES
+
+# Environment Variables Required:
+# TELNYX_API_KEY=your_telnyx_api_key
+# TELNYX_MESSAGING_PROFILE_ID=your_messaging_profile_id
+# TELNYX_PHONE_NUMBER=+1234567890

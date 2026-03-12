@@ -1,0 +1,95 @@
+// E2E Integration Test: Ad Mini-Game with Blockchain Logging
+import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
+import 'package:vottery/main.dart' as app;
+import 'package:vottery/services/vp_service.dart';
+import 'package:vottery/services/blockchain_gamification_service.dart';
+import 'package:vottery/services/supabase_service.dart';
+
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  group('Ad Mini-Game Blockchain Logging E2E Test', () {
+    testWidgets(
+      'Complete flow: ad view → spin wheel game → VP reward → blockchain logging → merkle root → verification → audit trail',
+      (WidgetTester tester) async {
+        // Initialize app
+        app.main();
+        await tester.pumpAndSettle();
+
+        final vpService = VPService.instance;
+        final blockchainService = BlockchainGamificationService.instance;
+        final client = SupabaseService.instance.client;
+
+        // Step 1: Get initial VP balance
+        final initialBalance = await vpService.getVPBalance();
+        final initialVP = initialBalance?['available_vp'] as int? ?? 0;
+
+        // Step 2: View ad (navigate to participatory ads)
+        await tester.tap(find.text('Participatory Ads'));
+        await tester.pumpAndSettle();
+
+        // Step 3: Play spin wheel mini-game
+        await tester.tap(find.text('Spin Wheel'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byType(GestureDetector).first);
+        await tester.pumpAndSettle(const Duration(seconds: 3));
+
+        // Step 4: Verify VP reward (20 VP for ad mini-game)
+        final afterGameBalance = await vpService.getVPBalance();
+        final afterGameVP = afterGameBalance?['available_vp'] as int? ?? 0;
+        expect(afterGameVP, equals(initialVP + 20));
+
+        // Step 5: Verify blockchain transaction logged
+        await tester.pumpAndSettle(const Duration(seconds: 2));
+        final blockchainLogs = await client
+            .from('blockchain_gamification_logs')
+            .select()
+            .eq('transaction_type', 'vp_transaction')
+            .order('created_at', ascending: false)
+            .limit(1);
+
+        expect(blockchainLogs, isNotEmpty);
+        final latestLog = blockchainLogs.first;
+        expect(latestLog['transaction_hash'], isNotNull);
+        expect(latestLog['vp_amount'], equals(20));
+
+        // Step 6: Verify merkle root generation
+        expect(latestLog['merkle_root'], isNotNull);
+        final merkleRoot = latestLog['merkle_root'] as String;
+        expect(merkleRoot.length, greaterThan(0));
+
+        // Step 7: Verify blockchain verification via web3dart
+        final verificationResult = await blockchainService.verifyTransaction(
+          transactionHash: latestLog['transaction_hash'] as String,
+        );
+        expect(verificationResult['success'], isTrue);
+        expect(verificationResult['verified'], isTrue);
+
+        // Step 8: Verify cryptographic signature
+        expect(latestLog['cryptographic_signature'], isNotNull);
+        final signature = latestLog['cryptographic_signature'] as String;
+        expect(signature.length, greaterThan(0));
+
+        // Step 9: Verify audit trail creation
+        final auditTrail = await client
+            .from('blockchain_gamification_logs')
+            .select()
+            .eq('transaction_hash', latestLog['transaction_hash'])
+            .single();
+
+        expect(auditTrail['verification_status'], equals('verified'));
+        expect(auditTrail['blockchain_network'], equals('polygon'));
+        expect(auditTrail['created_at'], isNotNull);
+
+        // Step 10: Verify transaction data integrity
+        final transactionData = auditTrail['transaction_data'] as Map;
+        expect(transactionData['vp_amount'], equals(20));
+        expect(transactionData['transaction_type'], equals('vp_transaction'));
+
+        debugPrint('✅ Ad Mini-Game Blockchain Logging E2E Test PASSED');
+      },
+      timeout: const Timeout(Duration(minutes: 2)),
+    );
+  });
+}

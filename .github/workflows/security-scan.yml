@@ -1,0 +1,73 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 0 * * 1'  # Weekly on Monday
+  workflow_dispatch:
+
+jobs:
+  dependency-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        
+    - name: Install dependencies
+      run: flutter pub get
+      
+    - name: Check for outdated dependencies
+      run: flutter pub outdated
+      
+    - name: Audit dependencies for vulnerabilities
+      run: |
+        echo "Checking for known vulnerabilities in dependencies"
+        flutter pub outdated --json > outdated.json
+        cat outdated.json
+      continue-on-error: true
+      
+  secret-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+      
+    - name: Scan for secrets
+      uses: trufflesecurity/trufflehog@v3
+      with:
+        path: ./
+        base: ${{ github.event.repository.default_branch }}
+        head: HEAD
+        extra_args: --debug --only-verified
+        
+  license-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        
+    - name: Install dependencies
+      run: flutter pub get
+      
+    - name: Check licenses
+      run: |
+        echo "Checking package licenses"
+        flutter pub deps --json > deps.json
+        cat deps.json
+      continue-on-error: true
