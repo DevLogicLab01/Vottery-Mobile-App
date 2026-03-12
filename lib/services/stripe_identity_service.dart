@@ -3,8 +3,11 @@ import 'package:flutter/foundation.dart';
 import './supabase_service.dart';
 import './auth_service.dart';
 
-/// Stripe Identity Service
-/// Handles KYC verification workflow with Stripe Identity API
+/// Identity Orchestration Service
+/// Backed by Vottery's Supabase Edge Function:
+/// - Primary: Sumsub
+/// - Fallback: Veriff
+/// Legacy Stripe Identity helpers are kept for migration/reference.
 class StripeIdentityService {
   static StripeIdentityService? _instance;
   static StripeIdentityService get instance =>
@@ -15,6 +18,56 @@ class StripeIdentityService {
   final Dio _dio = Dio();
   final String _baseUrl = '${SupabaseService.supabaseUrl}/functions/v1';
   final AuthService _auth = AuthService.instance;
+
+  /// New: call identity-orchestrator (Sumsub + Veriff).
+  Future<Map<String, dynamic>> verifyIdentity({
+    required String purpose,
+    String? electionId,
+    Map<String, dynamic>? sessionContext,
+    Map<String, dynamic>? sessionData,
+  }) async {
+    try {
+      if (!_auth.isAuthenticated) {
+        throw Exception('User must be authenticated');
+      }
+      final session = SupabaseService.instance.client.auth.currentSession;
+      if (session == null) throw Exception('No active session');
+
+      final response = await _dio.post(
+        '$_baseUrl/identity-orchestrator',
+        data: {
+          'purpose': purpose,
+          'userId': _auth.currentUser!.id,
+          'electionId': electionId,
+          'minAgeRequired': sessionContext?['min_age_required'],
+          'geo': sessionContext?['geo'],
+          'sessionContext': sessionContext ?? {},
+          'sessionData': sessionData ?? {},
+        },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer ${session.accessToken}',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      final data = (response.data as Map).cast<String, dynamic>();
+      return {
+        'success': data['success'] == true,
+        'provider': data['provider'],
+        'confidence': data['confidence'],
+        'fallbackUsed': data['fallbackUsed'] ?? false,
+        'raw': data,
+      };
+    } catch (e) {
+      debugPrint('Identity orchestrator error: $e');
+      return {
+        'success': false,
+        'error': e.toString(),
+      };
+    }
+  }
 
   /// Create Stripe Identity VerificationSession
   Future<Map<String, dynamic>?> createVerificationSession({

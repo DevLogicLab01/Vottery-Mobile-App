@@ -137,8 +137,42 @@ class _AdSlotWidgetState extends State<AdSlotWidget> {
               },
             );
           }
+        } else if (adContent is AppLovinMaxAdContent) {
+          // AppLovin MAX placeholder – replace with actual AppLovin widget when SDK is integrated.
+          return Container(
+            height: 6.h,
+            margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+            decoration: BoxDecoration(
+              color: Colors.blueGrey[50],
+              borderRadius: BorderRadius.circular(8.0),
+              border: Border.all(color: Colors.blueGrey.shade100),
+            ),
+            child: Center(
+              child: Text(
+                'AppLovin MAX Ad',
+                style: TextStyle(fontSize: 10.sp, color: Colors.blueGrey[400]),
+              ),
+            ),
+          );
+        } else if (adContent is AdMobAdContent) {
+          // AdMob placeholder – replace with actual google_mobile_ads BannerAd/NativeAd when integrated.
+          return Container(
+            height: 6.h,
+            margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(8.0),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Center(
+              child: Text(
+                'AdMob Advertisement',
+                style: TextStyle(fontSize: 10.sp, color: Colors.grey[400]),
+              ),
+            ),
+          );
         } else if (adContent is AdSenseAdContent) {
-          // AdSense placeholder (real AdSense requires google_mobile_ads package)
+          // AdSense placeholder (web-style ads; mobile uses generic fallback here).
           return Container(
             height: 6.h,
             margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),

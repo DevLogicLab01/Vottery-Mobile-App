@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'vottery_auction_service.dart';
+import '../constants/ad_network_config.dart';
 
 /// Sealed class hierarchy for ad slot content
 abstract class AdSlotContent {}
@@ -40,6 +41,18 @@ class AdSenseAdContent extends AdSlotContent {
   AdSenseAdContent({required this.adUnitId});
 }
 
+class AppLovinMaxAdContent extends AdSlotContent {
+  final String adUnitId;
+
+  AppLovinMaxAdContent({required this.adUnitId});
+}
+
+class AdMobAdContent extends AdSlotContent {
+  final String adUnitId;
+
+  AdMobAdContent({required this.adUnitId});
+}
+
 /// Ad Slot Orchestration Service
 /// Prioritizes internal sponsored election ads from Supabase,
 /// falls back to Google AdSense for unfilled slots.
@@ -57,6 +70,96 @@ class AdSlotOrchestrationService {
     if (slotId == 'profile_top') return 'creators_marketplace';
     if (slotId == 'election_detail_bottom') return 'elections_voting_ui';
     return slotId;
+  }
+
+  Future<bool> _isInternalAdsEnabled() async {
+    // Primary toggle is code/config; optionally extend to Supabase feature toggles.
+    if (!AdNetworkConfig.internalAdsEnabled) return false;
+    try {
+      final res = await _supabase
+          .from('platform_feature_toggles')
+          .select('feature_name, enabled')
+          .eq('feature_name', 'participatory_advertising')
+          .maybeSingle();
+      if (res != null && res['enabled'] is bool) {
+        return res['enabled'] as bool;
+      }
+    } catch (_) {
+      // Ignore and fall back to config toggle.
+    }
+    return AdNetworkConfig.internalAdsEnabled;
+  }
+
+  bool _isAppLovinEnabled() {
+    return AdNetworkConfig.appLovinEnabled &&
+        AdNetworkConfig.appLovinSdkKey.isNotEmpty;
+  }
+
+  bool _isAdMobEnabled() {
+    return AdNetworkConfig.adMobEnabled && AdNetworkConfig.adMobAppId.isNotEmpty;
+  }
+
+  AppLovinMaxAdContent _getAppLovinForSlot(String slotId) {
+    switch (slotId) {
+      case 'home_feed_1':
+        return AppLovinMaxAdContent(
+            adUnitId: AdNetworkConfig.appLovinHomeFeed1UnitId);
+      case 'home_feed_2':
+        return AppLovinMaxAdContent(
+            adUnitId: AdNetworkConfig.appLovinHomeFeed2UnitId);
+      case 'profile_top':
+        return AppLovinMaxAdContent(
+            adUnitId: AdNetworkConfig.appLovinProfileTopUnitId);
+      case 'election_detail_bottom':
+        return AppLovinMaxAdContent(
+            adUnitId: AdNetworkConfig.appLovinElectionDetailBottomUnitId);
+      default:
+        return AppLovinMaxAdContent(
+            adUnitId: AdNetworkConfig.appLovinHomeFeed1UnitId);
+    }
+  }
+
+  AdMobAdContent _getAdMobForSlot(String slotId) {
+    switch (slotId) {
+      case 'home_feed_1':
+        return AdMobAdContent(adUnitId: AdNetworkConfig.adMobHomeFeed1UnitId);
+      case 'home_feed_2':
+        return AdMobAdContent(adUnitId: AdNetworkConfig.adMobHomeFeed2UnitId);
+      case 'profile_top':
+        return AdMobAdContent(adUnitId: AdNetworkConfig.adMobProfileTopUnitId);
+      case 'election_detail_bottom':
+        return AdMobAdContent(
+            adUnitId: AdNetworkConfig.adMobElectionDetailBottomUnitId);
+      default:
+        return AdMobAdContent(adUnitId: AdNetworkConfig.adMobHomeFeed1UnitId);
+    }
+  }
+
+  AdSlotContent _selectMobileExternalForSlot(String slotId) {
+    final appLovinOk = _isAppLovinEnabled();
+    final adMobOk = _isAdMobEnabled();
+
+    if (appLovinOk && adMobOk) {
+      // Fallback 1 (mobile): AppLovin MAX 70% + AdMob 30%
+      final r = (DateTime.now().microsecondsSinceEpoch % 100) / 100.0;
+      if (r < 0.7) {
+        return _getAppLovinForSlot(slotId);
+      } else {
+        return _getAdMobForSlot(slotId);
+      }
+    }
+
+    if (appLovinOk && !adMobOk) {
+      return _getAppLovinForSlot(slotId);
+    }
+
+    // Fallback 2 (mobile): AdMob takes all when AppLovin MAX is not 100% functional.
+    if (adMobOk) {
+      return _getAdMobForSlot(slotId);
+    }
+
+    // If neither partner is configured yet, keep existing AdSense placeholder.
+    return AdSenseAdContent(adUnitId: _getAdSenseUnitId(slotId));
   }
 
   Future<void> recordVotteryAdEvent({
@@ -86,15 +189,19 @@ class AdSlotOrchestrationService {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) {
-        return AdSenseAdContent(adUnitId: _getAdSenseUnitId(slotId));
+        return _selectMobileExternalForSlot(slotId);
       }
 
       // Step 1: Get user purchasing power zone
       final currentUserZone = await _getUserPurchasingPowerZone(userId);
       final placementKey = _mapSlotIdToPlacementKey(slotId);
 
-      // Step 2: Prefer unified Vottery Ads (vottery_ads) with auction scoring
-      final votteryAdsResp = await _supabase
+      // Step 0: Check if internal ads system is enabled (primary source)
+      final internalEnabled = await _isInternalAdsEnabled();
+
+      // Step 1: Prefer unified Vottery Ads (vottery_ads) with auction scoring
+      if (internalEnabled) {
+        final votteryAdsResp = await _supabase
           .from('vottery_ads')
           .select(
             'id, ad_type, creative, election_id, source_post_id, bid_amount_cents, quality_score, '
@@ -106,11 +213,11 @@ class AdSlotOrchestrationService {
           .order('bid_amount_cents', ascending: false)
           .limit(30);
 
-      final votteryAds = (votteryAdsResp as List<dynamic>)
+        final votteryAds = (votteryAdsResp as List<dynamic>)
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
 
-      if (votteryAds.isNotEmpty) {
+        if (votteryAds.isNotEmpty) {
         // frequency cap via ad_events (last 24h)
         final since = DateTime.now()
             .subtract(const Duration(hours: 24))
@@ -191,10 +298,12 @@ class AdSlotOrchestrationService {
             );
           }
         }
+        }
       }
 
-      // Step 3: Legacy internal sponsored election ads (fallback)
-      final response = await _supabase
+      // Step 2: Legacy internal sponsored election ads (fallback) if internal enabled
+      if (internalEnabled) {
+        final response = await _supabase
           .from('sponsored_elections')
           .select(
             'id, campaign_name, description, image_url, ad_format_type, engagement_metrics, bid_amount, election_id',
@@ -204,10 +313,10 @@ class AdSlotOrchestrationService {
           .order('bid_amount', ascending: false)
           .limit(5);
 
-      final ads = response as List<dynamic>;
+        final ads = response as List<dynamic>;
 
-      // Step 4: Find first ad that passes frequency cap
-      for (final ad in ads) {
+        // Find first ad that passes frequency cap
+        for (final ad in ads) {
         final adId = ad['id'] as String;
         final today = DateTime.now().toIso8601String().substring(0, 10);
         final impressionCount = await _getAdImpressionCount(
@@ -216,23 +325,24 @@ class AdSlotOrchestrationService {
           today,
         );
 
-        if (impressionCount >= _maxImpressionsPerDay) continue;
+          if (impressionCount >= _maxImpressionsPerDay) continue;
 
         // Step 5: Record impression
-        await _recordImpression(userId, adId, slotId);
+          await _recordImpression(userId, adId, slotId);
 
-        return InternalAdContent(
-          electionId: ad['election_id'] as String? ?? adId,
-          adId: adId,
-          campaignData: Map<String, dynamic>.from(ad as Map),
-        );
+          return InternalAdContent(
+            electionId: ad['election_id'] as String? ?? adId,
+            adId: adId,
+            campaignData: Map<String, dynamic>.from(ad as Map),
+          );
+        }
       }
 
-      // Step 6: Fallback to AdSense
-      return AdSenseAdContent(adUnitId: _getAdSenseUnitId(slotId));
+      // Step 3: External mobile networks
+      return _selectMobileExternalForSlot(slotId);
     } catch (e) {
       debugPrint('AdSlotOrchestrationService.getAdForSlot error: $e');
-      return AdSenseAdContent(adUnitId: _getAdSenseUnitId(slotId));
+      return _selectMobileExternalForSlot(slotId);
     }
   }
 
