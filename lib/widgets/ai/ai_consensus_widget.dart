@@ -96,6 +96,8 @@ class AIConsensusWidget extends StatelessWidget {
   Widget _buildConsensusResult(AIConsensusResult result, BuildContext context) {
     final theme = Theme.of(context);
     final hasConsensus = result.confidenceScore >= 0.8;
+    final autoApproved =
+        result.consensus['auto_approved'] == true;
 
     return Card(
       elevation: 4,
@@ -120,6 +122,24 @@ class AIConsensusWidget extends StatelessWidget {
               ],
             ),
             SizedBox(height: 2.h),
+            if (autoApproved)
+              Padding(
+                padding: EdgeInsets.only(bottom: 1.h),
+                child: Row(
+                  children: [
+                    Icon(Icons.auto_awesome, color: Colors.green, size: 18),
+                    SizedBox(width: 1.w),
+                    Text(
+                      'Auto‑approved by policy',
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             Text(
               result.finalRecommendation,
               style: TextStyle(
@@ -131,7 +151,7 @@ class AIConsensusWidget extends StatelessWidget {
             _buildAIProviderResults(result.providerResponses, theme),
             if (hasConsensus) ...[
               SizedBox(height: 2.h),
-              _buildActionButton(result, context),
+              _buildActionButton(result, context, autoApproved: autoApproved),
             ],
           ],
         ),
@@ -240,21 +260,30 @@ class AIConsensusWidget extends StatelessWidget {
     return Colors.red;
   }
 
-  Widget _buildActionButton(AIConsensusResult result, BuildContext context) {
+  Widget _buildActionButton(
+    AIConsensusResult result,
+    BuildContext context, {
+    required bool autoApproved,
+  }) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
-        onPressed: () {
-          // Action handler for consensus result
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Consensus action: ${result.finalRecommendation}'),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        },
+        onPressed: autoApproved
+            ? null
+            : () {
+                // Manual apply handler for consensus result
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        'Consensus action: ${result.finalRecommendation}'),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              },
         icon: const Icon(Icons.check_circle),
-        label: const Text('Apply Recommendation'),
+        label: Text(
+          autoApproved ? 'Auto‑approved' : 'Apply Recommendation',
+        ),
         style: ElevatedButton.styleFrom(
           padding: EdgeInsets.symmetric(vertical: 1.5.h),
           backgroundColor: Colors.blue,

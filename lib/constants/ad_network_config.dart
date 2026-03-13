@@ -2,8 +2,15 @@ class AdNetworkConfig {
   AdNetworkConfig._();
 
   /// Global flag to enable or disable internal Vottery ads (primary).
-  /// When false, all slots go to external partners.
-  static const bool internalAdsEnabled = true;
+  /// When false, all slots go to external partners (AppLovin MAX, AdMob).
+  /// Build-time: use --dart-define=INTERNAL_ADS_ENABLED=false to ship with fallbacks only at launch.
+  static bool get internalAdsEnabled {
+    const env = String.fromEnvironment(
+      'INTERNAL_ADS_ENABLED',
+      defaultValue: 'true',
+    );
+    return env.toLowerCase() == 'true' || env == '1';
+  }
 
   /// Web-style naming kept for clarity, but used on mobile for partner IDs.
   /// Replace placeholder values with real IDs/keys when you integrate SDKs.

@@ -1,10 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:math'; // Add this import for sqrt function
+import 'dart:math';
 
-/// OpenAI Embeddings Service
-/// Generates 1536-dimensional semantic vectors for content using text-embedding-3-small model
+/// Embeddings Service
+/// Gemini-first semantic embeddings with OpenAI fallback.
+///
+/// Web has already moved embeddings behind an AI proxy that uses Gemini by
+/// default; this mobile service mirrors that intent:
+/// - If GEMINI_API_KEY is configured, use Gemini text-embedding endpoint.
+/// - Otherwise, fall back to OpenAI text-embedding-3-small.
 class OpenAIEmbeddingsService {
   static OpenAIEmbeddingsService? _instance;
   static OpenAIEmbeddingsService get instance =>
@@ -14,30 +19,94 @@ class OpenAIEmbeddingsService {
   final Dio _dio = Dio();
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  static const String _apiKey = String.fromEnvironment('OPENAI_API_KEY');
-  static const String _embeddingsEndpoint =
+  // Gemini config (primary)
+  static const String _geminiApiKey = String.fromEnvironment('GEMINI_API_KEY');
+  // Using text-embedding-004 style endpoint; adjust if you adopt a newer model.
+  static const String _geminiEmbeddingsEndpoint =
+      'https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent';
+
+  // OpenAI config (fallback)
+  static const String _openAIApiKey = String.fromEnvironment('OPENAI_API_KEY');
+  static const String _openAIEmbeddingsEndpoint =
       'https://api.openai.com/v1/embeddings';
-  static const String _embeddingModel = 'text-embedding-3-small';
+  static const String _openAIEmbeddingModel = 'text-embedding-3-small';
   static const int _embeddingDimensions = 1536;
 
-  /// Generate embeddings for content
+  /// Generate embeddings for content (Gemini first, OpenAI fallback).
   Future<List<double>?> generateEmbedding(String text) async {
+    // Prefer Gemini embeddings when configured.
+    if (_geminiApiKey.isNotEmpty) {
+      final geminiResult = await _generateGeminiEmbedding(text);
+      if (geminiResult != null) {
+        return geminiResult;
+      }
+    }
+
+    // Fallback to OpenAI if Gemini is not configured or fails.
+    return _generateOpenAIEmbedding(text);
+  }
+
+  Future<List<double>?> _generateGeminiEmbedding(String text) async {
     try {
-      if (_apiKey.isEmpty) {
-        debugPrint('OpenAI API key not configured');
+      if (_geminiApiKey.isEmpty) {
+        debugPrint('GEMINI_API_KEY not configured for embeddings');
         return null;
       }
 
       final response = await _dio.post(
-        _embeddingsEndpoint,
+        '$_geminiEmbeddingsEndpoint?key=$_geminiApiKey',
         options: Options(
           headers: {
-            'Authorization': 'Bearer $_apiKey',
             'Content-Type': 'application/json',
           },
         ),
         data: {
-          'model': _embeddingModel,
+          'model': 'text-embedding-004',
+          'content': {
+            'parts': [
+              {'text': text},
+            ],
+          },
+        },
+      );
+
+      if (response.statusCode == 200) {
+        // Gemini embedding response: { embeddings: [ { values: [...] } ] }
+        final embeddings = response.data['embeddings'] as List<dynamic>?;
+        if (embeddings == null || embeddings.isEmpty) {
+          return null;
+        }
+        final values =
+            List<double>.from(embeddings.first['values'] as List<dynamic>);
+        return values;
+      }
+
+      debugPrint(
+          'Gemini embeddings HTTP error: ${response.statusCode} ${response.statusMessage}');
+      return null;
+    } catch (e) {
+      debugPrint('Gemini generate embedding error: $e');
+      return null;
+    }
+  }
+
+  Future<List<double>?> _generateOpenAIEmbedding(String text) async {
+    try {
+      if (_openAIApiKey.isEmpty) {
+        debugPrint('OPENAI_API_KEY not configured for embeddings');
+        return null;
+      }
+
+      final response = await _dio.post(
+        _openAIEmbeddingsEndpoint,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $_openAIApiKey',
+            'Content-Type': 'application/json',
+          },
+        ),
+        data: {
+          'model': _openAIEmbeddingModel,
           'input': text,
           'dimensions': _embeddingDimensions,
         },
@@ -50,9 +119,11 @@ class OpenAIEmbeddingsService {
         return embedding;
       }
 
+      debugPrint(
+          'OpenAI embeddings HTTP error: ${response.statusCode} ${response.statusMessage}');
       return null;
     } catch (e) {
-      debugPrint('Generate embedding error: $e');
+      debugPrint('OpenAI generate embedding error: $e');
       return null;
     }
   }

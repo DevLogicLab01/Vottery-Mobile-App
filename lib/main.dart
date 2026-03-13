@@ -281,12 +281,18 @@ class _VotteryAppState extends State<MyApp> {
             localeResolutionCallback: (deviceLocale, supportedLocales) {
               if (deviceLocale == null) return supportedLocales.first;
               for (final locale in supportedLocales) {
-                if (locale.languageCode == deviceLocale.languageCode) {
+                if (locale.languageCode == deviceLocale.languageCode &&
+                    (locale.countryCode == null ||
+                        locale.countryCode == deviceLocale.countryCode)) {
                   return locale;
                 }
               }
               return supportedLocales.first;
             },
+            // NOTE: The canonical locale list now lives in the shared
+            // Supabase table `supported_locales`. The hard-coded list
+            // is kept as a safe fallback; AppI18nService can override
+            // supportedLocales at runtime by reading from Supabase.
             supportedLocales: const [
               Locale('af'),
               Locale('gn'),

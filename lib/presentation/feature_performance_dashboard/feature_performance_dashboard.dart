@@ -25,10 +25,12 @@ class _FeaturePerformanceDashboardState
   bool _isLoading = true;
   Timer? _refreshTimer;
 
-  // Mobile optimization: adaptive sampling interval
+  // Mobile optimization: adaptive sampling interval (pollingIntervalMs equivalent: 5000 on mobile, 1000 on desktop)
+  static const int mobilePollingIntervalSeconds = 5;
+  static const int desktopPollingIntervalSeconds = 1;
   bool _isMobile = false;
   bool _isLowBandwidth = false;
-  int _samplingIntervalSeconds = 5; // 5s mobile, 1s desktop
+  int _samplingIntervalSeconds = mobilePollingIntervalSeconds;
   String _networkType = 'unknown';
   StreamSubscription? _connectivitySub;
 
@@ -116,7 +118,7 @@ class _FeaturePerformanceDashboardState
 
   Future<void> _detectPlatformAndNetwork() async {
     _isMobile = !kIsWeb;
-    _samplingIntervalSeconds = _isMobile ? 5 : 1;
+    _samplingIntervalSeconds = _isMobile ? mobilePollingIntervalSeconds : desktopPollingIntervalSeconds;
     try {
       final result = await Connectivity().checkConnectivity();
       if (result.isNotEmpty) _updateNetworkStatus(result.first);
@@ -133,12 +135,12 @@ class _FeaturePerformanceDashboardState
         case ConnectivityResult.mobile:
           _networkType = '4G/Mobile';
           _isLowBandwidth = true;
-          _samplingIntervalSeconds = 5; // Throttle under mobile/4G
+          _samplingIntervalSeconds = mobilePollingIntervalSeconds; // Throttle under 4G
           break;
         case ConnectivityResult.wifi:
           _networkType = 'WiFi';
           _isLowBandwidth = false;
-          _samplingIntervalSeconds = _isMobile ? 5 : 1;
+          _samplingIntervalSeconds = _isMobile ? mobilePollingIntervalSeconds : desktopPollingIntervalSeconds;
           break;
         case ConnectivityResult.ethernet:
           _networkType = 'Ethernet';

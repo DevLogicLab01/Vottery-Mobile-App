@@ -47,6 +47,41 @@ class AIOrchestratorService extends AIServiceBase {
         'consensus',
         'provider_responses',
       ]);
+      // Apply shared auto-approval policy from Supabase so Web & Mobile behave consistently.
+      try {
+        final policyQuery = await supabase
+            .from('ai_auto_approval_policies')
+            .select()
+            .eq('analysis_type', analysisType)
+            .eq('enabled', true)
+            .maybeSingle();
+
+        if (policyQuery != null) {
+          final minConfidence =
+              (policyQuery['min_confidence'] as num?)?.toDouble() ?? 0.0;
+          final consensus = (response['consensus'] as Map<String, dynamic>? ??
+              <String, dynamic>{});
+          final confidence =
+              (response['confidence_score'] as num?)?.toDouble() ??
+                  (consensus['average_confidence'] as num?)?.toDouble() ??
+                  0.0;
+
+          final hasConsensus = consensus['has_consensus'] == true ||
+              consensus['hasConsensus'] == true;
+          final autoApproved = hasConsensus && confidence >= minConfidence;
+
+          consensus['auto_approved'] = autoApproved;
+          consensus['policy'] = {
+            'analysis_type': analysisType,
+            'min_confidence': minConfidence,
+            'enabled': policyQuery['enabled'] == true,
+          };
+
+          response['consensus'] = consensus;
+        }
+      } catch (_) {
+        // If policy lookup fails, fall back to requiring manual approval.
+      }
 
       return AIConsensusResult.fromJson(response);
     } catch (e) {
