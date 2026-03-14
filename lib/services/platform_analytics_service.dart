@@ -38,7 +38,7 @@ class PlatformAnalyticsService {
         totalComments += (p['comments'] as num?)?.toInt() ?? 0;
         totalShares += (p['shares'] as num?)?.toInt() ?? 0;
       }
-      final postCount = (posts as List).length;
+      final postCount = (posts).length;
       final engagementRate = postCount > 0
           ? ((totalLikes + totalComments + totalShares) / postCount)
           : 0.0;
@@ -94,7 +94,7 @@ class PlatformAnalyticsService {
       for (final p in payouts as List) {
         total += (p['balance'] as num?)?.toDouble() ?? 0;
       }
-      return {'totalRevenue': total, 'transactionCount': (payouts as List).length};
+      return {'totalRevenue': total, 'transactionCount': (payouts).length};
     } catch (e) {
       debugPrint('getRevenueMetrics error: $e');
       return {};

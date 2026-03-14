@@ -16,14 +16,14 @@ class ApiRateLimitingService {
       final violations = await getViolations('24h');
       final quota = await getQuotaMonitoring('1h');
 
-      final totalEndpoints = limits?.length ?? 0;
-      final throttled = limits?.where((r) => r['throttle_enabled'] == true).length ?? 0;
-      final totalViolations = violations?.length ?? 0;
-      final blocked = violations?.where((v) => v['blocked'] == true).length ?? 0;
-      final avgUtilization = quota?.isNotEmpty == true
+      final totalEndpoints = limits.length ?? 0;
+      final throttled = limits.where((r) => r['throttle_enabled'] == true).length ?? 0;
+      final totalViolations = violations.length ?? 0;
+      final blocked = violations.where((v) => v['blocked'] == true).length ?? 0;
+      final avgUtilization = quota.isNotEmpty == true
           ? quota.map((q) => q['quota_utilization_percent'] ?? 0).reduce((a, b) => a + b) / quota.length
           : 0.0;
-      final abuseDetected = violations?.any((v) => v['severity'] == 'high') ?? false;
+      final abuseDetected = violations.any((v) => v['severity'] == 'high') ?? false;
 
       return {
         'totalEndpoints': totalEndpoints,

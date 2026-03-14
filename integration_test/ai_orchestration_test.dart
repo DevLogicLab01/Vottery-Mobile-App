@@ -41,7 +41,7 @@ void main() {
         timeoutMs: 50, // Very short timeout to simulate failure
       );
 
-      if (!timeoutResult['success'] as bool) {
+      if (!timeoutResult['success']) {
         // Fallback to Gemini
         final fallbackResult = await _callAIService('gemini', complexRequest);
         failoverWorked = fallbackResult['called'] as bool;

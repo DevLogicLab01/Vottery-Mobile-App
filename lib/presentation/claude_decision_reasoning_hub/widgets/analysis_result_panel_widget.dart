@@ -143,7 +143,7 @@ class DisputeAnalysisResultPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      (citation['policy_id']?.toString() ?? ''),
+                      (citation['policy_id'].toString() ?? ''),
                       style: GoogleFonts.inter(
                         fontSize: 11.sp,
                         fontWeight: FontWeight.w700,
@@ -151,11 +151,11 @@ class DisputeAnalysisResultPanel extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      (citation['policy_text']?.toString() ?? ''),
+                      (citation['policy_text'].toString() ?? ''),
                       style: GoogleFonts.inter(fontSize: 11.sp),
                     ),
                     Text(
-                      'Relevance: ${(citation['relevance_to_case']?.toString() ?? 'N/A')}',
+                      'Relevance: ${(citation['relevance_to_case'].toString() ?? 'N/A')}',
                       style: GoogleFonts.inter(
                         fontSize: 10.sp,
                         color: Colors.grey.shade600,

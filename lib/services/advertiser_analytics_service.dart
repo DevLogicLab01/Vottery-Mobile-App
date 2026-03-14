@@ -158,7 +158,7 @@ class AdvertiserAnalyticsService {
           .gte('timestamp', startDate);
       final userIds = (events as List)
           .map((e) => (e as Map)['user_id']?.toString())
-          .where((x) => x != null && x!.isNotEmpty)
+          .where((x) => x != null && x.isNotEmpty)
           .cast<String>()
           .toSet()
           .toList();
@@ -219,7 +219,7 @@ class AdvertiserAnalyticsService {
           .gte('timestamp', startDate);
       final userIds = (events as List)
           .map((e) => (e as Map)['user_id']?.toString())
-          .where((x) => x != null && x!.isNotEmpty)
+          .where((x) => x != null && x.isNotEmpty)
           .cast<String>()
           .toSet()
           .toList();

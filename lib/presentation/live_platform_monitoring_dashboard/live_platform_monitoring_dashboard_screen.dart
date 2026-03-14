@@ -57,10 +57,10 @@ class _LivePlatformMonitoringDashboardScreenState
       ]);
       if (mounted) {
         setState(() {
-          _engagement = results[0] as Map<String, dynamic>;
-          _elections = results[1] as Map<String, dynamic>;
-          _revenue = results[2] as Map<String, dynamic>;
-          _adRoi = results[3] as Map<String, dynamic>;
+          _engagement = results[0];
+          _elections = results[1];
+          _revenue = results[2];
+          _adRoi = results[3];
           _loading = false;
         });
       }
