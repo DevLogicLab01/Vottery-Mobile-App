@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 // E2E Integration Test: VP Earning → Quest Completion → Redemption Flow
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -89,3 +90,4 @@ void main() {
     );
   });
 }
+

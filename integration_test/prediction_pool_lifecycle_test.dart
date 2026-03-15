@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 // E2E Integration Test: Prediction Pool Lifecycle
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -88,3 +89,4 @@ void main() {
     );
   });
 }
+
