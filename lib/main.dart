@@ -56,6 +56,8 @@ import './presentation/social_activity_timeline/social_activity_timeline_screen.
 import './presentation/advanced_unified_search_screen/advanced_unified_search_screen.dart';
 import './presentation/role_upgrade/role_upgrade_screen.dart';
 import './config/route_feature_keys.dart';
+import './config/route_registry.dart';
+import './presentation/route_placeholder_screen/route_placeholder_screen.dart';
 import './widgets/feature_gate_widget.dart';
 import './services/accessibility_preferences_service.dart';
 import './services/ai_cache_service.dart';
@@ -898,7 +900,17 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 default:
-                  return null;
+                  final widget = screenForRoute(settings.name);
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      widget ??
+                          RoutePlaceholderScreen(
+                            routeName: settings.name ?? '',
+                            title: settings.name ?? '',
+                          ),
+                    ),
+                    settings: settings,
+                  );
               }
             },
           ),
