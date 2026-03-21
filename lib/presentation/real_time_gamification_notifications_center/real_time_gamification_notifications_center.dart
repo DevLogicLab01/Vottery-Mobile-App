@@ -6,6 +6,7 @@ import 'package:sizer/sizer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_export.dart';
+import '../../routes/app_routes.dart';
 import '../../services/ga4_analytics_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/enhanced_empty_state_widget.dart';
@@ -145,19 +146,19 @@ class _RealTimeGamificationNotificationsCenterState
   void _handleNotificationAction(String action, Map<String, dynamic> data) {
     switch (action) {
       case 'view_badge':
-        Navigator.pushNamed(context, '/gamification-hub');
+        Navigator.pushNamed(context, AppRoutes.gamificationHub);
         break;
       case 'claim_reward':
         _claimReward(data);
         break;
       case 'join_prediction':
-        Navigator.pushNamed(context, '/social-home-feed');
+        Navigator.pushNamed(context, AppRoutes.socialHomeFeed);
         break;
       case 'view_leaderboard':
-        Navigator.pushNamed(context, '/gamification-hub');
+        Navigator.pushNamed(context, AppRoutes.gamificationHub);
         break;
       case 'view_quest':
-        Navigator.pushNamed(context, '/feed-quest-dashboard');
+        Navigator.pushNamed(context, AppRoutes.feedQuestDashboard);
         break;
       default:
         debugPrint('Unknown action: $action');

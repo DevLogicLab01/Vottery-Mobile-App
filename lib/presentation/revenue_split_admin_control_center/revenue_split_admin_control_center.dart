@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../routes/app_routes.dart';
 import '../../services/revenue_split_admin_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/error_boundary_wrapper.dart';
@@ -30,6 +31,8 @@ class _RevenueSplitAdminControlScreenState
   List<Map<String, dynamic>> _campaigns = [];
   Map<String, dynamic> _statistics = {};
   bool _isLoading = true;
+  double _simSampleRevenue = 10000;
+  double _simCreatorPercent = 70;
 
   @override
   void initState() {
@@ -553,14 +556,7 @@ class _RevenueSplitAdminControlScreenState
           return Padding(
             padding: EdgeInsets.only(bottom: 2.h),
             child: ElevatedButton.icon(
-              onPressed: () {
-                // TODO: Implement create campaign dialog
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Create campaign feature coming soon'),
-                  ),
-                );
-              },
+              onPressed: () => _showCreateRevenueCampaignDialog(context),
               icon: Icon(Icons.add, size: 16.sp),
               label: Text('Create New Campaign'),
               style: ElevatedButton.styleFrom(
@@ -663,43 +659,165 @@ class _RevenueSplitAdminControlScreenState
   }
 
   Widget _buildSimulatorTab() {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(4.w),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.calculate, size: 48.sp, color: Colors.grey),
-            SizedBox(height: 2.h),
-            Text(
-              'Split Simulator',
-              style: GoogleFonts.inter(
-                fontSize: 18.sp,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            SizedBox(height: 1.h),
-            Text(
-              'Test split configurations before applying',
-              style: GoogleFonts.inter(
-                fontSize: 12.sp,
-                color: Colors.grey[600],
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 3.h),
-            Text(
-              'Coming Soon',
-              style: GoogleFonts.inter(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.accentLight,
-              ),
-            ),
-          ],
+    final creatorPct = _simCreatorPercent.round().clamp(50, 95);
+    final platformPct = 100 - creatorPct;
+    final creatorShare = _simSampleRevenue * creatorPct / 100.0;
+    final platformShare = _simSampleRevenue - creatorShare;
+
+    return ListView(
+      padding: EdgeInsets.all(4.w),
+      children: [
+        Text(
+          'Split simulator (preview)',
+          style: GoogleFonts.inter(
+            fontSize: 18.sp,
+            fontWeight: FontWeight.w700,
+          ),
         ),
-      ),
+        SizedBox(height: 1.h),
+        Text(
+          'Adjust sample gross revenue and creator share. This does not write to the database.',
+          style: GoogleFonts.inter(fontSize: 12.sp, color: Colors.grey[600]),
+        ),
+        SizedBox(height: 2.h),
+        Text(
+          'Sample gross: \$${_simSampleRevenue.toStringAsFixed(0)}',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+        ),
+        Slider(
+          value: _simSampleRevenue.clamp(100, 2000000),
+          min: 100,
+          max: 2000000,
+          divisions: 100,
+          label: '\$${_simSampleRevenue.toStringAsFixed(0)}',
+          onChanged: (v) => setState(() => _simSampleRevenue = v),
+        ),
+        SizedBox(height: 1.h),
+        Text(
+          'Creator $creatorPct% / Platform $platformPct%',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+        ),
+        Slider(
+          value: _simCreatorPercent.clamp(50, 95),
+          min: 50,
+          max: 95,
+          divisions: 45,
+          label: '$creatorPct%',
+          onChanged: (v) => setState(() => _simCreatorPercent = v),
+        ),
+        SizedBox(height: 2.h),
+        _buildInfoRow('Creator share', '\$${creatorShare.toStringAsFixed(2)}'),
+        _buildInfoRow('Platform share', '\$${platformShare.toStringAsFixed(2)}'),
+        SizedBox(height: 2.h),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context, rootNavigator: true)
+              .pushNamed(AppRoutes.electionCreationStudio),
+          icon: const Icon(Icons.how_to_vote),
+          label: const Text('Open election creation (related flow)'),
+        ),
+      ],
     );
+  }
+
+  Future<void> _showCreateRevenueCampaignDialog(BuildContext context) async {
+    final nameCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    var split = 70;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            return AlertDialog(
+              title: const Text('Create revenue split campaign'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(labelText: 'Campaign name'),
+                    ),
+                    SizedBox(height: 1.h),
+                    TextField(
+                      controller: descCtrl,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                      ),
+                    ),
+                    SizedBox(height: 1.h),
+                    Text('Creator split: $split%'),
+                    Slider(
+                      value: split.toDouble(),
+                      min: 50,
+                      max: 95,
+                      divisions: 45,
+                      label: '$split%',
+                      onChanged: (v) => setLocal(() => split = v.round()),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    final name = nameCtrl.text.trim();
+                    if (name.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Enter a campaign name')),
+                      );
+                      return;
+                    }
+                    try {
+                      final id = await _splitService.createCampaign(
+                        campaignName: name,
+                        campaignDescription: descCtrl.text.trim().isEmpty
+                            ? 'Revenue split campaign'
+                            : descCtrl.text.trim(),
+                        campaignType: 'standard',
+                        creatorSplitPercentage: split,
+                        eligibilityCriteria: const {},
+                        startDate: DateTime.now(),
+                      );
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (!context.mounted) return;
+                      if (id != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Campaign created: $id')),
+                        );
+                        await _loadData();
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Could not create campaign'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Create failed: $e')),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Create'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      nameCtrl.dispose();
+      descCtrl.dispose();
+    });
   }
 
   Widget _buildAuditLogTab() {

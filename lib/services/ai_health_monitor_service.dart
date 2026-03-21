@@ -84,7 +84,6 @@ class AIHealthMonitorService {
     String serviceName,
     int responseTime,
   ) async {
-    final current = _currentHealth[serviceName];
     final consecutiveFailures = 0;
 
     final healthScore = await _calculateHealthScore(serviceName);

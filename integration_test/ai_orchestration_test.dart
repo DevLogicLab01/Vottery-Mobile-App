@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:flutter/material.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -91,7 +90,7 @@ Future<Map<String, dynamic>> _callAIService(
 Future<Map<String, dynamic>> _callAIServiceWithTimeout(
   String service,
   Map<String, dynamic> request,
-  {required int timeoutMs},
+  {required int timeoutMs}
 ) async {
   try {
     await Future.delayed(Duration(milliseconds: timeoutMs + 100))

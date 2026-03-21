@@ -79,7 +79,7 @@ class RiskAssessmentMatrixWidget extends StatelessWidget {
                       color: isSelected ? color : color.withAlpha(26),
                       borderRadius: BorderRadius.circular(20.0),
                       border: Border.all(
-                        color: color.withOpacity(isSelected ? 1.0 : 0.3),
+                        color: color.withValues(alpha: isSelected ? 1.0 : 0.3),
                       ),
                     ),
                     child: Text(

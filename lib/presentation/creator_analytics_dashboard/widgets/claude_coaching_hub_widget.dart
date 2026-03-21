@@ -24,7 +24,6 @@ class ClaudeCoachingHubWidget extends StatefulWidget {
 }
 
 class _ClaudeCoachingHubWidgetState extends State<ClaudeCoachingHubWidget> {
-  final AnthropicService _anthropicService = AnthropicService.instance;
   bool _isLoading = false;
   List<Map<String, dynamic>> _recommendations = [];
   String? _error;
@@ -42,7 +41,6 @@ class _ClaudeCoachingHubWidgetState extends State<ClaudeCoachingHubWidget> {
     });
 
     try {
-      final prompt = _buildCoachingPrompt();
       final response = await AnthropicService.analyzeRevenueRisk();
 
       final recommendations = _parseRecommendations(response.toString());
@@ -59,34 +57,6 @@ class _ClaudeCoachingHubWidgetState extends State<ClaudeCoachingHubWidget> {
         _recommendations = _getDefaultRecommendations();
       });
     }
-  }
-
-  String _buildCoachingPrompt() {
-    final totalEarnings = widget.earnings['total_earnings'] ?? 0.0;
-    final thisMonth = widget.earnings['this_month'] ?? 0.0;
-    final tierName = widget.creatorTier['tier_name'] ?? 'Starter';
-    final vpMultiplier = widget.creatorTier['vp_multiplier'] ?? 1.0;
-
-    return '''
-You are an expert creator economy coach analyzing a content creator's performance.
-
-Creator Profile:
-- Current Tier: $tierName (VP Multiplier: ${vpMultiplier}x)
-- Total Lifetime Earnings: \$${totalEarnings.toStringAsFixed(2)}
-- This Month Earnings: \$${thisMonth.toStringAsFixed(2)}
-- Revenue Breakdown: ${widget.revenueBreakdown}
-
-Provide 5 specific, actionable recommendations to optimize earnings. Format each as:
-[PRIORITY: HIGH/MEDIUM/LOW] Title: Brief description (1-2 sentences)
-
-Focus on:
-1. Content strategy improvements
-2. Engagement optimization
-3. Monetization opportunities
-4. Tier progression strategies
-5. Audience growth tactics
-
-Be specific, data-driven, and actionable.''';
   }
 
   List<Map<String, dynamic>> _parseRecommendations(String response) {

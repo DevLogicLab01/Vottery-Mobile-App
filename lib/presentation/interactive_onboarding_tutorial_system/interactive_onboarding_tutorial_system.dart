@@ -6,6 +6,7 @@ import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../services/gamification_service.dart';
 import '../../services/supabase_service.dart';
+import '../../services/claude_service.dart';
 import '../../widgets/error_boundary_wrapper.dart';
 
 /// Interactive Onboarding Tutorial System
@@ -24,6 +25,8 @@ class _InteractiveOnboardingTutorialSystemState
     with TickerProviderStateMixin {
   final PageController _pageController = PageController();
   final GamificationService _gamificationService = GamificationService.instance;
+  final ClaudeService _claudeService = ClaudeService.instance;
+  final Map<int, String> _stepGuidance = {};
 
   int _currentStep = 0;
   final int _totalSteps = 5;
@@ -44,6 +47,7 @@ class _InteractiveOnboardingTutorialSystemState
       end: 1.0,
     ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeIn));
     _fadeController.forward();
+    _loadStepGuidance(0);
   }
 
   @override
@@ -61,6 +65,7 @@ class _InteractiveOnboardingTutorialSystemState
         curve: Curves.easeInOut,
       );
       setState(() => _currentStep++);
+      _loadStepGuidance(_currentStep);
     } else {
       _completeOnboarding();
     }
@@ -265,6 +270,7 @@ class _InteractiveOnboardingTutorialSystemState
                     physics: const NeverScrollableScrollPhysics(),
                     onPageChanged: (index) {
                       setState(() => _currentStep = index);
+                      _loadStepGuidance(index);
                     },
                     children: [
                       _buildQuestsStep(),
@@ -463,11 +469,79 @@ class _InteractiveOnboardingTutorialSystemState
           ),
           SizedBox(height: 3.h),
           ...features.map((feature) => _buildFeatureItem(feature)),
+          if ((_stepGuidance[_currentStep] ?? '').isNotEmpty) ...[
+            SizedBox(height: 1.5.h),
+            _buildAiGuidanceCard(_stepGuidance[_currentStep]!),
+          ],
           SizedBox(height: 3.h),
           exampleWidget,
         ],
       ),
     );
+  }
+
+  Widget _buildAiGuidanceCard(String guidance) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(3.w),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryLight.withAlpha(18),
+        borderRadius: BorderRadius.circular(10.0),
+        border: Border.all(color: AppTheme.primaryLight.withAlpha(77)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.auto_awesome, color: AppTheme.primaryLight, size: 5.w),
+          SizedBox(width: 2.w),
+          Expanded(
+            child: Text(
+              guidance,
+              style: GoogleFonts.inter(
+                fontSize: 11.sp,
+                color: AppTheme.textPrimaryLight,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loadStepGuidance(int step) async {
+    if (_stepGuidance.containsKey(step)) return;
+    final titles = [
+      'Quests System',
+      'Collaborative Voting',
+      'Engagement Analytics',
+      'Biometric Voting',
+      'Location-Based Features',
+    ];
+    final title = titles[step.clamp(0, titles.length - 1)];
+
+    try {
+      final guidance = await _claudeService.callClaudeAPI('''
+You are an onboarding coach for a civic app.
+Generate one short, practical guidance tip for this tutorial step: "$title".
+Constraints:
+- max 180 characters
+- plain text only
+- actionable next step
+''');
+      if (!mounted) return;
+      setState(() {
+        _stepGuidance[step] = guidance.trim().isEmpty
+            ? 'Use this step to understand core actions, then continue to the next screen.'
+            : guidance.trim();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _stepGuidance[step] =
+            'Use this step to understand core actions, then continue to the next screen.';
+      });
+    }
   }
 
   Widget _buildFeatureItem(String feature) {

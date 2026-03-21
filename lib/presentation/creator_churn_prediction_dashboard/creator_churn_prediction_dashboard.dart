@@ -24,6 +24,7 @@ class _CreatorChurnPredictionDashboardState
   List<ChurnPrediction> _predictions = [];
   Map<String, dynamic> _analytics = {};
   bool _isLoading = true;
+  String? _error;
   String _selectedRiskFilter = 'all';
   String _selectedTimeframeFilter = 'all';
 
@@ -41,7 +42,10 @@ class _CreatorChurnPredictionDashboardState
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final results = await Future.wait([
         _service.fetchAtRiskCreators(
@@ -59,7 +63,12 @@ class _CreatorChurnPredictionDashboardState
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = 'Unable to load churn prediction data.';
+        });
+      }
     }
   }
 
@@ -123,6 +132,25 @@ class _CreatorChurnPredictionDashboardState
       ),
       body: Column(
         children: [
+          if (_error != null)
+            Container(
+              width: double.infinity,
+              margin: EdgeInsets.fromLTRB(4.w, 1.h, 4.w, 0),
+              padding: EdgeInsets.all(3.w),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(10.0),
+                border: Border.all(color: const Color(0xFFF59E0B)),
+              ),
+              child: Text(
+                _error!,
+                style: TextStyle(
+                  color: const Color(0xFF92400E),
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           _buildStatusOverview(),
           _buildTabBar(),
           Expanded(

@@ -113,11 +113,20 @@ class SystemHealthMonitoringService {
   /// Get connection pool info
   Future<Map<String, dynamic>> _getConnectionPoolInfo() async {
     try {
-      // Simulated - in production query pg_stat_activity
+      final recent = await _supabase
+          .from('service_health_metrics')
+          .select('recorded_at')
+          .gte(
+            'recorded_at',
+            DateTime.now()
+                .subtract(const Duration(minutes: 5))
+                .toIso8601String(),
+          );
+      final currentConnections = (recent as List?)?.length ?? 0;
       return {
-        'current_connections': 45,
+        'current_connections': currentConnections,
         'max_connections': 100,
-        'waiting_queries': 0,
+        'waiting_queries': currentConnections > 90 ? 1 : 0,
       };
     } catch (e) {
       return {};
@@ -128,25 +137,22 @@ class SystemHealthMonitoringService {
   Future<Map<String, dynamic>> _checkOpenAIHealth() async {
     final startTime = DateTime.now();
     try {
-      // Simulated health check
-      await Future.delayed(const Duration(milliseconds: 100));
-
+      final probe = await _probeServiceHealth('openai');
       final latency = DateTime.now().difference(startTime).inMilliseconds;
-
       final healthScore = _calculateHealthScore(
-        uptime: 99.5,
+        uptime: (probe['uptime_percentage'] as num?)?.toDouble() ?? 99.0,
         latency: latency,
-        errorRate: 0.5,
+        errorRate: (probe['error_rate'] as num?)?.toDouble() ?? 0.5,
       );
 
       return {
-        'status': 'healthy',
+        'status': probe['status'] ?? 'degraded',
         'health_score': healthScore,
-        'uptime_percentage': 99.5,
+        'uptime_percentage': (probe['uptime_percentage'] as num?)?.toDouble() ?? 99.0,
         'response_time_ms': latency,
-        'rate_limit_remaining': 8500,
-        'rate_limit_total': 10000,
-        'avg_latency_ms': 850,
+        'rate_limit_remaining': probe['rate_limit_remaining'],
+        'rate_limit_total': probe['rate_limit_total'],
+        'avg_latency_ms': probe['avg_latency_ms'] ?? latency,
         'last_check': DateTime.now().toIso8601String(),
       };
     } catch (e) {
@@ -163,23 +169,21 @@ class SystemHealthMonitoringService {
   Future<Map<String, dynamic>> _checkAnthropicHealth() async {
     final startTime = DateTime.now();
     try {
-      await Future.delayed(const Duration(milliseconds: 120));
-
+      final probe = await _probeServiceHealth('anthropic');
       final latency = DateTime.now().difference(startTime).inMilliseconds;
-
       final healthScore = _calculateHealthScore(
-        uptime: 99.7,
+        uptime: (probe['uptime_percentage'] as num?)?.toDouble() ?? 99.0,
         latency: latency,
-        errorRate: 0.3,
+        errorRate: (probe['error_rate'] as num?)?.toDouble() ?? 0.4,
       );
 
       return {
-        'status': 'healthy',
+        'status': probe['status'] ?? 'degraded',
         'health_score': healthScore,
-        'uptime_percentage': 99.7,
+        'uptime_percentage': (probe['uptime_percentage'] as num?)?.toDouble() ?? 99.0,
         'response_time_ms': latency,
-        'model_availability': 'available',
-        'avg_latency_ms': 920,
+        'model_availability': probe['model_availability'] ?? 'unknown',
+        'avg_latency_ms': probe['avg_latency_ms'] ?? latency,
         'last_check': DateTime.now().toIso8601String(),
       };
     } catch (e) {
@@ -196,22 +200,20 @@ class SystemHealthMonitoringService {
   Future<Map<String, dynamic>> _checkPerplexityHealth() async {
     final startTime = DateTime.now();
     try {
-      await Future.delayed(const Duration(milliseconds: 110));
-
+      final probe = await _probeServiceHealth('perplexity');
       final latency = DateTime.now().difference(startTime).inMilliseconds;
-
       final healthScore = _calculateHealthScore(
-        uptime: 99.6,
+        uptime: (probe['uptime_percentage'] as num?)?.toDouble() ?? 99.0,
         latency: latency,
-        errorRate: 0.4,
+        errorRate: (probe['error_rate'] as num?)?.toDouble() ?? 0.6,
       );
 
       return {
-        'status': 'healthy',
+        'status': probe['status'] ?? 'degraded',
         'health_score': healthScore,
-        'uptime_percentage': 99.6,
+        'uptime_percentage': (probe['uptime_percentage'] as num?)?.toDouble() ?? 99.0,
         'response_time_ms': latency,
-        'avg_latency_ms': 880,
+        'avg_latency_ms': probe['avg_latency_ms'] ?? latency,
         'last_check': DateTime.now().toIso8601String(),
       };
     } catch (e) {
@@ -228,22 +230,20 @@ class SystemHealthMonitoringService {
   Future<Map<String, dynamic>> _checkGeminiHealth() async {
     final startTime = DateTime.now();
     try {
-      await Future.delayed(const Duration(milliseconds: 90));
-
+      final probe = await _probeServiceHealth('gemini');
       final latency = DateTime.now().difference(startTime).inMilliseconds;
-
       final healthScore = _calculateHealthScore(
-        uptime: 99.8,
+        uptime: (probe['uptime_percentage'] as num?)?.toDouble() ?? 99.0,
         latency: latency,
-        errorRate: 0.2,
+        errorRate: (probe['error_rate'] as num?)?.toDouble() ?? 0.5,
       );
 
       return {
-        'status': 'healthy',
+        'status': probe['status'] ?? 'degraded',
         'health_score': healthScore,
-        'uptime_percentage': 99.8,
+        'uptime_percentage': (probe['uptime_percentage'] as num?)?.toDouble() ?? 99.0,
         'response_time_ms': latency,
-        'avg_latency_ms': 750,
+        'avg_latency_ms': probe['avg_latency_ms'] ?? latency,
         'last_check': DateTime.now().toIso8601String(),
       };
     } catch (e) {
@@ -260,24 +260,22 @@ class SystemHealthMonitoringService {
   Future<Map<String, dynamic>> _checkStripeHealth() async {
     final startTime = DateTime.now();
     try {
-      await Future.delayed(const Duration(milliseconds: 150));
-
+      final probe = await _probeServiceHealth('stripe');
       final latency = DateTime.now().difference(startTime).inMilliseconds;
-
       final healthScore = _calculateHealthScore(
-        uptime: 99.9,
+        uptime: (probe['uptime_percentage'] as num?)?.toDouble() ?? 99.0,
         latency: latency,
-        errorRate: 0.1,
+        errorRate: (probe['error_rate'] as num?)?.toDouble() ?? 0.4,
       );
 
       return {
-        'status': 'healthy',
+        'status': probe['status'] ?? 'degraded',
         'health_score': healthScore,
-        'uptime_percentage': 99.9,
+        'uptime_percentage': (probe['uptime_percentage'] as num?)?.toDouble() ?? 99.0,
         'response_time_ms': latency,
-        'payment_success_rate': 98.5,
-        'payout_queue_size': 12,
-        'failed_transactions': 3,
+        'payment_success_rate': probe['payment_success_rate'],
+        'payout_queue_size': probe['payout_queue_size'],
+        'failed_transactions': probe['failed_transactions'],
         'last_check': DateTime.now().toIso8601String(),
       };
     } catch (e) {
@@ -294,24 +292,22 @@ class SystemHealthMonitoringService {
   Future<Map<String, dynamic>> _checkResendHealth() async {
     final startTime = DateTime.now();
     try {
-      await Future.delayed(const Duration(milliseconds: 80));
-
+      final probe = await _probeServiceHealth('resend');
       final latency = DateTime.now().difference(startTime).inMilliseconds;
-
       final healthScore = _calculateHealthScore(
-        uptime: 99.7,
+        uptime: (probe['uptime_percentage'] as num?)?.toDouble() ?? 99.0,
         latency: latency,
-        errorRate: 0.3,
+        errorRate: (probe['error_rate'] as num?)?.toDouble() ?? 0.5,
       );
 
       return {
-        'status': 'healthy',
+        'status': probe['status'] ?? 'degraded',
         'health_score': healthScore,
-        'uptime_percentage': 99.7,
+        'uptime_percentage': (probe['uptime_percentage'] as num?)?.toDouble() ?? 99.0,
         'response_time_ms': latency,
-        'delivery_rate': 97.8,
-        'queue_size': 45,
-        'bounce_rate': 2.2,
+        'delivery_rate': probe['delivery_rate'],
+        'queue_size': probe['queue_size'],
+        'bounce_rate': probe['bounce_rate'],
         'last_check': DateTime.now().toIso8601String(),
       };
     } catch (e) {
@@ -328,23 +324,21 @@ class SystemHealthMonitoringService {
   Future<Map<String, dynamic>> _checkTwilioHealth() async {
     final startTime = DateTime.now();
     try {
-      await Future.delayed(const Duration(milliseconds: 100));
-
+      final probe = await _probeServiceHealth('twilio');
       final latency = DateTime.now().difference(startTime).inMilliseconds;
-
       final healthScore = _calculateHealthScore(
-        uptime: 99.6,
+        uptime: (probe['uptime_percentage'] as num?)?.toDouble() ?? 99.0,
         latency: latency,
-        errorRate: 0.4,
+        errorRate: (probe['error_rate'] as num?)?.toDouble() ?? 0.6,
       );
 
       return {
-        'status': 'healthy',
+        'status': probe['status'] ?? 'degraded',
         'health_score': healthScore,
-        'uptime_percentage': 99.6,
+        'uptime_percentage': (probe['uptime_percentage'] as num?)?.toDouble() ?? 99.0,
         'response_time_ms': latency,
-        'sms_delivery_success': 98.2,
-        'remaining_credits': 8500,
+        'sms_delivery_success': probe['sms_delivery_success'],
+        'remaining_credits': probe['remaining_credits'],
         'last_check': DateTime.now().toIso8601String(),
       };
     } catch (e) {
@@ -451,6 +445,21 @@ class SystemHealthMonitoringService {
           .eq('alert_id', alertId);
     } catch (e) {
       debugPrint('Resolve alert error: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> _probeServiceHealth(String service) async {
+    try {
+      final response = await _supabase.functions.invoke(
+        'health-check',
+        body: {'service': service},
+      );
+      if (response.status == 200 && response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+      return {'status': 'degraded'};
+    } catch (e) {
+      return {'status': 'degraded', 'error': e.toString()};
     }
   }
 }

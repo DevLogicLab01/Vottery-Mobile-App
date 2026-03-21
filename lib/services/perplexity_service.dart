@@ -20,6 +20,341 @@ class PerplexityService {
 
   final DatadogTracingService _tracing = DatadogTracingService.instance;
 
+  bool get _perplexityConfigured =>
+      apiKey.isNotEmpty && apiKey != 'your-perplexity-api-key-here';
+
+  List<Map<String, dynamic>> _asMapList(dynamic raw) {
+    if (raw is! List) return [];
+    final out = <Map<String, dynamic>>[];
+    for (final e in raw) {
+      if (e is Map<String, dynamic>) {
+        out.add(e);
+      } else if (e is Map) {
+        out.add(Map<String, dynamic>.from(e));
+      }
+    }
+    return out;
+  }
+
+  /// Extract first JSON object from model output (handles ```json fences).
+  Map<String, dynamic>? _parseJsonObjectFromModelContent(String response) {
+    try {
+      final cleaned = response
+          .replaceAll('```json', '')
+          .replaceAll('```', '')
+          .trim();
+      final match = RegExp(r'\{[\s\S]*\}').firstMatch(cleaned);
+      if (match == null) return null;
+      final decoded = jsonDecode(match.group(0)!);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    } catch (e) {
+      debugPrint('Perplexity JSON extract error: $e');
+    }
+    return null;
+  }
+
+  /// Live Supabase snapshot for fallbacks (same tables as Web `getInternalMarketResearchContext`).
+  Future<Map<String, dynamic>> _fetchInternalRiskMetrics({int days = 30}) async {
+    final since = DateTime.now().subtract(Duration(days: days)).toIso8601String();
+    try {
+      final fraud = await _client
+          .from('fraud_alerts')
+          .select('id, severity, user_id, created_at')
+          .gte('created_at', since)
+          .limit(500);
+      final votes = await _client
+          .from('votes')
+          .select('id, user_id, created_at')
+          .gte('created_at', since)
+          .limit(5000);
+      final moderation = await _client
+          .from('content_moderation_results')
+          .select('id, auto_removed, created_at')
+          .gte('created_at', since)
+          .limit(2000);
+      final anomalies = await _client
+          .from('revenue_anomalies')
+          .select('id, severity, created_at')
+          .gte('created_at', since)
+          .limit(500);
+      final flags = await _client
+          .from('content_flags')
+          .select('id, severity, status, created_at')
+          .gte('created_at', since)
+          .limit(500);
+
+      final fraudList = _asMapList(fraud);
+      final voteList = _asMapList(votes);
+      final fraudUsers =
+          fraudList.map((r) => r['user_id']).whereType<String>().toSet();
+      var overlapUsers = 0;
+      final voteUsers = <String>{};
+      for (final v in voteList) {
+        final uid = v['user_id']?.toString();
+        if (uid == null) continue;
+        voteUsers.add(uid);
+        if (fraudUsers.contains(uid)) overlapUsers++;
+      }
+
+      final highFraud = fraudList.where((r) {
+        final s = (r['severity'] ?? '').toString().toLowerCase();
+        return s == 'high' || s == 'critical';
+      }).length;
+
+      return {
+        'window_days': days,
+        'since': since,
+        'fraud_alerts': fraudList.length,
+        'fraud_high_critical': highFraud,
+        'votes': voteList.length,
+        'moderation_results': _asMapList(moderation).length,
+        'revenue_anomalies': _asMapList(anomalies).length,
+        'content_flags': _asMapList(flags).length,
+        'fraud_vote_user_overlap': overlapUsers,
+        'distinct_voting_users_sample': voteUsers.length,
+      };
+    } catch (e) {
+      debugPrint('Internal risk metrics error: $e');
+      return {
+        'window_days': days,
+        'since': since,
+        'fraud_alerts': 0,
+        'fraud_high_critical': 0,
+        'votes': 0,
+        'moderation_results': 0,
+        'revenue_anomalies': 0,
+        'content_flags': 0,
+        'fraud_vote_user_overlap': 0,
+        'distinct_voting_users_sample': 0,
+        'metrics_error': e.toString(),
+      };
+    }
+  }
+
+  Map<String, dynamic> _threatAnalysisFromMetrics(Map<String, dynamic> m) {
+    final fraud = (m['fraud_alerts'] as int?) ?? 0;
+    final votes = (m['votes'] as int?) ?? 0;
+    final overlap = (m['fraud_vote_user_overlap'] as int?) ?? 0;
+    final ratio = votes > 0 ? fraud / votes : 0.0;
+    String level = 'low';
+    if (fraud > 50 || ratio > 0.08 || overlap > 15) level = 'critical';
+    else if (fraud > 20 || ratio > 0.04 || overlap > 5) level = 'high';
+    else if (fraud > 5 || ratio > 0.015) level = 'medium';
+    final p = (ratio * 3).clamp(0.0, 0.95);
+    return {
+      'threat_level': level,
+      'emerging_vectors': <Map<String, dynamic>>[],
+      'forecast_60d': {
+        'threat_probability': p,
+        'confidence': votes > 0 ? 0.55 : 0.25,
+      },
+      'forecast_90d': {
+        'threat_probability': (p * 1.05).clamp(0.0, 0.95),
+        'confidence': votes > 0 ? 0.45 : 0.2,
+      },
+      'seasonal_patterns': <String>[],
+      'recommended_actions': [
+        if (fraud > 0) 'Review open fraud_alerts for the selected window',
+        if (overlap > 0)
+          'Investigate users appearing in both fraud_alerts and votes',
+      ],
+      'source': 'supabase_internal_metrics',
+      'internal_metrics': m,
+    };
+  }
+
+  Map<String, dynamic> _fraudForecastFromMetrics(Map<String, dynamic> m) {
+    final fraud = (m['fraud_alerts'] as int?) ?? 0;
+    final votes = (m['votes'] as int?) ?? 0;
+    final base = votes > 0 ? (fraud / votes).clamp(0.0, 1.0) : 0.0;
+    return {
+      'forecast_60d': {
+        'fraud_probability': (base * 1.2).clamp(0.0, 0.95),
+        'expected_incidents': fraud,
+        'confidence': votes > 0 ? 0.5 : 0.2,
+      },
+      'forecast_90d': {
+        'fraud_probability': (base * 1.35).clamp(0.0, 0.95),
+        'expected_incidents': fraud,
+        'confidence': votes > 0 ? 0.4 : 0.15,
+      },
+      'seasonal_analysis': {
+        'high_risk_periods': <String>[],
+        'patterns': <String>[],
+      },
+      'emerging_threats': <Map<String, dynamic>>[],
+      'zone_vulnerability': <Map<String, dynamic>>[],
+      'accuracy_metrics': {'historical_accuracy': 0.0},
+      'source': 'supabase_internal_metrics',
+      'internal_metrics': m,
+    };
+  }
+
+  Map<String, dynamic> _strategicPlanFromMetrics(Map<String, dynamic> m) {
+    return {
+      'market_opportunities': <Map<String, dynamic>>[],
+      'growth_strategies': <Map<String, dynamic>>[],
+      'competitive_threats': <Map<String, dynamic>>[],
+      'recommendations': [
+        if (((m['content_flags'] as int?) ?? 0) > 0)
+          {
+            'action': 'Clear moderation backlog (content_flags)',
+            'priority': 'high',
+            'impact': 70,
+          },
+        if (((m['revenue_anomalies'] as int?) ?? 0) > 0)
+          {
+            'action': 'Reconcile revenue_anomalies',
+            'priority': 'medium',
+            'impact': 55,
+          },
+      ],
+      'strategic_overview':
+          'Perplexity Sonar unavailable — showing internal platform signals only: '
+          '${m['fraud_alerts']} fraud_alerts, ${m['votes']} votes, '
+          '${m['moderation_results']} moderation results in ${m['window_days']}d.',
+      'source': 'supabase_internal_metrics',
+      'internal_metrics': m,
+    };
+  }
+
+  Map<String, dynamic> _strategicForecastFromMetrics(Map<String, dynamic> m) {
+    final engagement =
+        ((m['votes'] as int?) ?? 0) > 100 ? 65.0 : 40.0;
+    return {
+      'forecast_60d': {
+        'user_growth': {'predicted': 0, 'confidence': 0.35},
+        'revenue_growth': {'predicted': 0, 'confidence': 0.35},
+        'engagement_rate': {'predicted': engagement, 'confidence': 0.4},
+        'key_opportunities': <String>[],
+      },
+      'forecast_90d': {
+        'user_growth': {'predicted': 0, 'confidence': 0.3},
+        'revenue_growth': {'predicted': 0, 'confidence': 0.3},
+        'engagement_rate': {'predicted': engagement, 'confidence': 0.35},
+        'key_opportunities': <String>[],
+      },
+      'strategic_recommendations': <Map<String, dynamic>>[],
+      'market_trends': <String>[],
+      'source': 'supabase_internal_metrics',
+      'internal_metrics': m,
+    };
+  }
+
+  Map<String, dynamic> _emptySentimentFallback() {
+    return {
+      'overall_sentiment': {'positive': 0, 'neutral': 0, 'negative': 0},
+      'brand_mentions': <Map<String, dynamic>>[],
+      'demographic_breakdown': <String, dynamic>{},
+      'emotional_response': <Map<String, dynamic>>[],
+      'market_pulse':
+          'External sentiment not available (configure PERPLEXITY_API_KEY or check network).',
+      'source': 'unavailable',
+    };
+  }
+
+  Future<Map<String, dynamic>> _internal90DayForecastFromDb() async {
+    final m = await _fetchInternalRiskMetrics(days: 30);
+    final fraud = (m['fraud_alerts'] as int?) ?? 0;
+    final votes = (m['votes'] as int?) ?? 0;
+    final base = votes > 0 ? (fraud / votes).clamp(0.0, 1.0) : 0.0;
+    double p30 = (base * 2).clamp(0.0, 0.9);
+    return {
+      'forecast_30d': {
+        'threat_probability': p30,
+        'confidence': votes > 0 ? 0.45 : 0.2,
+        'emerging_threats': <Map<String, dynamic>>[],
+        'key_risks': <String>[
+          if (fraud > 0) '$fraud fraud_alerts in last 30d',
+        ],
+      },
+      'forecast_60d': {
+        'threat_probability': (p30 * 1.1).clamp(0.0, 0.92),
+        'confidence': votes > 0 ? 0.4 : 0.18,
+        'emerging_threats': <Map<String, dynamic>>[],
+        'key_risks': <String>[],
+      },
+      'forecast_90d': {
+        'threat_probability': (p30 * 1.2).clamp(0.0, 0.95),
+        'confidence': votes > 0 ? 0.35 : 0.15,
+        'emerging_threats': <Map<String, dynamic>>[],
+        'key_risks': <String>[],
+      },
+      'cross_zone_correlation': {'coordinated_patterns': <dynamic>[]},
+      'seasonal_anomalies': <dynamic>[],
+      'zone_vulnerabilities': <String, dynamic>{},
+      'recommendations': <dynamic>[],
+      'source': 'supabase_internal_metrics',
+      'internal_metrics': m,
+    };
+  }
+
+  Future<Map<String, dynamic>> _internalCrossZoneFromDb(
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    final m = await _fetchInternalRiskMetrics(days: 30);
+    final start = startDate.toIso8601String();
+    final end = endDate.toIso8601String();
+    try {
+      final fraud = await _client
+          .from('fraud_alerts')
+          .select('user_id, created_at')
+          .gte('created_at', start)
+          .lte('created_at', end)
+          .limit(500);
+      final votes = await _client
+          .from('votes')
+          .select('user_id, created_at')
+          .gte('created_at', start)
+          .lte('created_at', end)
+          .limit(5000);
+      final fList = _asMapList(fraud);
+      final vList = _asMapList(votes);
+      final fUsers = fList.map((e) => e['user_id']).whereType<String>().toSet();
+      var overlap = 0;
+      for (final v in vList) {
+        final u = v['user_id']?.toString();
+        if (u != null && fUsers.contains(u)) overlap++;
+      }
+      final detected = overlap > 3;
+      return {
+        'patterns_detected': detected,
+        'pattern_type': detected ? 'coordinated_voting' : 'other',
+        'affected_zones': <String>[],
+        'confidence_score': vList.isEmpty
+            ? 0.0
+            : (overlap / vList.length).clamp(0.0, 1.0),
+        'pattern_description': detected
+            ? '$overlap vote events from users with fraud alerts in range'
+            : 'No strong user-level overlap between fraud_alerts and votes',
+        'coordinated_accounts': <dynamic>[],
+        'synchronized_actions': <dynamic>[],
+        'risk_assessment': detected ? 'medium' : 'low',
+        'recommended_actions': <String>[
+          if (detected) 'Manual review: fraud-flagged users with votes in window',
+        ],
+        'source': 'supabase_internal_heuristic',
+        'internal_metrics': m,
+      };
+    } catch (e) {
+      return {
+        'patterns_detected': false,
+        'pattern_type': 'none',
+        'affected_zones': <String>[],
+        'confidence_score': 0.0,
+        'pattern_description': 'Cross-zone heuristic failed: $e',
+        'coordinated_accounts': <dynamic>[],
+        'synchronized_actions': <dynamic>[],
+        'risk_assessment': 'low',
+        'recommended_actions': <String>[],
+        'source': 'error',
+        'internal_metrics': m,
+      };
+    }
+  }
+
   /// Static method for threat intelligence analysis (used for health checks)
   static Future<Map<String, dynamic>> analyzeThreatIntelligence({
     required Map<String, dynamic> threatContext,
@@ -29,12 +364,35 @@ class PerplexityService {
     );
   }
 
+  /// Parity with Web `perplexityMarketResearchService.getInternalMarketResearchContext`.
+  static Future<Map<String, dynamic>> getInternalMarketResearchContext({
+    int days = 30,
+  }) async {
+    final m = await instance._fetchInternalRiskMetrics(days: days);
+    final err = m['metrics_error']?.toString();
+    final body = {
+      'windowDays': days,
+      'since': m['since'],
+      'fraudAlerts': m['fraud_alerts'],
+      'fraudHighOrCritical': m['fraud_high_critical'],
+      'votes': m['votes'],
+      'moderationResults': m['moderation_results'],
+      'revenueAnomalies': m['revenue_anomalies'],
+      'contentFlags': m['content_flags'],
+    };
+    if (err != null && err.isNotEmpty) {
+      return {'success': false, 'error': err, ...body};
+    }
+    return {'success': true, ...body};
+  }
+
   Future<Map<String, dynamic>> analyzeThreatIntelligenceInstance({
     required Map<String, dynamic> threatData,
   }) async {
     try {
-      if (apiKey.isEmpty || apiKey == 'your-perplexity-api-key-here') {
-        return _getDefaultThreatAnalysis();
+      if (!_perplexityConfigured) {
+        final m = await _fetchInternalRiskMetrics();
+        return _threatAnalysisFromMetrics(m);
       }
 
       final prompt = _buildThreatPrompt(threatData);
@@ -44,12 +402,18 @@ class PerplexityService {
         searchRecencyFilter: 'week',
       );
 
-      return _parseThreatResponse(
+      final parsed = _parseThreatResponse(
         response['choices']?[0]?['message']?['content'] ?? '',
       );
+      if (parsed['source'] == 'parse_failed') {
+        final m = await _fetchInternalRiskMetrics();
+        return {..._threatAnalysisFromMetrics(m), 'perplexity_parse_failed': true};
+      }
+      return parsed;
     } catch (e) {
       debugPrint('Perplexity threat analysis error: $e');
-      return _getDefaultThreatAnalysis();
+      final m = await _fetchInternalRiskMetrics();
+      return {..._threatAnalysisFromMetrics(m), 'perplexity_error': e.toString()};
     }
   }
 
@@ -58,8 +422,14 @@ class PerplexityService {
     String? category,
   }) async {
     try {
-      if (apiKey.isEmpty || apiKey == 'your-perplexity-api-key-here') {
-        return _getDefaultSentimentAnalysis();
+      if (!_perplexityConfigured) {
+        final m = await _fetchInternalRiskMetrics();
+        return {
+          ..._emptySentimentFallback(),
+          'topic': topic,
+          'category': category,
+          'internal_metrics': m,
+        };
       }
 
       final prompt = _buildSentimentPrompt(topic, category);
@@ -69,12 +439,28 @@ class PerplexityService {
         searchRecencyFilter: 'month',
       );
 
-      return _parseSentimentResponse(
+      final parsed = _parseSentimentResponse(
         response['choices']?[0]?['message']?['content'] ?? '',
       );
+      if (parsed['source'] == 'parse_failed') {
+        final m = await _fetchInternalRiskMetrics();
+        return {
+          ..._emptySentimentFallback(),
+          'topic': topic,
+          'internal_metrics': m,
+          'perplexity_parse_failed': true,
+        };
+      }
+      return parsed;
     } catch (e) {
       debugPrint('Perplexity sentiment analysis error: $e');
-      return _getDefaultSentimentAnalysis();
+      final m = await _fetchInternalRiskMetrics();
+      return {
+        ..._emptySentimentFallback(),
+        'topic': topic,
+        'internal_metrics': m,
+        'perplexity_error': e.toString(),
+      };
     }
   }
 
@@ -82,19 +468,26 @@ class PerplexityService {
     required List<Map<String, dynamic>> historicalData,
   }) async {
     try {
-      if (apiKey.isEmpty || apiKey == 'your-perplexity-api-key-here') {
-        return _getDefaultFraudForecast();
+      if (!_perplexityConfigured) {
+        final m = await _fetchInternalRiskMetrics();
+        return _fraudForecastFromMetrics(m);
       }
 
       final prompt = _buildFraudForecastPrompt(historicalData);
       final response = await callPerplexityAPI(prompt, model: reasoningModel);
 
-      return _parseFraudForecast(
+      final parsed = _parseFraudForecast(
         response['choices']?[0]?['message']?['content'] ?? '',
       );
+      if (parsed['source'] == 'parse_failed') {
+        final m = await _fetchInternalRiskMetrics();
+        return {..._fraudForecastFromMetrics(m), 'perplexity_parse_failed': true};
+      }
+      return parsed;
     } catch (e) {
       debugPrint('Perplexity fraud forecast error: $e');
-      return _getDefaultFraudForecast();
+      final m = await _fetchInternalRiskMetrics();
+      return {..._fraudForecastFromMetrics(m), 'perplexity_error': e.toString()};
     }
   }
 
@@ -102,19 +495,26 @@ class PerplexityService {
     required Map<String, dynamic> businessData,
   }) async {
     try {
-      if (apiKey.isEmpty || apiKey == 'your-perplexity-api-key-here') {
-        return _getDefaultStrategicPlan();
+      if (!_perplexityConfigured) {
+        final m = await _fetchInternalRiskMetrics();
+        return _strategicPlanFromMetrics(m);
       }
 
       final prompt = _buildStrategicPrompt(businessData);
       final response = await callPerplexityAPI(prompt, model: reasoningModel);
 
-      return _parseStrategicPlan(
+      final parsed = _parseStrategicPlan(
         response['choices']?[0]?['message']?['content'] ?? '',
       );
+      if (parsed['source'] == 'parse_failed') {
+        final m = await _fetchInternalRiskMetrics();
+        return {..._strategicPlanFromMetrics(m), 'perplexity_parse_failed': true};
+      }
+      return parsed;
     } catch (e) {
       debugPrint('Perplexity strategic planning error: $e');
-      return _getDefaultStrategicPlan();
+      final m = await _fetchInternalRiskMetrics();
+      return {..._strategicPlanFromMetrics(m), 'perplexity_error': e.toString()};
     }
   }
 
@@ -123,19 +523,32 @@ class PerplexityService {
     required Map<String, dynamic> businessData,
   }) async {
     try {
-      if (apiKey.isEmpty || apiKey == 'your-perplexity-api-key-here') {
-        return _getDefaultStrategicForecast();
+      if (!_perplexityConfigured) {
+        final m = await _fetchInternalRiskMetrics();
+        return _strategicForecastFromMetrics(m);
       }
 
       final prompt = _buildStrategicForecastPrompt(businessData);
       final response = await callPerplexityAPI(prompt, model: reasoningModel);
 
-      return _parseStrategicForecast(
+      final parsed = _parseStrategicForecast(
         response['choices']?[0]?['message']?['content'] ?? '',
       );
+      if (parsed['source'] == 'parse_failed') {
+        final m = await _fetchInternalRiskMetrics();
+        return {
+          ..._strategicForecastFromMetrics(m),
+          'perplexity_parse_failed': true,
+        };
+      }
+      return parsed;
     } catch (e) {
       debugPrint('Perplexity strategic forecasting error: $e');
-      return _getDefaultStrategicForecast();
+      final m = await _fetchInternalRiskMetrics();
+      return {
+        ..._strategicForecastFromMetrics(m),
+        'perplexity_error': e.toString(),
+      };
     }
   }
 
@@ -177,25 +590,20 @@ Provide strategic forecast in JSON:
   }
 
   Map<String, dynamic> _parseStrategicForecast(String response) {
-    try {
-      return jsonDecode(response) as Map<String, dynamic>;
-    } catch (e) {
-      return _getDefaultStrategicForecast();
-    }
-  }
-
-  Map<String, dynamic> _getDefaultStrategicForecast() {
+    final parsed = _parseJsonObjectFromModelContent(response);
+    if (parsed != null) return parsed;
     return {
       'forecast_60d': {
-        'user_growth': {'predicted': 0, 'confidence': 0.5},
-        'revenue_growth': {'predicted': 0, 'confidence': 0.5},
+        'user_growth': {'predicted': 0, 'confidence': 0.0},
+        'revenue_growth': {'predicted': 0, 'confidence': 0.0},
       },
       'forecast_90d': {
-        'user_growth': {'predicted': 0, 'confidence': 0.5},
-        'revenue_growth': {'predicted': 0, 'confidence': 0.5},
+        'user_growth': {'predicted': 0, 'confidence': 0.0},
+        'revenue_growth': {'predicted': 0, 'confidence': 0.0},
       },
-      'strategic_recommendations': [],
-      'market_trends': [],
+      'strategic_recommendations': <Map<String, dynamic>>[],
+      'market_trends': <String>[],
+      'source': 'parse_failed',
     };
   }
 
@@ -358,35 +766,45 @@ Provide strategic plan in JSON:
   }
 
   Map<String, dynamic> _parseThreatResponse(String response) {
-    try {
-      return jsonDecode(response) as Map<String, dynamic>;
-    } catch (e) {
-      return _getDefaultThreatAnalysis();
-    }
+    final parsed = _parseJsonObjectFromModelContent(response);
+    if (parsed != null) return parsed;
+    return {
+      'threat_level': 'low',
+      'emerging_vectors': <Map<String, dynamic>>[],
+      'forecast_60d': {'threat_probability': 0.0, 'confidence': 0.0},
+      'source': 'parse_failed',
+    };
   }
 
   Map<String, dynamic> _parseSentimentResponse(String response) {
-    try {
-      return jsonDecode(response) as Map<String, dynamic>;
-    } catch (e) {
-      return _getDefaultSentimentAnalysis();
-    }
+    final parsed = _parseJsonObjectFromModelContent(response);
+    if (parsed != null) return parsed;
+    return {..._emptySentimentFallback(), 'source': 'parse_failed'};
   }
 
   Map<String, dynamic> _parseFraudForecast(String response) {
-    try {
-      return jsonDecode(response) as Map<String, dynamic>;
-    } catch (e) {
-      return _getDefaultFraudForecast();
-    }
+    final parsed = _parseJsonObjectFromModelContent(response);
+    if (parsed != null) return parsed;
+    return {
+      'forecast_60d': {
+        'fraud_probability': 0.0,
+        'expected_incidents': 0,
+        'confidence': 0.0,
+      },
+      'source': 'parse_failed',
+    };
   }
 
   Map<String, dynamic> _parseStrategicPlan(String response) {
-    try {
-      return jsonDecode(response) as Map<String, dynamic>;
-    } catch (e) {
-      return _getDefaultStrategicPlan();
-    }
+    final parsed = _parseJsonObjectFromModelContent(response);
+    if (parsed != null) return parsed;
+    return {
+      'market_opportunities': <Map<String, dynamic>>[],
+      'growth_strategies': <Map<String, dynamic>>[],
+      'recommendations': <Map<String, dynamic>>[],
+      'strategic_overview': 'Model output could not be parsed as JSON.',
+      'source': 'parse_failed',
+    };
   }
 
   /// Extended 90-day fraud forecasting with cross-zone analysis
@@ -395,8 +813,8 @@ Provide strategic plan in JSON:
     List<String>? targetZones,
   }) async {
     try {
-      if (apiKey.isEmpty || apiKey == 'your-perplexity-api-key-here') {
-        return _getDefault90DayForecast();
+      if (!_perplexityConfigured) {
+        return _internal90DayForecastFromDb();
       }
 
       final prompt = _build90DayForecastPrompt(historicalData, targetZones);
@@ -406,17 +824,21 @@ Provide strategic plan in JSON:
         searchRecencyFilter: 'month',
       );
 
-      final forecast = _parse90DayForecast(
+      var forecast = _parse90DayForecast(
         response['choices']?[0]?['message']?['content'] ?? '',
       );
+      if (forecast['source'] == 'parse_failed') {
+        forecast = await _internal90DayForecastFromDb();
+        forecast['perplexity_parse_failed'] = true;
+      }
 
-      // Store forecast in database
       await _storeThreatForecast(forecast);
 
       return forecast;
     } catch (e) {
       debugPrint('Perplexity 90-day forecast error: $e');
-      return _getDefault90DayForecast();
+      final f = await _internal90DayForecastFromDb();
+      return {...f, 'perplexity_error': e.toString()};
     }
   }
 
@@ -427,18 +849,22 @@ Provide strategic plan in JSON:
     required DateTime endDate,
   }) async {
     try {
-      if (apiKey.isEmpty || apiKey == 'your-perplexity-api-key-here') {
-        return _getDefaultCrossZoneAnalysis();
+      if (!_perplexityConfigured) {
+        return _internalCrossZoneFromDb(startDate, endDate);
       }
 
       final prompt = _buildCrossZonePrompt(zones, startDate, endDate);
       final response = await callPerplexityAPI(prompt, model: reasoningModel);
 
-      final analysis = _parseCrossZoneAnalysis(
+      var analysis = _parseCrossZoneAnalysis(
         response['choices']?[0]?['message']?['content'] ?? '',
       );
 
-      // Store pattern detection
+      if (analysis['source'] == 'parse_failed') {
+        analysis = await _internalCrossZoneFromDb(startDate, endDate);
+        analysis['perplexity_parse_failed'] = true;
+      }
+
       if (analysis['patterns_detected'] == true) {
         await _storeCrossZonePattern(analysis);
       }
@@ -446,7 +872,8 @@ Provide strategic plan in JSON:
       return analysis;
     } catch (e) {
       debugPrint('Cross-zone pattern detection error: $e');
-      return _getDefaultCrossZoneAnalysis();
+      final a = await _internalCrossZoneFromDb(startDate, endDate);
+      return {...a, 'perplexity_error': e.toString()};
     }
   }
 
@@ -591,19 +1018,47 @@ Provide analysis in JSON:
   }
 
   Map<String, dynamic> _parse90DayForecast(String response) {
-    try {
-      return jsonDecode(response) as Map<String, dynamic>;
-    } catch (e) {
-      return _getDefault90DayForecast();
-    }
+    final parsed = _parseJsonObjectFromModelContent(response);
+    if (parsed != null) return parsed;
+    return {
+      'forecast_30d': {
+        'threat_probability': 0.0,
+        'confidence': 0.0,
+        'emerging_threats': <Map<String, dynamic>>[],
+      },
+      'forecast_60d': {
+        'threat_probability': 0.0,
+        'confidence': 0.0,
+        'emerging_threats': <Map<String, dynamic>>[],
+      },
+      'forecast_90d': {
+        'threat_probability': 0.0,
+        'confidence': 0.0,
+        'emerging_threats': <Map<String, dynamic>>[],
+      },
+      'cross_zone_correlation': {'coordinated_patterns': <dynamic>[]},
+      'seasonal_anomalies': <dynamic>[],
+      'zone_vulnerabilities': <String, dynamic>{},
+      'recommendations': <dynamic>[],
+      'source': 'parse_failed',
+    };
   }
 
   Map<String, dynamic> _parseCrossZoneAnalysis(String response) {
-    try {
-      return jsonDecode(response) as Map<String, dynamic>;
-    } catch (e) {
-      return _getDefaultCrossZoneAnalysis();
-    }
+    final parsed = _parseJsonObjectFromModelContent(response);
+    if (parsed != null) return parsed;
+    return {
+      'patterns_detected': false,
+      'pattern_type': 'none',
+      'affected_zones': <String>[],
+      'confidence_score': 0.0,
+      'pattern_description': 'Model output could not be parsed as JSON.',
+      'coordinated_accounts': <dynamic>[],
+      'synchronized_actions': <dynamic>[],
+      'risk_assessment': 'low',
+      'recommended_actions': <String>[],
+      'source': 'parse_failed',
+    };
   }
 
   Future<void> _storeThreatForecast(Map<String, dynamic> forecast) async {
@@ -643,83 +1098,11 @@ Provide analysis in JSON:
   }
 
   String _determineThreatLevel(Map<String, dynamic> forecast) {
-    final threatProb = forecast['forecast_90d']?['threat_probability'] ?? 0.0;
+    final raw = forecast['forecast_90d']?['threat_probability'];
+    final threatProb = raw is num ? raw.toDouble() : 0.0;
     if (threatProb >= 0.8) return 'critical';
     if (threatProb >= 0.6) return 'high';
     if (threatProb >= 0.4) return 'medium';
     return 'low';
-  }
-
-  Map<String, dynamic> _getDefault90DayForecast() {
-    return {
-      'forecast_30d': {
-        'threat_probability': 0.3,
-        'confidence': 0.5,
-        'emerging_threats': [],
-      },
-      'forecast_60d': {
-        'threat_probability': 0.35,
-        'confidence': 0.5,
-        'emerging_threats': [],
-      },
-      'forecast_90d': {
-        'threat_probability': 0.4,
-        'confidence': 0.5,
-        'emerging_threats': [],
-      },
-      'cross_zone_correlation': {'coordinated_patterns': []},
-      'seasonal_anomalies': [],
-      'zone_vulnerabilities': {},
-      'recommendations': [],
-    };
-  }
-
-  Map<String, dynamic> _getDefaultCrossZoneAnalysis() {
-    return {
-      'patterns_detected': false,
-      'pattern_type': 'none',
-      'affected_zones': [],
-      'confidence_score': 0.0,
-      'pattern_description': 'No patterns detected',
-      'coordinated_accounts': [],
-      'synchronized_actions': [],
-      'risk_assessment': 'low',
-      'recommended_actions': [],
-    };
-  }
-
-  Map<String, dynamic> _getDefaultThreatAnalysis() {
-    return {
-      'threat_level': 'low',
-      'emerging_vectors': [],
-      'forecast_60d': {'threat_probability': 0.0, 'confidence': 0.0},
-    };
-  }
-
-  Map<String, dynamic> _getDefaultSentimentAnalysis() {
-    return {
-      'overall_sentiment': {'positive': 50, 'neutral': 30, 'negative': 20},
-      'brand_mentions': [],
-      'market_pulse': 'Unable to analyze sentiment',
-    };
-  }
-
-  Map<String, dynamic> _getDefaultFraudForecast() {
-    return {
-      'forecast_60d': {
-        'fraud_probability': 0.0,
-        'expected_incidents': 0,
-        'confidence': 0.0,
-      },
-    };
-  }
-
-  Map<String, dynamic> _getDefaultStrategicPlan() {
-    return {
-      'market_opportunities': [],
-      'growth_strategies': [],
-      'recommendations': [],
-      'strategic_overview': 'Unable to generate strategic plan',
-    };
   }
 }

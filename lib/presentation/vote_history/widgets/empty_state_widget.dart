@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../../../routes/app_routes.dart';
 import '../../../widgets/custom_icon_widget.dart';
 
 class EmptyStateWidget extends StatelessWidget {
@@ -93,7 +94,7 @@ class EmptyStateWidget extends StatelessWidget {
                   Navigator.of(
                     context,
                     rootNavigator: true,
-                  ).pushNamed('/vote-dashboard');
+                  ).pushNamed(AppRoutes.voteDashboard);
                 },
                 icon: CustomIconWidget(
                   iconName: 'how_to_vote',

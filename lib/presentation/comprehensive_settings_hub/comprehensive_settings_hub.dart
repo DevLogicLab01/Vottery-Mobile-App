@@ -5,6 +5,9 @@ import '../user_profile/widgets/settings_section_widget.dart';
 import './widgets/account_management_section_widget.dart';
 import './widgets/privacy_controls_section_widget.dart';
 import './widgets/security_settings_section_widget.dart';
+import '../../routes/app_routes.dart';
+import '../../services/user_security_service.dart';
+import '../../main.dart';
 import '../../widgets/error_boundary_wrapper.dart';
 
 /// Comprehensive Settings Hub centralizing all user preferences
@@ -21,6 +24,8 @@ class ComprehensiveSettingsHub extends StatefulWidget {
 class _ComprehensiveSettingsHubState extends State<ComprehensiveSettingsHub> {
   // Search query
   String searchQuery = '';
+  bool _showContextualHelp = false;
+  String _helpTarget = 'default';
 
   // Notification preferences
   bool pushNotifications = true;
@@ -33,6 +38,21 @@ class _ComprehensiveSettingsHubState extends State<ComprehensiveSettingsHub> {
 
   // App preferences
   bool autoPlay = false;
+
+  static const Map<String, String> _helpMessages = {
+    'search':
+        'Search settings by feature name to quickly locate account, security, privacy, and app preference controls.',
+    'security':
+        'Security sections contain 2FA, trusted device, SMS security, and fraud protection controls.',
+    'privacy':
+        'Privacy controls manage data sharing, anonymous voting behavior, export, and account deletion requests.',
+    'notifications':
+        'Notification preferences tune push, email, and in-app alerts for election and account activity.',
+    'app_preferences':
+        'App preferences manage language, theme mode, and media playback defaults.',
+    'default':
+        'Use this page to manage account, security, privacy, notifications, and app personalization settings.',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -51,16 +71,58 @@ class _ComprehensiveSettingsHubState extends State<ComprehensiveSettingsHub> {
             ),
           ),
           centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.help_outline),
+              onPressed: () {
+                setState(() => _showContextualHelp = !_showContextualHelp);
+              },
+            ),
+          ],
         ),
         body: Column(
           children: [
+            if (_showContextualHelp)
+              Container(
+                width: double.infinity,
+                margin: EdgeInsets.fromLTRB(4.w, 1.h, 4.w, 0),
+                padding: EdgeInsets.all(3.w),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outline.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.help_outline,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    SizedBox(width: 2.w),
+                    Expanded(
+                      child: Text(
+                        _helpMessages[_helpTarget] ?? _helpMessages['default']!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // Search Bar
             Container(
               padding: EdgeInsets.all(4.w),
               color: Theme.of(context).colorScheme.surface,
               child: TextField(
                 onChanged: (value) {
-                  setState(() => searchQuery = value);
+                  setState(() {
+                    searchQuery = value;
+                    _helpTarget = 'search';
+                  });
                 },
                 decoration: InputDecoration(
                   hintText: 'Search settings...',
@@ -122,7 +184,10 @@ class _ComprehensiveSettingsHubState extends State<ComprehensiveSettingsHub> {
                           'subtitle':
                               'Manage emergency SMS notifications and contacts',
                           'onTap': () {
-                            // ... Remove this block ...
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.smsEmergencyAlertsHub,
+                            );
                           },
                         },
                         {
@@ -131,11 +196,21 @@ class _ComprehensiveSettingsHubState extends State<ComprehensiveSettingsHub> {
                           'subtitle':
                               'View fraud risk score and manage device security',
                           'onTap': () {
-                            // ... Remove this block ...
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.userSecurityCenter,
+                            );
                           },
                         },
                       ],
                     ),
+                    if (_showContextualHelp)
+                      TextButton(
+                        onPressed: () {
+                          setState(() => _helpTarget = 'security');
+                        },
+                        child: const Text('Explain security controls'),
+                      ),
 
                     SizedBox(height: 2.h),
 
@@ -150,6 +225,13 @@ class _ComprehensiveSettingsHubState extends State<ComprehensiveSettingsHub> {
                         setState(() => anonymousVoting = value);
                       },
                     ),
+                    if (_showContextualHelp)
+                      TextButton(
+                        onPressed: () {
+                          setState(() => _helpTarget = 'privacy');
+                        },
+                        child: const Text('Explain privacy controls'),
+                      ),
 
                     SizedBox(height: 2.h),
 
@@ -187,6 +269,13 @@ class _ComprehensiveSettingsHubState extends State<ComprehensiveSettingsHub> {
                         },
                       ],
                     ),
+                    if (_showContextualHelp)
+                      TextButton(
+                        onPressed: () {
+                          setState(() => _helpTarget = 'notifications');
+                        },
+                        child: const Text('Explain notification preferences'),
+                      ),
 
                     SizedBox(height: 2.h),
 
@@ -221,6 +310,13 @@ class _ComprehensiveSettingsHubState extends State<ComprehensiveSettingsHub> {
                         },
                       ],
                     ),
+                    if (_showContextualHelp)
+                      TextButton(
+                        onPressed: () {
+                          setState(() => _helpTarget = 'app_preferences');
+                        },
+                        child: const Text('Explain app preferences'),
+                      ),
 
                     SizedBox(height: 2.h),
 
@@ -234,7 +330,10 @@ class _ComprehensiveSettingsHubState extends State<ComprehensiveSettingsHub> {
                           'subtitle':
                               'View discrepancy alerts and automated retry timeline',
                           'onTap': () {
-                            // ... Remove this block ...
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.settlementReconciliationHub,
+                            );
                           },
                         },
                         {
@@ -243,7 +342,10 @@ class _ComprehensiveSettingsHubState extends State<ComprehensiveSettingsHub> {
                           'subtitle':
                               'Font scaling, offline mode, and visual preferences',
                           'onTap': () {
-                            // ... Remove this block ...
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.accessibilitySettingsHub,
+                            );
                           },
                         },
                       ],
@@ -369,7 +471,8 @@ class _ComprehensiveSettingsHubState extends State<ComprehensiveSettingsHub> {
   }
 
   void _applyThemeMode(BuildContext context, ThemeMode mode) {
-    final app = context.findAncestorStateOfType<_VotteryAppState>();
+    final appState = context.findAncestorStateOfType<State<MyApp>>();
+    final dynamic app = appState;
     app?.setThemeMode(mode);
   }
 
@@ -389,9 +492,18 @@ class _ComprehensiveSettingsHubState extends State<ComprehensiveSettingsHub> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Data export request submitted')),
-              );
+              UserSecurityService.instance.requestGdprExport().then((success) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      success
+                          ? 'Data export request submitted'
+                          : 'Failed to submit data export request',
+                    ),
+                  ),
+                );
+              });
             },
             child: const Text('Request'),
           ),
@@ -420,11 +532,20 @@ class _ComprehensiveSettingsHubState extends State<ComprehensiveSettingsHub> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Account deletion requires verification'),
-                ),
-              );
+              UserSecurityService.instance.requestGdprDeletion(
+                details: {'reason': 'user_requested_from_settings'},
+              ).then((success) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      success
+                          ? 'Account deletion request submitted for review'
+                          : 'Failed to submit account deletion request',
+                    ),
+                  ),
+                );
+              });
             },
             style: TextButton.styleFrom(
               foregroundColor: theme.colorScheme.error,

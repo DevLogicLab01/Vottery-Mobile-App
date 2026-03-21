@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import './claude_service.dart';
 
 class DisputeAnalysisResult {
   final String disputeId;
@@ -98,6 +99,7 @@ class PolicyInterpretationResult {
 
 class ClaudeDecisionReasoningService {
   static final _supabase = Supabase.instance.client;
+  static final _claude = ClaudeService.instance;
 
   static Future<Map<String, dynamic>> getChatCompletion(
     String provider,
@@ -105,16 +107,45 @@ class ClaudeDecisionReasoningService {
     List<Map<String, dynamic>> messages, {
     Map<String, dynamic>? parameters,
   }) async {
-    // Placeholder implementation - replace with actual API call
+    final maxTokens = (parameters?['max_tokens'] as num?)?.toInt() ?? 1500;
+    final prompt = _buildPromptFromMessages(messages);
+
+    // Route Anthropic traffic to Claude; keep OpenAI-shaped return for callers.
+    if (provider.toUpperCase() == 'ANTHROPIC' || model.startsWith('claude')) {
+      final content = await _claude.callClaudeAPI(prompt);
+      return {
+        'choices': [
+          {
+            'message': {'content': content},
+          },
+        ],
+        'model': model,
+        'usage': {'max_tokens': maxTokens},
+      };
+    }
+
+    // Unsupported provider fallback - still returns a valid envelope.
     return {
       'choices': [
         {
-          'message': {
-            'content': '{}',
-          },
+          'message': {'content': '{}'},
         },
       ],
+      'model': model,
+      'usage': {'max_tokens': maxTokens},
     };
+  }
+
+  static String _buildPromptFromMessages(List<Map<String, dynamic>> messages) {
+    if (messages.isEmpty) return '';
+    final parts = <String>[];
+    for (final message in messages) {
+      final role = (message['role'] ?? 'user').toString();
+      final content = (message['content'] ?? '').toString();
+      if (content.trim().isEmpty) continue;
+      parts.add('[$role]\n$content');
+    }
+    return parts.join('\n\n');
   }
 
   static Future<DisputeAnalysisResult> analyzeDispute(String disputeId) async {

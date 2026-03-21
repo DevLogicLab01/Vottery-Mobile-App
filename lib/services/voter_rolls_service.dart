@@ -31,13 +31,11 @@ class VoterRollsService {
     try {
       final rows = voters
           .map((v) => {
-            return {
-              'election_id': electionId,
-              'email': (v['email'] ?? '').trim().toLowerCase(),
-              'name': (v['name'] ?? '').trim(),
-              'verified': false,
-            };
-          })
+                'election_id': electionId,
+                'email': (v['email'] ?? '').trim().toLowerCase(),
+                'name': (v['name'] ?? '').trim(),
+                'verified': false,
+              })
           .where((r) => (r['email'] as String).isNotEmpty)
           .toList();
 

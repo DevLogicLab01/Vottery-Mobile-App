@@ -164,8 +164,8 @@ class AgeVerificationService {
   }) async {
     try {
       // In production, this would verify Yoti Keys/AgeKey token
-      // Simulated response
-      final isOver18 = true;
+      // Simulated response derived from token presence
+      final isOver18 = walletToken.isNotEmpty;
 
       await SupabaseService.instance.client
           .from('age_verifications')

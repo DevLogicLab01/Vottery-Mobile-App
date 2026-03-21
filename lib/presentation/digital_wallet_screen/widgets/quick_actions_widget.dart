@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../routes/app_routes.dart';
 import '../../../theme/app_theme.dart';
 
 class QuickActionsWidget extends StatelessWidget {
@@ -45,10 +46,9 @@ class QuickActionsWidget extends StatelessWidget {
                   label: 'Request Payout',
                   color: AppTheme.primaryLight,
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Payout request feature coming soon'),
-                      ),
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.payoutScheduleSettingsScreen,
                     );
                   },
                 ),
@@ -61,7 +61,7 @@ class QuickActionsWidget extends StatelessWidget {
                   label: 'Tax Documents',
                   color: AppTheme.secondaryLight,
                   onTap: () {
-                    Navigator.pushNamed(context, '/tax-compliance-dashboard');
+                    Navigator.pushNamed(context, AppRoutes.taxComplianceDashboard);
                   },
                 ),
               ),
@@ -77,10 +77,9 @@ class QuickActionsWidget extends StatelessWidget {
                   label: 'Payment Method',
                   color: AppTheme.accentLight,
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Payment method settings coming soon'),
-                      ),
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.bankAccountLinkingScreen,
                     );
                   },
                 ),
@@ -93,7 +92,7 @@ class QuickActionsWidget extends StatelessWidget {
                   label: 'Contact Support',
                   color: Colors.orange,
                   onTap: () {
-                    Navigator.pushNamed(context, '/help-support-center');
+                    Navigator.pushNamed(context, AppRoutes.creatorSupportHub);
                   },
                 ),
               ),

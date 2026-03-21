@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../routes/app_routes.dart';
 import '../../widgets/custom_icon_widget.dart';
 import './widgets/empty_state_widget.dart';
 import './widgets/filter_bottom_sheet_widget.dart';
@@ -269,6 +271,22 @@ class _VoteHistoryState extends State<VoteHistory> {
     );
   }
 
+  void _shareVote(Map<String, dynamic> vote) {
+    final title = vote['title']?.toString() ?? 'Vote';
+    final type = vote['voteType']?.toString() ?? 'general';
+    final selected = vote['userSelection']?.toString() ?? 'No recorded selection';
+    final outcome = vote['outcome']?.toString() ?? 'Pending';
+
+    Share.share(
+      'Vottery vote summary\n'
+      'Title: $title\n'
+      'Type: $type\n'
+      'Selection: $selected\n'
+      'Outcome: $outcome',
+      subject: 'My vote summary',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -410,14 +428,10 @@ class _VoteHistoryState extends State<VoteHistory> {
                           Navigator.of(
                             context,
                             rootNavigator: true,
-                          ).pushNamed('/vote-results');
+                          ).pushNamed(AppRoutes.voteResults);
                         },
                         onShare: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Share functionality coming soon'),
-                            ),
-                          );
+                          _shareVote(vote);
                         },
                         onRemove: () =>
                             _removeFromHistory(vote['id'] as String),
@@ -426,7 +440,7 @@ class _VoteHistoryState extends State<VoteHistory> {
                                 Navigator.of(
                                   context,
                                   rootNavigator: true,
-                                ).pushNamed('/vote-casting');
+                                ).pushNamed(AppRoutes.voteCasting);
                               }
                             : null,
                         searchQuery: _searchController.text,

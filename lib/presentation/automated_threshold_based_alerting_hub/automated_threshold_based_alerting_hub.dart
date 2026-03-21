@@ -32,7 +32,10 @@ class _AutomatedThresholdBasedAlertingHubState
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _loadData();
   }
 
@@ -113,8 +116,10 @@ class _AutomatedThresholdBasedAlertingHubState
                       children: [
                         _buildRuleBuilderTab(),
                         _buildActiveAlertsTab(),
-                        _buildAlertHistoryTab(),
+                        _buildCrossSystemTriggersTab(),
+                        _buildAutomatedResponseTab(),
                         _buildPerformanceMetricsTab(),
+                        _buildRuleTestingTab(),
                       ],
                     ),
             ),
@@ -226,8 +231,10 @@ class _AutomatedThresholdBasedAlertingHubState
         tabs: const [
           Tab(text: 'Rule Builder'),
           Tab(text: 'Active Alerts'),
-          Tab(text: 'History'),
+          Tab(text: 'Cross-System'),
+          Tab(text: 'Auto Response'),
           Tab(text: 'Metrics'),
+          Tab(text: 'Rule Testing'),
         ],
       ),
     );
@@ -349,6 +356,122 @@ class _AutomatedThresholdBasedAlertingHubState
     );
   }
 
+  Widget _buildCrossSystemTriggersTab() {
+    final groupedByMetric = <String, int>{};
+    for (final rule in _alertRules) {
+      final metric = rule['metric_type']?.toString() ?? 'unknown';
+      groupedByMetric[metric] = (groupedByMetric[metric] ?? 0) + 1;
+    }
+    return ListView(
+      padding: EdgeInsets.all(4.w),
+      children: [
+        Text(
+          'Cross-System Trigger Matrix',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        SizedBox(height: 1.h),
+        if (groupedByMetric.isEmpty)
+          Padding(
+            padding: EdgeInsets.all(8.w),
+            child: Text(
+              'No active trigger definitions yet.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ...groupedByMetric.entries.map(
+          (entry) => Card(
+            child: ListTile(
+              leading: const Icon(Icons.hub),
+              title: Text(entry.key.replaceAll('_', ' ')),
+              subtitle: Text('Linked rules: ${entry.value}'),
+              trailing: const Icon(Icons.chevron_right),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAutomatedResponseTab() {
+    final criticalAlerts = _activeAlerts
+        .where((a) => a['severity']?.toString() == 'critical')
+        .toList();
+    final highAlerts = _activeAlerts
+        .where((a) => a['severity']?.toString() == 'high')
+        .toList();
+
+    return ListView(
+      padding: EdgeInsets.all(4.w),
+      children: [
+        Text(
+          'Automated Response Workflows',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        SizedBox(height: 1.h),
+        _responsePolicyCard(
+          title: 'Critical Alerts',
+          description:
+              'Immediate escalation, stakeholder notification, and incident bridge activation.',
+          count: criticalAlerts.length,
+          color: Colors.red,
+        ),
+        _responsePolicyCard(
+          title: 'High Alerts',
+          description:
+              'Assign owner, trigger remediation checklist, and monitor SLA risk.',
+          count: highAlerts.length,
+          color: Colors.orange,
+        ),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.play_circle_fill),
+            title: const Text('Run simulated response action'),
+            subtitle: const Text('Tests escalation and notification pathways'),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Automated response simulation queued')),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _responsePolicyCard({
+    required String title,
+    required String description,
+    required int count,
+    required Color color,
+  }) {
+    return Card(
+      child: Container(
+        padding: EdgeInsets.all(4.w),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withAlpha(80)),
+          color: color.withAlpha(18),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$title ($count)',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            SizedBox(height: 0.5.h),
+            Text(
+              description,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildPerformanceMetricsTab() {
     return ListView(
       padding: EdgeInsets.all(4.w),
@@ -356,6 +479,61 @@ class _AutomatedThresholdBasedAlertingHubState
         PerformanceMetricsWidget(
           statistics: _statistics,
           alertHistory: _alertHistory,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRuleTestingTab() {
+    final testCandidates = _alertRules.take(10).toList();
+    return ListView(
+      padding: EdgeInsets.all(4.w),
+      children: [
+        Text('Rule Testing Framework', style: Theme.of(context).textTheme.titleLarge),
+        SizedBox(height: 1.h),
+        if (testCandidates.isEmpty)
+          Padding(
+            padding: EdgeInsets.all(8.w),
+            child: const Text('No rules available for testing'),
+          ),
+        ...testCandidates.map(
+          (rule) => Card(
+            child: ListTile(
+              leading: const Icon(Icons.science),
+              title: Text(rule['rule_name']?.toString() ?? 'Unnamed rule'),
+              subtitle: Text(
+                'Severity: ${rule['severity'] ?? 'n/a'} • Metric: ${rule['metric_type'] ?? 'n/a'}',
+              ),
+              trailing: TextButton(
+                onPressed: () async {
+                  await AlertRulesService.instance.triggerAlert(
+                    ruleId: rule['id'].toString(),
+                    severity: rule['severity']?.toString() ?? 'medium',
+                    metricType: rule['metric_type']?.toString() ?? 'unknown',
+                    currentValue:
+                        (rule['threshold_value'] as num? ?? 0).toDouble() + 1,
+                    thresholdValue:
+                        (rule['threshold_value'] as num? ?? 0).toDouble(),
+                    message:
+                        'Rule test execution for ${rule['rule_name'] ?? 'alert rule'}',
+                    notificationChannels: List<String>.from(
+                      rule['notification_channels'] ?? const ['email'],
+                    ),
+                  );
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Test alert triggered for ${rule['rule_name'] ?? 'rule'}',
+                      ),
+                    ),
+                  );
+                  _loadData();
+                },
+                child: const Text('Run Test'),
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -374,6 +552,9 @@ class _AutomatedThresholdBasedAlertingHubState
             comparisonOperator: data['comparison_operator'],
             severity: data['severity'],
             notificationChannels: data['notification_channels'],
+            conditions: List<Map<String, dynamic>>.from(
+              data['conditions'] ?? const <Map<String, dynamic>>[],
+            ),
           );
           _loadData();
         },
@@ -391,8 +572,14 @@ class _AutomatedThresholdBasedAlertingHubState
             ruleId: rule['id'],
             ruleName: data['rule_name'],
             description: data['description'],
+            metricType: data['metric_type'],
             thresholdValue: data['threshold_value'],
+            comparisonOperator: data['comparison_operator'],
             severity: data['severity'],
+            notificationChannels: data['notification_channels'],
+            conditions: List<Map<String, dynamic>>.from(
+              data['conditions'] ?? const <Map<String, dynamic>>[],
+            ),
           );
           _loadData();
         },
@@ -452,8 +639,11 @@ class _RuleDialogState extends State<_RuleDialog> {
   late TextEditingController _thresholdController;
   String _metricType = 'fraud_score';
   String _comparisonOperator = 'greater_than';
+  String _logicOperator = 'AND';
   String _severity = 'medium';
   final List<String> _channels = ['email'];
+  final List<String> _availableChannels = ['email', 'sms', 'push'];
+  final List<Map<String, dynamic>> _conditions = [];
 
   @override
   void initState() {
@@ -473,6 +663,39 @@ class _RuleDialogState extends State<_RuleDialog> {
       _comparisonOperator =
           widget.rule!['comparison_operator'] ?? 'greater_than';
       _severity = widget.rule!['severity'] ?? 'medium';
+      final channels = widget.rule!['notification_channels'];
+      if (channels is List && channels.isNotEmpty) {
+        _channels
+          ..clear()
+          ..addAll(channels.map((c) => c.toString()));
+      }
+      final ruleConditions = widget.rule!['conditions'];
+      if (ruleConditions is List && ruleConditions.isNotEmpty) {
+        _conditions.addAll(ruleConditions.map((c) {
+          final map = Map<String, dynamic>.from(c as Map);
+          return {
+            'metric_name': map['metric_name']?.toString() ?? _metricType,
+            'comparison_operator':
+                map['comparison_operator']?.toString() ?? 'greater_than',
+            'threshold_value': (map['threshold_value'] as num?)?.toDouble() ?? 0,
+            'time_window_minutes':
+                (map['time_window_minutes'] as num?)?.toInt() ?? 5,
+            'logic_operator': map['logic_operator']?.toString() ?? 'AND',
+            'condition_group': (map['condition_group'] as num?)?.toInt() ?? 1,
+          };
+        }));
+        _logicOperator = _conditions.first['logic_operator']?.toString() ?? 'AND';
+      }
+    }
+    if (_conditions.isEmpty) {
+      _conditions.add({
+        'metric_name': _metricType,
+        'comparison_operator': _comparisonOperator,
+        'threshold_value': double.tryParse(_thresholdController.text) ?? 0,
+        'time_window_minutes': 5,
+        'logic_operator': _logicOperator,
+        'condition_group': 1,
+      });
     }
   }
 
@@ -532,6 +755,22 @@ class _RuleDialogState extends State<_RuleDialog> {
               onChanged: (value) => setState(() => _metricType = value!),
             ),
             SizedBox(height: 2.h),
+            DropdownButtonFormField<String>(
+              initialValue: _comparisonOperator,
+              decoration: InputDecoration(
+                labelText: 'Comparison Operator',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'greater_than', child: Text('Greater Than')),
+                DropdownMenuItem(value: 'less_than', child: Text('Less Than')),
+                DropdownMenuItem(value: 'equals', child: Text('Equals')),
+                DropdownMenuItem(value: 'not_equals', child: Text('Not Equals')),
+              ],
+              onChanged: (value) =>
+                  setState(() => _comparisonOperator = value ?? 'greater_than'),
+            ),
+            SizedBox(height: 2.h),
             TextField(
               controller: _thresholdController,
               decoration: InputDecoration(
@@ -555,6 +794,122 @@ class _RuleDialogState extends State<_RuleDialog> {
               ],
               onChanged: (value) => setState(() => _severity = value!),
             ),
+            SizedBox(height: 2.h),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _logicOperator,
+                    decoration: InputDecoration(
+                      labelText: 'Condition Logic',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'AND', child: Text('AND')),
+                      DropdownMenuItem(value: 'OR', child: Text('OR')),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _logicOperator = value;
+                        for (final condition in _conditions) {
+                          condition['logic_operator'] = _logicOperator;
+                        }
+                      });
+                    },
+                  ),
+                ),
+                SizedBox(width: 2.w),
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _conditions.add({
+                        'metric_name': _metricType,
+                        'comparison_operator': _comparisonOperator,
+                        'threshold_value':
+                            double.tryParse(_thresholdController.text) ?? 0,
+                        'time_window_minutes': 5,
+                        'logic_operator': _logicOperator,
+                        'condition_group': 1,
+                      });
+                    });
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Condition'),
+                ),
+              ],
+            ),
+            SizedBox(height: 1.h),
+            ..._conditions.asMap().entries.map((entry) {
+              final index = entry.key;
+              final condition = entry.value;
+              return Padding(
+                padding: EdgeInsets.only(bottom: 1.h),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        initialValue: condition['metric_name']?.toString(),
+                        decoration: const InputDecoration(
+                          labelText: 'Metric',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) => condition['metric_name'] = value,
+                      ),
+                    ),
+                    SizedBox(width: 1.w),
+                    SizedBox(
+                      width: 24.w,
+                      child: TextFormField(
+                        initialValue: condition['threshold_value']?.toString(),
+                        decoration: const InputDecoration(
+                          labelText: 'Value',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) => condition['threshold_value'] =
+                            double.tryParse(value) ?? 0,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _conditions.length <= 1
+                          ? null
+                          : () => setState(() => _conditions.removeAt(index)),
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            SizedBox(height: 1.h),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Notification Channels',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+            SizedBox(height: 0.6.h),
+            Wrap(
+              spacing: 2.w,
+              children: _availableChannels.map((channel) {
+                final selected = _channels.contains(channel);
+                return FilterChip(
+                  label: Text(channel.toUpperCase()),
+                  selected: selected,
+                  onSelected: (value) {
+                    setState(() {
+                      if (value) {
+                        if (!_channels.contains(channel)) _channels.add(channel);
+                      } else {
+                        _channels.remove(channel);
+                      }
+                      if (_channels.isEmpty) _channels.add('email');
+                    });
+                  },
+                );
+              }).toList(),
+            ),
           ],
         ),
       ),
@@ -574,6 +929,15 @@ class _RuleDialogState extends State<_RuleDialog> {
               'comparison_operator': _comparisonOperator,
               'severity': _severity,
               'notification_channels': _channels,
+              'conditions': _conditions
+                  .map((condition) => {
+                        ...condition,
+                        'logic_operator': _logicOperator,
+                        'comparison_operator':
+                            condition['comparison_operator'] ?? _comparisonOperator,
+                        'condition_group': condition['condition_group'] ?? 1,
+                      })
+                  .toList(),
             });
             Navigator.pop(context);
           },

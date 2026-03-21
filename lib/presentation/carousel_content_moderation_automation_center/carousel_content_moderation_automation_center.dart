@@ -3,6 +3,7 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../services/carousel_moderation_service.dart';
+import '../../services/supabase_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/error_boundary_wrapper.dart';
@@ -47,9 +48,22 @@ class _CarouselContentModerationAutomationCenterState
     final queue = await _moderationService.getModerationQueue();
     final stats = await _moderationService.getModerationStatistics();
 
+    List<Map<String, dynamic>> actions = [];
+    try {
+      final raw = await SupabaseService.instance.client
+          .from('moderation_actions')
+          .select('id,action,reason,created_at,flag_id,moderator_id')
+          .order('created_at', ascending: false)
+          .limit(50);
+      actions = List<Map<String, dynamic>>.from(raw as List);
+    } catch (e) {
+      debugPrint('Load moderation_actions error: $e');
+    }
+
     if (mounted) {
       setState(() {
         _pendingQueue = queue;
+        _automatedActions = actions;
         _statistics = stats;
         _isLoading = false;
       });
@@ -426,11 +440,47 @@ class _CarouselContentModerationAutomationCenterState
   }
 
   Widget _buildAutomatedActionsTab() {
-    return Center(
-      child: Text(
-        'Automated actions dashboard coming soon',
-        style: TextStyle(fontSize: 14.sp, color: AppTheme.textSecondaryDark),
-      ),
+    if (_automatedActions.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.all(4.w),
+        children: [
+          Text(
+            'No moderation actions recorded yet.',
+            style: TextStyle(fontSize: 14.sp, color: AppTheme.textSecondaryDark),
+          ),
+          SizedBox(height: 2.h),
+          TextButton.icon(
+            onPressed: () => Navigator.of(context, rootNavigator: true)
+                .pushNamed(AppRoutes.contentModerationControlCenter),
+            icon: const Icon(Icons.admin_panel_settings),
+            label: const Text('Open moderation control center'),
+          ),
+        ],
+      );
+    }
+    return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.all(4.w),
+      itemCount: _automatedActions.length,
+      separatorBuilder: (_, __) => Divider(color: AppTheme.textSecondaryDark.withValues(alpha: 0.2)),
+      itemBuilder: (context, i) {
+        final row = _automatedActions[i];
+        return ListTile(
+          title: Text(
+            row['action']?.toString() ?? 'action',
+            style: TextStyle(
+              color: AppTheme.textPrimaryDark,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: Text(
+            '${row['created_at'] ?? ''}\n${row['reason'] ?? ''}',
+            style: TextStyle(fontSize: 11.sp, color: AppTheme.textSecondaryDark),
+          ),
+          isThreeLine: true,
+        );
+      },
     );
   }
 

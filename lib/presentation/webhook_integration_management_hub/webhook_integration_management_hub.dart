@@ -38,7 +38,7 @@ class _WebhookIntegrationManagementHubState
     setState(() => _isLoading = true);
 
     final configs = await _webhookService.getWebhookConfigurations();
-    final logs = await _webhookService.getDeliveryLogs(configId: '', limit: 50);
+    final logs = await _webhookService.getDeliveryLogs(limit: 50);
 
     setState(() {
       _webhookConfigs = configs;
@@ -175,7 +175,7 @@ class _WebhookIntegrationManagementHubState
             ),
             SizedBox(height: 1.h),
             Text(
-              config['endpoint_url'] ?? '',
+              config['webhook_url'] ?? '',
               style: TextStyle(fontSize: 11.sp, color: Colors.grey.shade600),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -330,6 +330,9 @@ class _WebhookIntegrationManagementHubState
           ElevatedButton(
             onPressed: () async {
               await _webhookService.createWebhookConfiguration(
+                name: nameController.text.trim().isEmpty
+                    ? null
+                    : nameController.text.trim(),
                 webhookUrl: urlController.text,
                 eventTypes: selectedEvents.toList(),
               );
@@ -447,11 +450,13 @@ class _WebhookIntegrationManagementHubState
   }
 
   Future<void> _retryDelivery(String logId) async {
-    final success = await _webhookService.testWebhook(configId: logId);
+    final result = await _webhookService.retryDelivery(logId: logId);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          success['success'] == true ? 'Retry initiated' : 'Retry failed',
+          result['success'] == true
+              ? 'Retry initiated'
+              : (result['message']?.toString() ?? 'Retry failed'),
         ),
       ),
     );

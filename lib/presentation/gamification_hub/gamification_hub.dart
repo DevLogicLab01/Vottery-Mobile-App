@@ -474,20 +474,9 @@ class _GamificationHubState extends State<GamificationHub>
   }
 
   void _showLeaderboard() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Leaderboard'),
-        content: const Text(
-          'Leaderboard feature coming soon! Compete with friends and the global community.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).pushNamed(AppRoutes.unifiedGamificationDashboardWebCanonical);
   }
 }

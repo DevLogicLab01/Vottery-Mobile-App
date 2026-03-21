@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../routes/app_routes.dart';
+import '../../../services/secure_storage_service.dart';
 import '../../../widgets/custom_image_widget.dart';
 import '../../../widgets/custom_icon_widget.dart';
 
@@ -90,14 +92,7 @@ class ProfileMenuHeaderWidget extends StatelessWidget {
 
           // See all profiles
           InkWell(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Profile switching coming soon'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
+            onTap: () => _showProfilesSheet(context),
             borderRadius: BorderRadius.circular(8),
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.5.h),
@@ -128,6 +123,85 @@ class ProfileMenuHeaderWidget extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showProfilesSheet(BuildContext context) {
+    final profiles =
+        (userData['profiles'] as List?)?.cast<Map<String, dynamic>>() ??
+        <Map<String, dynamic>>[
+          {
+            'name': userData['name'],
+            'email': userData['email'],
+            'active': true,
+          },
+        ];
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: EdgeInsets.all(4.w),
+          children: [
+            Text(
+              'Profiles',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            SizedBox(height: 1.5.h),
+            ...profiles.map((profile) {
+              final isActive = profile['active'] == true;
+              return ListTile(
+                leading: CircleAvatar(
+                  child: Text(
+                    (profile['name']?.toString().isNotEmpty ?? false)
+                        ? profile['name'].toString().substring(0, 1).toUpperCase()
+                        : 'U',
+                  ),
+                ),
+                title: Text(profile['name']?.toString() ?? 'Unknown'),
+                subtitle: Text(profile['email']?.toString() ?? ''),
+                trailing: isActive
+                    ? const Icon(Icons.check_circle, color: Colors.green)
+                    : null,
+                onTap: () {
+                  final selectedEmail = profile['email']?.toString() ?? '';
+                  SecureStorageService.instance.write(
+                    'active_profile_context',
+                    selectedEmail,
+                  );
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Switched profile context to ${profile['name'] ?? 'profile'}',
+                      ),
+                    ),
+                  );
+                  Navigator.of(
+                    context,
+                    rootNavigator: true,
+                  ).pushNamed(AppRoutes.userProfile);
+                },
+              );
+            }),
+            SizedBox(height: 1.h),
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.of(
+                  context,
+                  rootNavigator: true,
+                ).pushNamed(AppRoutes.settingsAccountDashboardWebCanonical);
+              },
+              icon: const Icon(Icons.manage_accounts),
+              label: const Text('Manage Profiles'),
+            ),
+          ],
+        ),
       ),
     );
   }

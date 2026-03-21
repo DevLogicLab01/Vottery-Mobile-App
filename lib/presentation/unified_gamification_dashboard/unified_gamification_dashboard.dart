@@ -15,6 +15,7 @@ import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_icon_widget.dart';
 import '../../widgets/error_boundary_wrapper.dart';
 import '../../widgets/shimmer_skeleton_loader.dart';
+import '../../routes/app_routes.dart';
 import './widgets/vp_earnings_breakdown_widget.dart';
 import './widgets/active_prediction_pools_widget.dart';
 import './widgets/current_challenges_widget.dart';
@@ -472,23 +473,55 @@ class _UnifiedGamificationDashboardState
   }
 
   void _navigateToRewardsShop() {
-    Navigator.pushNamed(context, '/rewards-shop-hub');
+    Navigator.pushNamed(context, AppRoutes.rewardsShopHub);
   }
 
   void _navigateToActivePools() {
-    // Navigate to prediction pools screen
+    Navigator.pushNamed(context, AppRoutes.enhancedVoteCastingWithPredictionIntegration);
   }
 
   void _navigateToQuests() {
-    Navigator.pushNamed(context, '/feed-quest-dashboard');
+    Navigator.pushNamed(context, AppRoutes.feedQuestDashboard);
   }
 
   void _navigateToAchievements() {
-    Navigator.pushNamed(context, '/gamification-hub');
+    Navigator.pushNamed(context, AppRoutes.gamificationHub);
   }
 
   Future<void> _joinPredictionPool(String poolId) async {
-    // Implement join pool logic
+    final pool = _activePredictionPools.firstWhere(
+      (item) => item['id'] == poolId,
+      orElse: () => <String, dynamic>{},
+    );
+    final election = pool['election'] as Map<String, dynamic>?;
+    final options = (election?['options'] as List?) ?? const [];
+    final optionCount = options.isEmpty ? 1 : options.length;
+    final defaultWeight = 1.0 / optionCount;
+    final defaultOutcome = <String, dynamic>{};
+
+    for (var i = 0; i < optionCount; i++) {
+      defaultOutcome['option_$i'] = defaultWeight;
+    }
+
+    final success = await _predictionService.enterPredictionPool(
+      poolId: poolId,
+      predictedOutcome: defaultOutcome,
+      confidenceLevel: 0.5,
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Prediction pool joined successfully.'
+              : 'Unable to join pool. Check VP balance and try again.',
+        ),
+      ),
+    );
+    if (success) {
+      await _loadDashboardData();
+    }
   }
 }
 

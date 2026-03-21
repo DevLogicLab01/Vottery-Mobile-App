@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../services/auth_service.dart';
 import '../../services/fraud_engine_service.dart';
+import '../../services/supabase_service.dart';
 import '../../theme/app_theme.dart';
 
 class FraudAppealScreen extends StatefulWidget {
@@ -306,12 +309,7 @@ class _FraudAppealScreenState extends State<FraudAppealScreen> {
         ),
         SizedBox(height: 1.h),
         OutlinedButton.icon(
-          onPressed: () {
-            // File upload functionality
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Evidence upload coming soon')),
-            );
-          },
+          onPressed: _pickAndUploadEvidence,
           icon: Icon(Icons.upload_file),
           label: Text('Upload Evidence'),
           style: OutlinedButton.styleFrom(
@@ -330,5 +328,59 @@ class _FraudAppealScreenState extends State<FraudAppealScreen> {
         ],
       ],
     );
+  }
+
+  Future<void> _pickAndUploadEvidence() async {
+    try {
+      final picked = await FilePicker.platform.pickFiles(
+        withData: true,
+        allowMultiple: true,
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf', 'txt', 'doc', 'docx'],
+      );
+      if (picked == null || picked.files.isEmpty) return;
+
+      final userId = AuthService.instance.currentUser?.id;
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in to upload evidence')),
+        );
+        return;
+      }
+
+      final client = SupabaseService.instance.client;
+      int uploaded = 0;
+      for (final file in picked.files) {
+        final bytes = file.bytes;
+        if (bytes == null) continue;
+        final safeName =
+            '${DateTime.now().millisecondsSinceEpoch}_${file.name.replaceAll(' ', '_')}';
+        final path = 'fraud_appeals/$userId/$safeName';
+        await client.storage.from('support-files').uploadBinary(
+              path,
+              bytes,
+              fileOptions: FileOptions(
+                contentType: file.extension == 'pdf'
+                    ? 'application/pdf'
+                    : 'application/octet-stream',
+                upsert: false,
+              ),
+            );
+        final url = client.storage.from('support-files').getPublicUrl(path);
+        _evidenceUrls.add(url);
+        uploaded += 1;
+      }
+
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Uploaded $uploaded file(s)')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Upload failed: $e')),
+      );
+    }
   }
 }

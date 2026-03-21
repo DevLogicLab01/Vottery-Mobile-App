@@ -11,9 +11,7 @@ class CarouselFallbackService {
 
   CarouselFallbackService._();
 
-  static const String _prefKey = 'device_capability_profile';
   static const String _advancedCarouselKey = 'supports_advanced_carousels';
-  static const int _lowEndMemoryThresholdMb = 2048; // 2GB
 
   bool _supportsAdvancedCarousels = true;
   String _preferredQualityLevel = 'high';

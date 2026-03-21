@@ -38,6 +38,7 @@ class LanguageService {
     String? dateFormat,
     String? timeFormat,
     String? numberFormat,
+    String? currencyFormat,
   }) async {
     try {
       final userId = _client.auth.currentUser?.id;
@@ -51,6 +52,7 @@ class LanguageService {
         if (dateFormat != null) 'date_format': dateFormat,
         if (timeFormat != null) 'time_format': timeFormat,
         if (numberFormat != null) 'number_format': numberFormat,
+        if (currencyFormat != null) 'currency_format': currencyFormat,
         'updated_at': DateTime.now().toIso8601String(),
       };
 

@@ -56,17 +56,29 @@ class _AdminAutomationControlPanelState
   }
 
   Future<void> _toggleRule(String ruleId, bool enabled) async {
-    await AdminAutomationRulesService.toggleRule(ruleId, enabled);
+    final ok = await AdminAutomationRulesService.toggleRule(ruleId, enabled);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to update rule status'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
     await _loadData();
   }
 
   Future<void> _executeNow(AutomationRule rule) async {
-    await AdminAutomationRulesService.executeRuleNow(rule);
+    final ok = await AdminAutomationRulesService.executeRuleNow(rule);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('"${rule.ruleName}" executed successfully'),
-          backgroundColor: Colors.green,
+          content: Text(
+            ok
+                ? '"${rule.ruleName}" executed successfully'
+                : 'Failed to execute "${rule.ruleName}"',
+          ),
+          backgroundColor: ok ? Colors.green : Colors.red,
         ),
       );
     }
@@ -102,7 +114,15 @@ class _AdminAutomationControlPanelState
       ),
     );
     if (confirmed == true) {
-      await AdminAutomationRulesService.deleteRule(ruleId);
+      final ok = await AdminAutomationRulesService.deleteRule(ruleId);
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to delete rule'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
       await _loadData();
     }
   }
@@ -145,12 +165,17 @@ class _AdminAutomationControlPanelState
       ),
     );
     if (selectedDuration != null) {
-      await AdminAutomationRulesService.setOverride(ruleId, selectedDuration!);
+      final ok = await AdminAutomationRulesService.setOverride(
+        ruleId,
+        selectedDuration!,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Override set successfully'),
-            backgroundColor: Colors.orange,
+          SnackBar(
+            content: Text(
+              ok ? 'Override set successfully' : 'Failed to set override',
+            ),
+            backgroundColor: ok ? Colors.orange : Colors.red,
           ),
         );
       }
@@ -199,11 +224,15 @@ class _AdminAutomationControlPanelState
       ),
     );
     if (confirmed == true) {
-      await AdminAutomationRulesService.emergencyStopAll();
+      final ok = await AdminAutomationRulesService.emergencyStopAll();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('EMERGENCY STOP: All automations disabled'),
+          SnackBar(
+            content: Text(
+              ok
+                  ? 'EMERGENCY STOP: All automations disabled'
+                  : 'Failed to execute emergency stop',
+            ),
             backgroundColor: Colors.red,
           ),
         );

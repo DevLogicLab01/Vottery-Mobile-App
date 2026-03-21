@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'supabase_service.dart';
 import 'auth_service.dart';
+import '../framework/shared_constants.dart';
 
 /// Shared moderation API aligned with Web: content_flags, content_appeals.
 /// Use this for "Content Removed & Appeals" and moderator queue.
@@ -13,6 +14,36 @@ class ModerationSharedService {
 
   final _client = SupabaseService.instance.client;
   final AuthService _auth = AuthService.instance;
+
+  String _sanitizeAuditSegment(String s) =>
+      s.replaceAll('|', ' / ').replaceAll(RegExp(r'\s+'), ' ').trim();
+
+  /// Same format as Web `buildModeratorOverrideAuditReason` (moderation_actions.reason).
+  String buildModeratorOverrideAuditReason(
+    String rawReason, {
+    required bool overrideAi,
+    required String actionLabel,
+    String? detectionMethod,
+    double? confidenceScore,
+  }) {
+    final trimmed = _sanitizeAuditSegment(rawReason);
+    if (!overrideAi) {
+      return trimmed.isEmpty ? 'Moderator review' : trimmed;
+    }
+    final det = detectionMethod != null && detectionMethod.isNotEmpty
+        ? _sanitizeAuditSegment(detectionMethod)
+        : 'unknown';
+    final confPart = (confidenceScore != null && !confidenceScore.isNaN)
+        ? 'ai_confidence=$confidenceScore'
+        : '';
+    final mid = [
+      'action=$actionLabel',
+      'detection=$det',
+      if (confPart.isNotEmpty) confPart,
+    ].join('|');
+    return '${SharedConstants.moderationOverrideAiPrefix}$mid|'
+        '${trimmed.isEmpty ? 'No reason provided' : trimmed}';
+  }
 
   /// Removed content for current user (content_flags where author_id = me, status auto_removed/content_removed)
   Future<List<Map<String, dynamic>>> getRemovedContentForUser() async {
@@ -157,13 +188,12 @@ class ModerationSharedService {
     try {
       var q = _client
           .from('content_flags')
-          .select('*')
-          .order('created_at', ascending: false);
+          .select('*');
       if (status != null && status.isNotEmpty) q = q.eq('status', status);
       if (contentType != null && contentType.isNotEmpty) {
         q = q.eq('content_type', contentType);
       }
-      final res = await q;
+      final res = await q.order('created_at', ascending: false);
       final list = List<Map<String, dynamic>>.from(res);
       return list
           .map((r) => {
@@ -314,10 +344,9 @@ class ModerationSharedService {
     try {
       var q = _client
           .from('content_appeals')
-          .select('*')
-          .order('created_at', ascending: false);
+          .select('*');
       if (status != null && status.isNotEmpty) q = q.eq('status', status);
-      final res = await q;
+      final res = await q.order('created_at', ascending: false);
       final list = List<Map<String, dynamic>>.from(res);
       return list
           .map((r) => {
@@ -344,8 +373,11 @@ class ModerationSharedService {
   Future<bool> performModerationAction(
     String flagId,
     String action,
-    String reason,
-  ) async {
+    String reason, {
+    bool overrideAi = false,
+    String? detectionMethod,
+    double? confidenceScore,
+  }) async {
     try {
       if (!_auth.isAuthenticated) return false;
       final userId = _auth.currentUser!.id;
@@ -364,11 +396,18 @@ class ModerationSharedService {
       ].contains(actionNorm)
           ? actionNorm
           : 'dismissed';
+      final storedReason = buildModeratorOverrideAuditReason(
+        reason,
+        overrideAi: overrideAi,
+        actionLabel: actionValue,
+        detectionMethod: detectionMethod,
+        confidenceScore: confidenceScore,
+      );
       await _client.from('moderation_actions').insert({
         'flag_id': flagId,
         'moderator_id': userId,
         'action': actionValue,
-        'reason': reason.isEmpty ? 'Moderator review' : reason,
+        'reason': storedReason,
       });
       const statusMap = {
         'content_removed': 'content_removed',

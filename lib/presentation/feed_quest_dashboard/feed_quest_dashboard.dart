@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/app_export.dart';
 import '../../services/auth_service.dart';
 import '../../services/gamification_service.dart';
 import '../../services/supabase_service.dart';
@@ -373,14 +374,10 @@ class _FeedQuestDashboardState extends State<FeedQuestDashboard>
         return MiniGameCardWidget(
           game: _miniGames[index],
           onPlay: () {
-            // Navigate to mini-game
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Mini-game: ${_miniGames[index]['title']} coming soon!',
-                ),
-              ),
-            );
+            Navigator.of(
+              context,
+              rootNavigator: true,
+            ).pushNamed(AppRoutes.adventurePaths);
           },
         );
       },

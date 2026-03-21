@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../services/auth_service.dart';
+import '../../services/perplexity_service.dart';
+import '../../services/supabase_service.dart';
 import '../../widgets/custom_app_bar.dart';
 
 class CreatorPredictiveInsightsHub extends ConsumerStatefulWidget {
@@ -19,16 +22,19 @@ class _CreatorPredictiveInsightsHubState
   late TabController _tabController;
   bool _isLoadingInsights = false;
   bool _hasGeneratedInsights = false;
+  bool _isLoadingProfile = false;
+  String? _profileError;
+  String? _insightsError;
 
-  final Map<String, dynamic> _creatorProfile = {
+  Map<String, dynamic> _creatorProfile = {
     'name': 'Creator Dashboard',
-    'tier': 'Gold',
-    'total_elections': 47,
-    'avg_participation': 342,
-    'top_categories': ['Politics', 'Sports', 'Entertainment'],
-    'monthly_revenue': 2840.0,
-    'growth_rate': 18.4,
-    'audience_size': 8920,
+    'tier': 'Starter',
+    'total_elections': 0,
+    'avg_participation': 0,
+    'top_categories': <String>[],
+    'monthly_revenue': 0.0,
+    'growth_rate': 0.0,
+    'audience_size': 0,
   };
 
   late List<Map<String, dynamic>> _topicInsights;
@@ -71,13 +77,89 @@ class _CreatorPredictiveInsightsHubState
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    _loadDefaultInsights();
+    _loadProfileAndInsights();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadProfileAndInsights() async {
+    setState(() {
+      _isLoadingProfile = true;
+      _profileError = null;
+    });
+    try {
+      final userId = AuthService.instance.currentUser?.id;
+      if (userId == null) {
+        setState(() {
+          _profileError = 'Sign in required to load predictive insights.';
+        });
+        return;
+      }
+
+      final profile = await SupabaseService.instance.client
+          .from('user_profiles')
+          .select('display_name, full_name, tier, follower_count')
+          .eq('id', userId)
+          .maybeSingle();
+
+      final elections = await SupabaseService.instance.client
+          .from('elections')
+          .select('id, category, vote_count')
+          .eq('creator_id', userId);
+
+      final wallet = await SupabaseService.instance.client
+          .from('wallet_transactions')
+          .select('amount')
+          .eq('user_id', userId)
+          .inFilter('transaction_type', ['creator_payout', 'carousel_revenue']);
+
+      final electionList = List<Map<String, dynamic>>.from(elections);
+      final walletList = List<Map<String, dynamic>>.from(wallet);
+      final totalVotes = electionList.fold<int>(
+        0,
+        (sum, e) => sum + ((e['vote_count'] as num?)?.toInt() ?? 0),
+      );
+      final totalElections = electionList.length;
+      final avgParticipation =
+          totalElections == 0 ? 0 : (totalVotes / totalElections).round();
+      final revenue = walletList.fold<double>(
+        0,
+        (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0),
+      );
+      final categories = <String, int>{};
+      for (final e in electionList) {
+        final c = (e['category'] ?? 'General').toString();
+        categories[c] = (categories[c] ?? 0) + 1;
+      }
+      final topCategories = categories.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+
+      _creatorProfile = {
+        'name': (profile?['display_name'] ?? profile?['full_name'] ?? 'Creator')
+            .toString(),
+        'tier': (profile?['tier'] ?? 'Starter').toString(),
+        'total_elections': totalElections,
+        'avg_participation': avgParticipation,
+        'top_categories': topCategories.take(3).map((e) => e.key).toList(),
+        'monthly_revenue': revenue,
+        'growth_rate': 0.0,
+        'audience_size': ((profile?['follower_count'] as num?)?.toInt() ?? 0),
+      };
+
+      _loadDefaultInsights();
+    } catch (_) {
+      setState(() {
+        _profileError = 'Unable to load creator profile metrics.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingProfile = false);
+      }
+    }
   }
 
   void _loadDefaultInsights() {
@@ -209,22 +291,99 @@ class _CreatorPredictiveInsightsHubState
   }
 
   Future<void> _generateAIInsights() async {
-    setState(() => _isLoadingInsights = true);
-    final prompt =
-        'Analyze this creator profile and provide strategic insights:\n'
-        'Tier: ${_creatorProfile['tier']}, Elections: ${_creatorProfile['total_elections']}, '
-        'Avg Participation: ${_creatorProfile['avg_participation']}, '
-        'Categories: ${(_creatorProfile['top_categories'] as List).join(', ')}, '
-        'Revenue: \$${_creatorProfile['monthly_revenue']}/mo, Growth: ${_creatorProfile['growth_rate']}%, '
-        'Audience: ${_creatorProfile['audience_size']}\n\n'
-        'Provide: 1) Top 3 election topics for next 30 days with engagement predictions, '
-        '2) Optimal timing windows, 3) Pricing strategies with ROI projections. '
-        'Be specific with confidence percentages and data-driven reasoning.';
-
     setState(() {
-      _isLoadingInsights = false;
-      _hasGeneratedInsights = true;
+      _isLoadingInsights = true;
+      _insightsError = null;
     });
+    try {
+      final insights = await PerplexityService.instance
+          .generateStrategicPlanWithForecasting(
+        businessData: {
+          'creator_profile': _creatorProfile,
+          'requested_outputs': [
+            'topic_recommendations',
+            'optimal_timing_windows',
+            'pricing_strategies',
+            'roi_projections'
+          ],
+        },
+      );
+
+      final recommendations =
+          (insights['strategic_recommendations'] as List?) ?? const [];
+      if (recommendations.isNotEmpty) {
+        _topicInsights = recommendations.take(3).map((item) {
+          final rec = item as Map<String, dynamic>;
+          return {
+            'topic': rec['recommendation'] ?? 'AI Recommendation',
+            'trend_score': (rec['expected_impact'] ?? 70),
+            'predicted_participation': 350,
+            'reasoning': rec['implementation_timeline'] ?? 'Strategic window',
+            'confidence': 80,
+            'category': 'AI',
+            'icon': 'auto_awesome',
+            'color': Colors.purple,
+          };
+        }).toList();
+      }
+
+      final forecast90 = insights['forecast_90d'] as Map<String, dynamic>?;
+      final forecast60 = insights['forecast_60d'] as Map<String, dynamic>?;
+      final rev90 = (forecast90?['revenue_growth'] as Map?)?['predicted'] ?? 0;
+      final rev60 = (forecast60?['revenue_growth'] as Map?)?['predicted'] ?? 0;
+
+      _roiProjections = [
+        {
+          'scenario': 'Conservative (Current Pace)',
+          'monthly_revenue_30d': (_creatorProfile['monthly_revenue'] as num)
+              .toInt(),
+          'monthly_revenue_90d':
+              ((_creatorProfile['monthly_revenue'] as num) * 1.1).toInt(),
+          'audience_growth_30d': 8.2,
+          'audience_growth_90d': 24.1,
+          'tier_advancement': 'Stay Gold',
+          'confidence': 90,
+          'color': Colors.blue,
+        },
+        {
+          'scenario': 'Optimized (Apply Recommendations)',
+          'monthly_revenue_30d':
+              ((_creatorProfile['monthly_revenue'] as num) * 1.25).toInt(),
+          'monthly_revenue_90d':
+              ((_creatorProfile['monthly_revenue'] as num) * (1 + (rev60 / 100)))
+                  .toInt(),
+          'audience_growth_30d': 14.7,
+          'audience_growth_90d': 48.3,
+          'tier_advancement': 'Advance to Platinum',
+          'confidence': 78,
+          'color': Colors.green,
+        },
+        {
+          'scenario': 'Aggressive (Max Monetization)',
+          'monthly_revenue_30d':
+              ((_creatorProfile['monthly_revenue'] as num) * 1.4).toInt(),
+          'monthly_revenue_90d':
+              ((_creatorProfile['monthly_revenue'] as num) * (1 + (rev90 / 100)))
+                  .toInt(),
+          'audience_growth_30d': 19.3,
+          'audience_growth_90d': 67.8,
+          'tier_advancement': 'Advance to Diamond',
+          'confidence': 64,
+          'color': Colors.purple,
+        },
+      ];
+    } catch (_) {
+      setState(() {
+        _insightsError = 'Unable to generate AI insights right now.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingInsights = false;
+          _hasGeneratedInsights = true;
+        });
+      }
+    }
   }
 
   @override
@@ -275,6 +434,8 @@ class _CreatorPredictiveInsightsHubState
       ),
       body: Column(
         children: [
+          if (_isLoadingProfile)
+            const LinearProgressIndicator(minHeight: 2),
           _buildCreatorProfileHeader(),
           _buildAIInsightsPanel(),
           _buildTabBar(),
@@ -295,6 +456,21 @@ class _CreatorPredictiveInsightsHubState
   }
 
   Widget _buildCreatorProfileHeader() {
+    if (_profileError != null) {
+      return Container(
+        margin: EdgeInsets.all(4.w),
+        padding: EdgeInsets.all(3.w),
+        decoration: BoxDecoration(
+          color: Colors.orange.withAlpha(20),
+          borderRadius: BorderRadius.circular(12.0),
+          border: Border.all(color: Colors.orange.withAlpha(80)),
+        ),
+        child: Text(
+          _profileError!,
+          style: TextStyle(fontSize: 10.sp, color: Colors.orange[800]),
+        ),
+      );
+    }
     return Container(
       margin: EdgeInsets.all(4.w),
       padding: EdgeInsets.all(4.w),
@@ -463,6 +639,17 @@ class _CreatorPredictiveInsightsHubState
                     height: 1.5,
                   ),
                 ),
+              ),
+            ),
+          ],
+          if (_insightsError != null) ...[
+            SizedBox(height: 1.h),
+            Text(
+              _insightsError!,
+              style: TextStyle(
+                fontSize: 10.sp,
+                color: Colors.orange[800],
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],

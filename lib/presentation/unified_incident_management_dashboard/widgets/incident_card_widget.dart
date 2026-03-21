@@ -12,6 +12,8 @@ class IncidentCardWidget extends StatelessWidget {
   final VoidCallback onTriage;
   final VoidCallback onInvestigate;
   final VoidCallback onResolve;
+  final VoidCallback onAssign;
+  final VoidCallback onEscalate;
 
   const IncidentCardWidget({
     super.key,
@@ -20,6 +22,8 @@ class IncidentCardWidget extends StatelessWidget {
     required this.onTriage,
     required this.onInvestigate,
     required this.onResolve,
+    required this.onAssign,
+    required this.onEscalate,
   });
 
   @override
@@ -124,6 +128,24 @@ class IncidentCardWidget extends StatelessWidget {
               // Action buttons
               Row(
                 children: [
+                  OutlinedButton.icon(
+                    onPressed: onAssign,
+                    icon: Icon(Icons.person_add, size: 4.w),
+                    label: Text('Assign', style: TextStyle(fontSize: 10.sp)),
+                    style: OutlinedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.h),
+                    ),
+                  ),
+                  SizedBox(width: 2.w),
+                  OutlinedButton.icon(
+                    onPressed: onEscalate,
+                    icon: Icon(Icons.priority_high, size: 4.w),
+                    label: Text('Escalate', style: TextStyle(fontSize: 10.sp)),
+                    style: OutlinedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.h),
+                    ),
+                  ),
+                  SizedBox(width: 2.w),
                   if (incident.status == IncidentStatus.newIncident)
                     Expanded(
                       child: OutlinedButton(
@@ -293,6 +315,10 @@ class IncidentCardWidget extends StatelessWidget {
       case IncidentStatus.resolved:
         color = AppTheme.accentLight;
         label = 'Resolved';
+        break;
+      case IncidentStatus.escalated:
+        color = AppTheme.errorLight;
+        label = 'Escalated';
         break;
     }
 

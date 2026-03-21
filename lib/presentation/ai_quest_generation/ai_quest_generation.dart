@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
-import '../../core/app_export.dart';
 import '../../services/auth_service.dart';
 import '../../services/openai_quest_service.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -274,7 +273,9 @@ class _AIQuestGenerationState extends State<AIQuestGeneration> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => _showComingSoon(context, 'Preview Quest'),
+                  onPressed: _generatedQuests.isEmpty
+                      ? null
+                      : () => _showQuestPreviewDialog(context),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: theme.colorScheme.outline),
                     shape: RoundedRectangleBorder(
@@ -287,7 +288,9 @@ class _AIQuestGenerationState extends State<AIQuestGeneration> {
               SizedBox(width: 2.w),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => _showComingSoon(context, 'Save Template'),
+                  onPressed: _generatedQuests.isEmpty
+                      ? null
+                      : () => _saveQuestTemplate(context),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: theme.colorScheme.outline),
                     shape: RoundedRectangleBorder(
@@ -358,8 +361,8 @@ class _AIQuestGenerationState extends State<AIQuestGeneration> {
           ..._generatedQuests.map(
             (quest) => GeneratedQuestCardWidget(
               quest: quest,
-              onEdit: () => _showComingSoon(context, 'Edit Quest'),
-              onPublish: () => _showComingSoon(context, 'Publish Quest'),
+              onEdit: () => _editQuest(context, quest),
+              onPublish: () => _publishQuest(context, quest),
             ),
           ),
         ],
@@ -426,12 +429,160 @@ class _AIQuestGenerationState extends State<AIQuestGeneration> {
     );
   }
 
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature coming soon'),
-        behavior: SnackBarBehavior.floating,
+  void _showQuestPreviewDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.65,
+        maxChildSize: 0.9,
+        minChildSize: 0.4,
+        expand: false,
+        builder: (context, scrollController) => ListView.builder(
+          controller: scrollController,
+          padding: EdgeInsets.all(4.w),
+          itemCount: _generatedQuests.length,
+          itemBuilder: (context, index) {
+            final q = _generatedQuests[index];
+            return ListTile(
+              leading: CircleAvatar(child: Text('${index + 1}')),
+              title: Text(q['title']?.toString() ?? 'Untitled Quest'),
+              subtitle: Text(q['description']?.toString() ?? ''),
+              trailing: Text('${q['vp_reward'] ?? 0} VP'),
+            );
+          },
+        ),
       ),
     );
+  }
+
+  void _saveQuestTemplate(BuildContext context) {
+    if (!_auth.isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in required to save template')),
+      );
+      return;
+    }
+    final template = {
+      'quest_type': _selectedQuestType,
+      'difficulty': _selectedDifficulty,
+      'quest_count': _questCount,
+      'vp_reward': _vpReward,
+      'model': _selectedModel,
+      'creativity': _creativity,
+      'behavioral_analysis': _behavioralAnalysis,
+      'saved_at': DateTime.now().toIso8601String(),
+    };
+    _questService
+        .saveQuestTemplate(userId: _auth.currentUser!.id, template: template)
+        .then((saved) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                saved
+                    ? 'Template saved: ${template['quest_type']} / ${template['difficulty']}'
+                    : 'Could not save template',
+              ),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        });
+  }
+
+  Future<void> _editQuest(BuildContext context, Map<String, dynamic> quest) async {
+    final titleController = TextEditingController(
+      text: quest['title']?.toString() ?? '',
+    );
+    final descriptionController = TextEditingController(
+      text: quest['description']?.toString() ?? '',
+    );
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Quest'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: 'Title'),
+            ),
+            TextField(
+              controller: descriptionController,
+              decoration: const InputDecoration(labelText: 'Description'),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final nextTitle = titleController.text.trim();
+              final nextDescription = descriptionController.text.trim();
+              var saved = true;
+              if (quest['id'] != null) {
+                saved = await _questService.updateQuestById(
+                  questId: quest['id'].toString(),
+                  updates: {
+                    'title': nextTitle,
+                    'description': nextDescription,
+                  },
+                );
+              }
+              if (!context.mounted) return;
+              if (saved) {
+                setState(() {
+                  quest['title'] = nextTitle;
+                  quest['description'] = nextDescription;
+                });
+                Navigator.pop(context);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Could not save quest edits')),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    titleController.dispose();
+    descriptionController.dispose();
+  }
+
+  void _publishQuest(BuildContext context, Map<String, dynamic> quest) {
+    final id = quest['id']?.toString();
+    if (id == null || id.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Quest must be generated before publishing')),
+      );
+      return;
+    }
+    _questService.publishQuestById(id).then((published) {
+      if (!context.mounted) return;
+      if (published) {
+        setState(() {
+          quest['status'] = 'active';
+          quest['published_at'] = DateTime.now().toIso8601String();
+        });
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            published
+                ? 'Published quest: ${quest['title'] ?? 'Untitled Quest'}'
+                : 'Could not publish quest',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    });
   }
 }

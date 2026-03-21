@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
+import '../../../core/app_export.dart';
 
 class SearchResultsWidget extends StatelessWidget {
   final Map<String, dynamic> results;
@@ -227,11 +228,24 @@ class SearchResultsWidget extends StatelessWidget {
   }
 
   void _navigateToDetail(BuildContext context, Map<String, dynamic> result) {
-    // Navigate to appropriate detail screen based on domain
     final domain = result['domain'] as String?;
-    // TODO: Implement navigation logic
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Navigate to $domain detail')));
+    String route;
+    switch (domain) {
+      case 'votes':
+        route = AppRoutes.voteDiscovery;
+        break;
+      case 'users':
+        route = AppRoutes.userProfile;
+        break;
+      case 'analytics':
+        route = AppRoutes.analyticsPerformanceControlCenter;
+        break;
+      case 'incidents':
+        route = AppRoutes.incidentDetail;
+        break;
+      default:
+        route = AppRoutes.advancedSearchDiscoveryIntelligenceHubWebCanonical;
+    }
+    Navigator.of(context, rootNavigator: true).pushNamed(route);
   }
 }

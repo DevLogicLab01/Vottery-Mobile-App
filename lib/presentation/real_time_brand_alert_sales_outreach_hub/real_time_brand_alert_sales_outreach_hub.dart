@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import '../../widgets/error_boundary_wrapper.dart';
 import '../../widgets/shimmer_skeleton_loader.dart';
+import '../../services/auth_service.dart';
+import '../../services/advertiser_analytics_service.dart';
+import '../../services/webhook_service.dart';
 
 class RealTimeBrandAlertSalesOutreachHub extends StatefulWidget {
   const RealTimeBrandAlertSalesOutreachHub({super.key});
@@ -13,6 +16,9 @@ class RealTimeBrandAlertSalesOutreachHub extends StatefulWidget {
 
 class _RealTimeBrandAlertSalesOutreachHubState
     extends State<RealTimeBrandAlertSalesOutreachHub> {
+  final AdvertiserAnalyticsService _analyticsService =
+      AdvertiserAnalyticsService.instance;
+  final WebhookService _webhookService = WebhookService.instance;
   bool _isLoading = true;
   List<Map<String, dynamic>> _campaigns = [];
   List<Map<String, dynamic>> _alerts = [];
@@ -28,53 +34,64 @@ class _RealTimeBrandAlertSalesOutreachHubState
     setState(() => _isLoading = true);
 
     try {
-      final mockCampaigns = [
-        {
-          'id': '1',
-          'name': 'Summer Product Launch',
-          'brand_name': 'TechCorp',
-          'total_budget': 5000.0,
-          'spent_budget': 4550.0,
-          'budget_utilization': 0.91,
-          'projected_completion': '2 days',
-          'contact_priority': 'high',
-        },
-        {
-          'id': '2',
-          'name': 'Holiday Campaign',
-          'brand_name': 'FashionBrand',
-          'total_budget': 3000.0,
-          'spent_budget': 2730.0,
-          'budget_utilization': 0.91,
-          'projected_completion': '3 days',
-          'contact_priority': 'medium',
-        },
-      ];
+      final advertiserId = AuthService.instance.currentUser?.id ?? '';
+      final campaigns = await _analyticsService.getVotteryAdsCampaigns(
+        advertiserId: advertiserId,
+      );
+      final webhookConfigs = await _webhookService.getWebhookConfigurations();
+      final roi = await _analyticsService.getVotteryAdsCampaignPerformance(
+        advertiserId: advertiserId,
+        timeRange: '7d',
+      );
 
-      final mockAlerts = [
-        {
-          'id': '1',
-          'campaign_id': '1',
-          'campaign_name': 'Summer Product Launch',
-          'alert_type': 'budget_threshold',
-          'threshold': 90,
-          'current_spend': 91,
-          'message': 'Campaign reached 91% budget utilization',
-          'created_at': DateTime.now()
-              .subtract(Duration(minutes: 5))
-              .toIso8601String(),
+      final normalizedCampaigns = campaigns
+          .map(
+            (c) => {
+              'id': c['id']?.toString() ?? '',
+              'name': c['name'] ?? 'Campaign',
+              'brand_name': 'Brand',
+              'total_budget': 0.0,
+              'spent_budget': 0.0,
+              'budget_utilization': 0.0,
+              'projected_completion': 'N/A',
+              'contact_priority': 'medium',
+            },
+          )
+          .toList();
+
+      final computedAlerts = <Map<String, dynamic>>[];
+      final totalSpent = (roi['total_spent'] as num?)?.toDouble() ?? 0.0;
+      final participants = (roi['total_participants'] as num?)?.toInt() ?? 0;
+      if (normalizedCampaigns.isNotEmpty && participants > 0) {
+        computedAlerts.add({
+          'id': 'roi-alert',
+          'campaign_id': normalizedCampaigns.first['id'],
+          'campaign_name': normalizedCampaigns.first['name'],
+          'alert_type': 'performance',
+          'threshold': 0,
+          'current_spend': totalSpent,
+          'message':
+              'Active performance pulse: $participants participants and \$${totalSpent.toStringAsFixed(2)} spent.',
+          'created_at': DateTime.now().toIso8601String(),
           'is_sent': true,
-        },
-      ];
+        });
+      }
 
       setState(() {
-        _campaigns = mockCampaigns;
-        _alerts = mockAlerts;
+        _campaigns = normalizedCampaigns;
+        _alerts = computedAlerts;
         _webhookConfig = {
-          'slack_enabled': true,
-          'discord_enabled': false,
+          'slack_enabled': webhookConfigs.any((w) =>
+              (w['webhook_url']?.toString().toLowerCase().contains('slack') ??
+                  false)),
+          'discord_enabled': webhookConfigs.any((w) =>
+              (w['webhook_url']
+                      ?.toString()
+                      .toLowerCase()
+                      .contains('discord') ??
+                  false)),
           'slack_channel': '#sales-alerts',
-          'delivery_confirmed': true,
+          'delivery_confirmed': webhookConfigs.isNotEmpty,
         };
         _isLoading = false;
       });

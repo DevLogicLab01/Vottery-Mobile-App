@@ -24,10 +24,11 @@ class AuthService {
   /// Returns: email_password, passkey, magic_link, oauth, or null if not logged in.
   Future<String?> getCurrentAuthMethod() async {
     try {
-      final session = await _client.auth.currentSession;
+      final session = _client.auth.currentSession;
       if (session == null) return null;
       final user = session.user;
-      final provider = (user.appMetadata['provider'] as String? ?? session.provider ?? 'email').toLowerCase();
+      final provider =
+          (user.appMetadata['provider'] as String? ?? 'email').toLowerCase();
       final amr = user.appMetadata['amr'] as List? ?? [];
       final hasPasskey = amr.any((m) => m != null && m.toString().toUpperCase() == 'PASSKEY');
       if (hasPasskey) return 'passkey';
@@ -117,6 +118,27 @@ class AuthService {
       }
     } catch (e) {
       debugPrint('Google sign in error: $e');
+      return false;
+    }
+  }
+
+  // Sign in with Apple
+  Future<bool> signInWithApple() async {
+    return signInWithOAuthProvider(OAuthProvider.apple);
+  }
+
+  // Sign in with Facebook
+  Future<bool> signInWithFacebook() async {
+    return signInWithOAuthProvider(OAuthProvider.facebook);
+  }
+
+  // Generic OAuth entrypoint
+  Future<bool> signInWithOAuthProvider(OAuthProvider provider) async {
+    try {
+      final result = await _client.auth.signInWithOAuth(provider);
+      return result;
+    } catch (e) {
+      debugPrint('OAuth sign in error ($provider): $e');
       return false;
     }
   }

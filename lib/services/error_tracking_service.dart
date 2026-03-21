@@ -53,7 +53,7 @@ class ErrorTrackingService {
     required String message,
     SentryLevel level = SentryLevel.error,
   }) async {
-    if (level.index < SentryLevel.error.index) return;
+    if (_severityRank(level) < _severityRank(SentryLevel.error)) return;
     const slackUrl = String.fromEnvironment('SLACK_WEBHOOK_URL', defaultValue: '');
     if (slackUrl.isEmpty) return;
     try {
@@ -71,6 +71,23 @@ class ErrorTrackingService {
       );
     } catch (e) {
       debugPrint('Slack notification error: $e');
+    }
+  }
+
+  int _severityRank(SentryLevel level) {
+    switch (level) {
+      case SentryLevel.debug:
+        return 0;
+      case SentryLevel.info:
+        return 1;
+      case SentryLevel.warning:
+        return 2;
+      case SentryLevel.error:
+        return 3;
+      case SentryLevel.fatal:
+        return 4;
+      default:
+        return 3;
     }
   }
 

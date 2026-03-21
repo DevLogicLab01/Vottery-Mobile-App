@@ -290,8 +290,6 @@ class AIFeatureAdoptionAnalyticsService {
   Future<Map<String, List<double>>> getAdoptionTrends() async {
     try {
       final now = DateTime.now();
-      final sevenDaysAgo = now.subtract(const Duration(days: 7));
-      final thirtyDaysAgo = now.subtract(const Duration(days: 30));
 
       final sevenDayData = <double>[];
       final thirtyDayData = <double>[];

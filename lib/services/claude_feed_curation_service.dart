@@ -81,7 +81,16 @@ class ClaudeFeedCurationService {
       final feedItems = await _getFeedItems(contentType, limit: 20);
 
       if (feedItems.isEmpty) {
-        _recommendationsController.add(_getMockRecommendations());
+        final fallback = await _loadRankingFallbackFeed(
+          userId: userId,
+          contentType: contentType,
+          limit: 20,
+        );
+        if (fallback.isEmpty) {
+          _recommendationsController.add([]);
+          return;
+        }
+        await _emitRecommendationsFromItems(userId, fallback);
         return;
       }
 
@@ -114,8 +123,87 @@ class ClaudeFeedCurationService {
       _recommendationsController.add(recommendations);
     } catch (e) {
       debugPrint('Load recommendations error: $e');
-      _recommendationsController.add(_getMockRecommendations());
+      try {
+        final fallback = await _loadRankingFallbackFeed(
+          userId: userId,
+          contentType: contentType,
+          limit: 20,
+        );
+        if (fallback.isEmpty) {
+          _recommendationsController.add([]);
+        } else {
+          await _emitRecommendationsFromItems(userId, fallback);
+        }
+      } catch (_) {
+        _recommendationsController.add([]);
+      }
     }
+  }
+
+  /// Map UI content types to [FeedRankingService] single-type keys.
+  String _rankingKeyForContentType(String contentType) {
+    switch (contentType) {
+      case 'elections':
+        return 'election';
+      case 'posts':
+        return 'post';
+      case 'jolts':
+        return 'jolt';
+      case 'moments':
+      case 'mixed':
+      default:
+        return 'election';
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _loadRankingFallbackFeed({
+    required String userId,
+    required String contentType,
+    int limit = 20,
+  }) async {
+    final primary = _rankingKeyForContentType(contentType);
+    final tryOrder = contentType == 'mixed'
+        ? <String>['election', 'post', 'jolt']
+        : <String>[primary];
+
+    for (final key in tryOrder) {
+      final ranked = await _feedRanking.getPersonalizedFeed(
+        contentType: key,
+        limit: limit,
+      );
+      if (ranked.isNotEmpty) {
+        return List<Map<String, dynamic>>.from(ranked);
+      }
+    }
+    return [];
+  }
+
+  Future<void> _emitRecommendationsFromItems(
+    String userId,
+    List<Map<String, dynamic>> feedItems,
+  ) async {
+    final userProfile = await _analyzeUserProfile(userId);
+    final recommendations = <FeedRecommendation>[];
+    for (final item in feedItems.take(10)) {
+      final confidence = calculateConfidenceScore(
+        userProfile: userProfile,
+        feedItem: item,
+      );
+      recommendations.add(
+        FeedRecommendation(
+          feedItem: item,
+          confidenceScore: confidence,
+          reasoning: _buildReasoning(userProfile, item, confidence),
+          interestAlignment: _getInterestAlignment(userProfile, item),
+          socialProof: _getSocialProof(item),
+        ),
+      );
+    }
+    recommendations.sort(
+      (a, b) => b.confidenceScore.compareTo(a.confidenceScore),
+    );
+    _cachedRecommendations = recommendations;
+    _recommendationsController.add(recommendations);
   }
 
   /// Calculate confidence score (0-100) based on user interests, post content, engagement signals
@@ -209,55 +297,6 @@ class ClaudeFeedCurationService {
     }
     if (count > 0) return '$count engagements';
     return 'New content';
-  }
-
-  List<FeedRecommendation> _getMockRecommendations() {
-    return [
-      FeedRecommendation(
-        feedItem: {
-          'title': 'Tech Policy Vote 2026',
-          'category': 'technology',
-          'vote_count': 1247,
-        },
-        confidenceScore: 92.0,
-        reasoning: 'Matches your interest in technology',
-        interestAlignment: 'Strong match: technology',
-        socialProof: '1.2K engagements',
-      ),
-      FeedRecommendation(
-        feedItem: {
-          'title': 'Climate Action Initiative',
-          'category': 'environment',
-          'vote_count': 856,
-        },
-        confidenceScore: 78.0,
-        reasoning: 'Trending in your network',
-        interestAlignment: 'General interest',
-        socialProof: '856 engagements',
-      ),
-      FeedRecommendation(
-        feedItem: {
-          'title': 'Community Budget Allocation',
-          'category': 'finance',
-          'vote_count': 423,
-        },
-        confidenceScore: 65.0,
-        reasoning: 'Popular with similar users',
-        interestAlignment: 'General interest',
-        socialProof: '423 engagements',
-      ),
-      FeedRecommendation(
-        feedItem: {
-          'title': 'Local Education Reform',
-          'category': 'education',
-          'vote_count': 234,
-        },
-        confidenceScore: 55.0,
-        reasoning: 'Recommended based on your activity',
-        interestAlignment: 'General interest',
-        socialProof: '234 engagements',
-      ),
-    ];
   }
 
   void dispose() {
@@ -481,7 +520,13 @@ class ClaudeFeedCurationService {
               .limit(limit);
           break;
         default:
-          items = [];
+          // Real-data default (e.g. mixed): active elections as primary feed slice
+          items = await _supabase
+              .from('elections')
+              .select('id, title, category, created_at, vote_count')
+              .eq('status', 'active')
+              .order('created_at', ascending: false)
+              .limit(limit);
       }
 
       return List<Map<String, dynamic>>.from(items);

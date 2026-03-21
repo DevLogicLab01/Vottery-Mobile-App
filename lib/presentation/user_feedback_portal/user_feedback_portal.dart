@@ -43,7 +43,7 @@ class _UserFeedbackPortalState extends State<UserFeedbackPortal>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadFeatureRequests();
   }
 
@@ -144,6 +144,7 @@ class _UserFeedbackPortalState extends State<UserFeedbackPortal>
 
       await _loadFeatureRequests();
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Vote recorded! You earned 5 VP'),
@@ -161,9 +162,9 @@ class _UserFeedbackPortalState extends State<UserFeedbackPortal>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FeedbackSubmissionFormWidget(
-        onSubmit: (title, description, category) async {
-          await _submitFeatureRequest(title, description, category);
-          Navigator.pop(context);
+        onSubmit: (title, description, category) {
+          Navigator.of(context).pop();
+          _submitFeatureRequest(title, description, category);
         },
       ),
     );
@@ -265,12 +266,21 @@ class _UserFeedbackPortalState extends State<UserFeedbackPortal>
               )
             : RefreshIndicator(
                 onRefresh: _loadFeatureRequests,
-                child: TabBarView(
-                  controller: _tabController,
+                child: Column(
                   children: [
-                    _buildTrendingTab(theme),
-                    _buildRecentTab(theme),
-                    const CommunityEngagementLeaderboardsTab(),
+                    _buildHeader(theme),
+                    _buildTabBar(theme),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildTrendingTab(theme),
+                          _buildRecentTab(theme),
+                          _buildImplementationTrackingTab(theme),
+                          const CommunityEngagementLeaderboardsTab(),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -353,6 +363,7 @@ class _UserFeedbackPortalState extends State<UserFeedbackPortal>
         tabs: const [
           Tab(text: 'Trending'),
           Tab(text: 'Recent'),
+          Tab(text: 'Tracking'),
           Tab(text: 'Leaderboards'),
         ],
       ),
@@ -360,8 +371,12 @@ class _UserFeedbackPortalState extends State<UserFeedbackPortal>
   }
 
   Widget _buildTrendingTab(ThemeData theme) {
-    final trendingRequests = _featureRequests
-      ..sort((a, b) => (b['upvotes'] as int).compareTo(a['upvotes'] as int));
+    final trendingRequests = List<Map<String, dynamic>>.from(_featureRequests)
+      ..sort(
+        (a, b) => ((b['vote_count'] ?? b['upvotes'] ?? 0) as int).compareTo(
+          ((a['vote_count'] ?? a['upvotes'] ?? 0) as int),
+        ),
+      );
 
     return RefreshIndicator(
       onRefresh: _loadFeatureRequests,
@@ -396,21 +411,24 @@ class _UserFeedbackPortalState extends State<UserFeedbackPortal>
     );
   }
 
-  Widget _buildImplementedTab(ThemeData theme) {
-    final implementedRequests = _featureRequests
-        .where((r) => r['status'] == 'implemented')
-        .toList();
+  Widget _buildImplementationTrackingTab(ThemeData theme) {
+    final trackingItems = List<Map<String, dynamic>>.from(_featureRequests)
+      ..sort((a, b) {
+        final statusA = (a['status'] ?? '').toString();
+        final statusB = (b['status'] ?? '').toString();
+        return statusA.compareTo(statusB);
+      });
 
     return RefreshIndicator(
       onRefresh: _loadFeatureRequests,
       child: ListView.builder(
         padding: EdgeInsets.all(4.w),
-        itemCount: implementedRequests.length,
+        itemCount: trackingItems.length,
         itemBuilder: (context, index) {
           return FeatureRequestCardWidget(
-            request: implementedRequests[index],
+            request: trackingItems[index],
             onVote: (isUpvote) =>
-                _voteOnFeature(implementedRequests[index]['id'], isUpvote),
+                _voteOnFeature(trackingItems[index]['id'], isUpvote),
           );
         },
       ),

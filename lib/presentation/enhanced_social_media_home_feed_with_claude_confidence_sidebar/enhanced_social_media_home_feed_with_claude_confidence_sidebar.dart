@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../services/claude_feed_curation_service.dart';
 import '../../services/follow_service.dart';
@@ -193,7 +194,7 @@ class _EnhancedSocialMediaHomeFeedWithClaudeConfidenceSidebarState
                   color: Colors.black87,
                 ),
                 onPressed: () =>
-                    Navigator.pushNamed(context, '/notification-center-hub'),
+                    Navigator.pushNamed(context, AppRoutes.notificationCenterHub),
               ),
               if (_friendRequestsCount > 0)
                 Positioned(
@@ -340,7 +341,7 @@ class _EnhancedSocialMediaHomeFeedWithClaudeConfidenceSidebarState
           Expanded(
             child: GestureDetector(
               onTap: () =>
-                  Navigator.pushNamed(context, '/social-post-composer'),
+                  Navigator.pushNamed(context, AppRoutes.socialPostComposer),
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
                 decoration: BoxDecoration(

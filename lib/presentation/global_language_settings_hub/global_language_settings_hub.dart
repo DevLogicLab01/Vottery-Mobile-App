@@ -21,7 +21,7 @@ class _GlobalLanguageSettingsHubState extends State<GlobalLanguageSettingsHub> {
   String _dateFormat = 'MM/DD/YYYY';
   String _timeFormat = '12h';
   String _numberFormat = 'comma';
-  String _searchQuery = '';
+  String _currencyFormat = 'local';
   bool _isLoading = true;
   bool _isSaving = false;
 
@@ -49,6 +49,7 @@ class _GlobalLanguageSettingsHubState extends State<GlobalLanguageSettingsHub> {
         _dateFormat = prefs['date_format'] ?? 'MM/DD/YYYY';
         _timeFormat = prefs['time_format'] ?? '12h';
         _numberFormat = prefs['number_format'] ?? 'comma';
+        _currencyFormat = prefs['currency_format'] ?? 'local';
       });
     }
 
@@ -65,6 +66,7 @@ class _GlobalLanguageSettingsHubState extends State<GlobalLanguageSettingsHub> {
       dateFormat: _dateFormat,
       timeFormat: _timeFormat,
       numberFormat: _numberFormat,
+      currencyFormat: _currencyFormat,
     );
 
     setState(() => _isSaving = false);
@@ -80,7 +82,6 @@ class _GlobalLanguageSettingsHubState extends State<GlobalLanguageSettingsHub> {
 
   void _filterLanguages(String query) {
     setState(() {
-      _searchQuery = query;
       if (query.isEmpty) {
         _filteredLanguages = _allLanguages;
       } else {
@@ -473,6 +474,45 @@ class _GlobalLanguageSettingsHubState extends State<GlobalLanguageSettingsHub> {
                           onChanged: (value) {
                             if (value != null) {
                               setState(() => _numberFormat = value);
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+
+                    Card(
+                      margin: EdgeInsets.symmetric(
+                        horizontal: 4.w,
+                        vertical: 0.5.h,
+                      ),
+                      child: ListTile(
+                        title: const Text('Currency Display'),
+                        subtitle: Text(
+                          _currencyFormat == 'local'
+                              ? 'Local currency symbol'
+                              : _currencyFormat == 'iso'
+                                  ? 'ISO currency code'
+                                  : 'Dual display',
+                        ),
+                        trailing: DropdownButton<String>(
+                          value: _currencyFormat,
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'local',
+                              child: Text('Local symbol'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'iso',
+                              child: Text('ISO code'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'dual',
+                              child: Text('Dual'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _currencyFormat = value);
                             }
                           },
                         ),

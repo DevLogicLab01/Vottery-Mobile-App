@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../framework/shared_constants.dart';
 import './claude_service.dart';
 import './perplexity_service.dart';
 import './supabase_service.dart';
@@ -22,6 +24,7 @@ class AIRecommendationsService {
     required String screenContext,
     int limit = 10,
   }) async {
+    final sw = Stopwatch()..start();
     try {
       if (!_auth.isAuthenticated) return _getDefaultRecommendations();
 
@@ -36,6 +39,12 @@ class AIRecommendationsService {
     } catch (e) {
       debugPrint('Get content recommendations error: $e');
       return _getDefaultRecommendations();
+    } finally {
+      final within =
+          sw.elapsedMilliseconds <= SharedConstants.recommendationLatencyBudgetMs;
+      debugPrint(
+        'AIRecommendationsService.getContentRecommendations context=$screenContext latencyMs=${sw.elapsedMilliseconds} budgetMs=${SharedConstants.recommendationLatencyBudgetMs} withinBudget=$within',
+      );
     }
   }
 

@@ -38,7 +38,7 @@ class CarouselCoachingAPIService extends ClaudeCarouselCoachService {
       final questionType = await routeQuestion(question);
 
       // Get relevant context based on question type
-      final contextData = await _getContextForQuestionType(
+      await _getContextForQuestionType(
         questionType,
         creatorData,
       );

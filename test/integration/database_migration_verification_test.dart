@@ -5,6 +5,7 @@
 // ============================================================
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/foundation.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -314,7 +315,6 @@ void main() {
     testWidgets(
       'Test 8: Real-time updates work - Supabase subscriptions active',
       (WidgetTester tester) async {
-        bool subscriptionReceived = false;
         RealtimeChannel? channel;
 
         try {
@@ -326,14 +326,13 @@ void main() {
                 schema: 'public',
                 table: 'elections',
                 callback: (payload) {
-                  subscriptionReceived = true;
                   debugPrint(
                     'INFO Test 8: Real-time event received: ${payload.eventType}',
                   );
                 },
               );
 
-          await channel.subscribe();
+          channel.subscribe();
 
           // Wait briefly for subscription to establish
           await Future.delayed(const Duration(seconds: 2));

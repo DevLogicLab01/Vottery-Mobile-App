@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../../../routes/app_routes.dart';
 import '../../../services/creator_earnings_service.dart';
 
 class EarningsTransactionFeedWidget extends StatelessWidget {
@@ -35,7 +36,7 @@ class EarningsTransactionFeedWidget extends StatelessWidget {
               ),
               TextButton(
                 onPressed: () {
-                  Navigator.pushNamed(context, '/transaction-history');
+                  Navigator.pushNamed(context, AppRoutes.payoutHistoryScreen);
                 },
                 child: Text('View All'),
               ),

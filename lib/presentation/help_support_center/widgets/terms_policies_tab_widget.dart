@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../widgets/custom_icon_widget.dart';
@@ -321,14 +325,7 @@ class _TermsPoliciesTabWidgetState extends State<TermsPoliciesTabWidget> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Download feature coming soon'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
+                      onPressed: () => _downloadDocument(context, document),
                       icon: const Icon(Icons.download),
                       label: const Text('Download'),
                       style: OutlinedButton.styleFrom(
@@ -341,14 +338,7 @@ class _TermsPoliciesTabWidgetState extends State<TermsPoliciesTabWidget> {
                   SizedBox(width: 3.w),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Share feature coming soon'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
+                      onPressed: () => _shareDocument(document),
                       icon: const Icon(Icons.share),
                       label: const Text('Share'),
                       style: OutlinedButton.styleFrom(
@@ -389,6 +379,68 @@ class _TermsPoliciesTabWidgetState extends State<TermsPoliciesTabWidget> {
           ),
         ],
       ),
+    );
+  }
+
+  String _buildDocumentBody(Map<String, dynamic> document) {
+    return [
+      '${document['title']}',
+      'Version ${document['version']} • ${document['lastUpdated']}',
+      '',
+      '1. Introduction',
+      'Welcome to Vottery. By using our service, you agree to these terms. Please read them carefully.',
+      '',
+      '2. User Accounts',
+      'You are responsible for maintaining the security of your account and password. Vottery cannot and will not be liable for any loss or damage from your failure to comply with this security obligation.',
+      '',
+      '3. Acceptable Use',
+      'You agree not to misuse the Vottery services. For example, you must not interfere with the services or try to access them using a method other than the interface and instructions we provide.',
+      '',
+      '4. Privacy',
+      'Your privacy is important to us. Our Privacy Policy explains how we collect, use, and protect your personal information.',
+      '',
+      '5. Content',
+      'You retain ownership of any intellectual property rights that you hold in content you submit to Vottery. When you upload or submit content, you give Vottery a worldwide license to use, host, store, reproduce, and distribute such content.',
+      '',
+      '6. Termination',
+      'We may suspend or terminate your access to the services at any time for any reason, including if we reasonably believe you have violated these Terms.',
+      '',
+      '7. Changes to Terms',
+      'We may modify these terms from time to time. We will notify you of any changes by posting the new Terms on this page and updating the Last Updated date.',
+      '',
+      '8. Contact Us',
+      'If you have any questions about these Terms, please contact us at support@vottery.com',
+    ].join('\n');
+  }
+
+  Future<void> _downloadDocument(
+    BuildContext context,
+    Map<String, dynamic> document,
+  ) async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final slug = (document['id']?.toString() ?? 'document')
+          .replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+      final path = '${dir.path}/vottery_$slug.txt';
+      final file = File(path);
+      await file.writeAsString(_buildDocumentBody(document));
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Saved to $path')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Download failed: $e')),
+      );
+    }
+  }
+
+  Future<void> _shareDocument(Map<String, dynamic> document) async {
+    await Share.share(
+      _buildDocumentBody(document),
+      subject: document['title']?.toString() ?? 'Vottery legal document',
     );
   }
 }

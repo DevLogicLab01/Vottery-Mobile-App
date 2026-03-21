@@ -194,15 +194,13 @@ class _CollaborativeVotingRoomState extends State<CollaborativeVotingRoom> {
         ),
         body: _isLoading
             ? const SkeletonDashboard()
-            : SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _buildRoomHeader(),
-                    Expanded(flex: 60, child: _buildDiscussionPanel()),
-                    Divider(height: 1, thickness: 2),
-                    Expanded(flex: 40, child: _buildVotingPanel()),
-                  ],
-                ),
+            : Column(
+                children: [
+                  _buildRoomHeader(),
+                  Expanded(flex: 60, child: _buildDiscussionPanel()),
+                  const Divider(height: 1, thickness: 2),
+                  Expanded(flex: 40, child: _buildVotingPanel()),
+                ],
               ),
       ),
     );

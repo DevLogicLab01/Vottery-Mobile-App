@@ -23,14 +23,12 @@ class FeedBlendingService {
           .limit(limit);
 
       final response = await query;
-      return (response as List)
-          .map((e) => {
-            final m = Map<String, dynamic>.from(e as Map);
-            m['_sponsoredTag'] = true;
-            m['_adType'] = 'sponsored_election';
-            return m;
-          })
-          .toList();
+      return (response as List).map((e) {
+        final m = Map<String, dynamic>.from(e as Map);
+        m['_sponsoredTag'] = true;
+        m['_adType'] = 'sponsored_election';
+        return m;
+      }).toList();
     } catch (e) {
       debugPrint('FeedBlendingService.getSponsoredElections error: $e');
       return [];

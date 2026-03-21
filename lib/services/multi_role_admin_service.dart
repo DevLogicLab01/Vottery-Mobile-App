@@ -385,4 +385,77 @@ class MultiRoleAdminService {
       return {'success': false, 'error': e.toString()};
     }
   }
+
+  /// Create multi-role approval workflow definition.
+  Future<Map<String, dynamic>> createApprovalWorkflow({
+    required String tenantId,
+    required String workflowName,
+    required List<String> requiredRoles,
+    required int minApprovals,
+  }) async {
+    try {
+      final res = await _supabase
+          .from('enterprise_approval_workflows')
+          .insert({
+            'tenant_id': tenantId,
+            'workflow_name': workflowName,
+            'required_roles': requiredRoles,
+            'min_approvals': minApprovals,
+          })
+          .select()
+          .single();
+      return {'success': true, 'data': res};
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  /// Submit approval request that requires multi-role sign-off.
+  Future<Map<String, dynamic>> submitApprovalRequest({
+    required String workflowId,
+    required String requesterId,
+    required String requestType,
+    required Map<String, dynamic> payload,
+  }) async {
+    try {
+      final res = await _supabase
+          .from('enterprise_approval_requests')
+          .insert({
+            'workflow_id': workflowId,
+            'requester_id': requesterId,
+            'request_type': requestType,
+            'payload': payload,
+            'status': 'pending',
+          })
+          .select()
+          .single();
+      return {'success': true, 'data': res};
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  /// Record an approval/rejection decision for a request.
+  Future<Map<String, dynamic>> recordApprovalDecision({
+    required String requestId,
+    required String approverRole,
+    required String decision, // approved | rejected
+    String? note,
+  }) async {
+    try {
+      final res = await _supabase
+          .from('enterprise_approval_decisions')
+          .insert({
+            'request_id': requestId,
+            'approver_role': approverRole,
+            'decision': decision,
+            'note': note,
+          })
+          .select()
+          .single();
+      return {'success': true, 'data': res};
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
 }

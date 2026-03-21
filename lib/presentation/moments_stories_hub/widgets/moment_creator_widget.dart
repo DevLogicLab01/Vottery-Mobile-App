@@ -1,3 +1,5 @@
+import 'dart:io' show File;
+
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -6,7 +8,9 @@ import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
 import '../../../services/moments_service.dart';
+import '../../../services/moments_viral_scoring_service.dart';
 import '../../../theme/app_theme.dart';
+import 'viral_score_widget.dart';
 
 /// Moment creator with camera integration, filters, text overlays
 class MomentCreatorWidget extends StatefulWidget {
@@ -27,10 +31,12 @@ class _MomentCreatorWidgetState extends State<MomentCreatorWidget> {
   final MomentsService _momentsService = MomentsService.instance;
   CameraController? _cameraController;
   bool _isInitialized = false;
-  final bool _isRecording = false;
   bool _isUploading = false;
   String? _capturedImagePath;
   final TextEditingController _captionController = TextEditingController();
+  bool _viralLoading = false;
+  Map<String, dynamic>? _viralPayload;
+  String? _viralError;
 
   @override
   void initState() {
@@ -99,6 +105,48 @@ class _MomentCreatorWidgetState extends State<MomentCreatorWidget> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Failed to capture photo')));
+      }
+    }
+  }
+
+  Future<void> _analyzeViralScore() async {
+    if (_capturedImagePath == null) return;
+    setState(() {
+      _viralLoading = true;
+      _viralError = null;
+    });
+    try {
+      final cap = _captionController.text.trim();
+      final result =
+          await MomentsViralScoringService.instance.analyzeMomentComposition(
+        mediaCount: 1,
+        filterCount: 0,
+        textStickerCount: cap.isEmpty ? 0 : 1,
+        interactiveElementCount: 0,
+        caption: cap,
+      );
+      if (!mounted) return;
+      if (result['error'] != null) {
+        setState(() {
+          _viralLoading = false;
+          _viralError = result['error'].toString();
+          _viralPayload = null;
+        });
+        return;
+      }
+      setState(() {
+        _viralLoading = false;
+        _viralPayload = result;
+        _viralError = null;
+      });
+    } catch (e) {
+      debugPrint('Viral score error: $e');
+      if (mounted) {
+        setState(() {
+          _viralLoading = false;
+          _viralError = 'Unable to analyze viral potential right now.';
+          _viralPayload = null;
+        });
       }
     }
   }
@@ -207,11 +255,26 @@ class _MomentCreatorWidgetState extends State<MomentCreatorWidget> {
     );
   }
 
+  Widget _buildPreviewImage() {
+    final path = _capturedImagePath!;
+    if (kIsWeb) {
+      return Image.network(path, fit: BoxFit.cover);
+    }
+    return Image.file(File(path), fit: BoxFit.cover);
+  }
+
   Widget _buildPreview() {
+    final ot = _viralPayload?['optimalTiming'] as Map<String, dynamic>?;
+    final suggestions = (_viralPayload?['improvementSuggestions'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .where((s) => s.isNotEmpty)
+            .toList() ??
+        <String>[];
+
     return Stack(
       children: [
         Positioned.fill(
-          child: Image.network(_capturedImagePath!, fit: BoxFit.cover),
+          child: _buildPreviewImage(),
         ),
         Positioned(
           top: 2.h,
@@ -226,64 +289,168 @@ class _MomentCreatorWidgetState extends State<MomentCreatorWidget> {
           left: 0,
           right: 0,
           child: Container(
+            constraints: BoxConstraints(maxHeight: 55.h),
             padding: EdgeInsets.all(4.w),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
-                colors: [Colors.black.withAlpha(204), Colors.transparent],
+                colors: [Colors.black.withAlpha(230), Colors.transparent],
               ),
             ),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _captionController,
-                  style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontSize: 14.sp,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Add a caption...',
-                    hintStyle: GoogleFonts.inter(
-                      color: Colors.white.withAlpha(179),
-                      fontSize: 14.sp,
-                    ),
-                    border: InputBorder.none,
-                  ),
-                  maxLines: 2,
-                ),
-                SizedBox(height: 2.h),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isUploading ? null : _publishMoment,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.vibrantYellow,
-                      foregroundColor: Colors.black,
-                      padding: EdgeInsets.symmetric(vertical: 1.5.h),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25.0),
-                      ),
-                    ),
-                    child: _isUploading
-                        ? SizedBox(
-                            height: 2.h,
-                            width: 2.h,
-                            child: CircularProgressIndicator(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_viralLoading)
+                    Padding(
+                      padding: EdgeInsets.only(bottom: 1.h),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 4.w,
+                            height: 4.w,
+                            child: const CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.black,
-                            ),
-                          )
-                        : Text(
-                            'Share Moment',
-                            style: GoogleFonts.inter(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w600,
+                              color: AppTheme.vibrantYellow,
                             ),
                           ),
+                          SizedBox(width: 2.w),
+                          Text(
+                            'Claude is scoring viral potential…',
+                            style: GoogleFonts.inter(
+                              color: Colors.white70,
+                              fontSize: 11.sp,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_viralError != null)
+                    Padding(
+                      padding: EdgeInsets.only(bottom: 1.h),
+                      child: Text(
+                        _viralError!,
+                        style: GoogleFonts.inter(
+                          color: Colors.orangeAccent,
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  if (_viralPayload != null && !_viralLoading) ...[
+                    ViralScoreWidget(
+                      viralScore: () {
+                        final raw = _viralPayload!['overallScore'];
+                        final v = raw is num
+                            ? raw.toDouble()
+                            : double.tryParse(raw?.toString() ?? '') ?? 0;
+                        return v.clamp(0.0, 100.0).toDouble();
+                      }(),
+                      message:
+                          'Confidence ${(_viralPayload!['confidence'] as num?)?.toStringAsFixed(0) ?? '0'}%',
+                    ),
+                    if (ot != null) ...[
+                      SizedBox(height: 1.h),
+                      Text(
+                        'Best time: ${ot['bestDay'] ?? '—'} · ${ot['bestTime'] ?? '—'} (${ot['timezone'] ?? 'Local'})',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 10.sp,
+                        ),
+                      ),
+                      if ((ot['reasoning']?.toString() ?? '').isNotEmpty)
+                        Text(
+                          ot['reasoning'].toString(),
+                          style: GoogleFonts.inter(
+                            color: Colors.white70,
+                            fontSize: 9.sp,
+                          ),
+                        ),
+                    ],
+                    if (suggestions.isNotEmpty) ...[
+                      SizedBox(height: 1.h),
+                      Text(
+                        'Tips',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      ...suggestions.take(4).map(
+                            (s) => Text(
+                              '• $s',
+                              style: GoogleFonts.inter(
+                                color: Colors.white70,
+                                fontSize: 9.sp,
+                              ),
+                            ),
+                          ),
+                    ],
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _viralLoading ? null : _analyzeViralScore,
+                        child: Text(
+                          'Refresh score',
+                          style: GoogleFonts.inter(
+                            color: AppTheme.vibrantYellow,
+                            fontSize: 10.sp,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  TextField(
+                    controller: _captionController,
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 14.sp,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Add a caption...',
+                      hintStyle: GoogleFonts.inter(
+                        color: Colors.white.withAlpha(179),
+                        fontSize: 14.sp,
+                      ),
+                      border: InputBorder.none,
+                    ),
+                    maxLines: 2,
                   ),
-                ),
-              ],
+                  SizedBox(height: 2.h),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isUploading ? null : _publishMoment,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.vibrantYellow,
+                        foregroundColor: Colors.black,
+                        padding: EdgeInsets.symmetric(vertical: 1.5.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25.0),
+                        ),
+                      ),
+                      child: _isUploading
+                          ? SizedBox(
+                              height: 2.h,
+                              width: 2.h,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.black,
+                              ),
+                            )
+                          : Text(
+                              'Share Moment',
+                              style: GoogleFonts.inter(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
+import 'package:vottery/routes/app_routes.dart';
 
 class AdminBlockchainAuditWidget extends StatelessWidget {
   const AdminBlockchainAuditWidget({super.key});
@@ -38,10 +39,10 @@ class AdminBlockchainAuditWidget extends StatelessWidget {
           _buildAuditButton(
             context,
             icon: Icons.search,
-            label: 'Transaction Search',
+            label: 'Vote receipts & audit',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Transaction search tool coming soon')),
+              Navigator.of(context, rootNavigator: true).pushNamed(
+                AppRoutes.blockchainVoteReceiptCenter,
               );
             },
           ),
@@ -49,12 +50,10 @@ class AdminBlockchainAuditWidget extends StatelessWidget {
           _buildAuditButton(
             context,
             icon: Icons.verified_user,
-            label: 'Hash Chain Verification',
+            label: 'Verification hub',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Hash chain verification tool coming soon'),
-                ),
+              Navigator.of(context, rootNavigator: true).pushNamed(
+                AppRoutes.enhancedBlockchainVoteVerificationHub,
               );
             },
           ),
@@ -62,10 +61,10 @@ class AdminBlockchainAuditWidget extends StatelessWidget {
           _buildAuditButton(
             context,
             icon: Icons.account_tree,
-            label: 'Merkle Tree Generator',
+            label: 'Blockchain audit portal',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Merkle tree generator coming soon')),
+              Navigator.of(context, rootNavigator: true).pushNamed(
+                AppRoutes.blockchainAuditPortal,
               );
             },
           ),

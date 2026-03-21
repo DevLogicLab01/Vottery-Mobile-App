@@ -1,4 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
@@ -531,14 +536,51 @@ class _VerifyAuditElectionsHubState extends State<VerifyAuditElectionsHub>
     }
   }
 
-  void _downloadAuditReport(Map<String, dynamic> report) {
-    // TODO: Implement PDF download
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Audit report download will be implemented'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-      ),
-    );
+  Future<void> _downloadAuditReport(Map<String, dynamic> report) async {
+    try {
+      final pdf = pw.Document();
+      final title = report['report_name']?.toString() ?? 'Election Audit Report';
+      final generatedAt =
+          report['generated_at']?.toString() ?? DateTime.now().toIso8601String();
+      final verificationStatus =
+          report['verification_status']?.toString() ?? 'unknown';
+      final electionId = report['election_id']?.toString() ?? 'N/A';
+      final blockchainRef = report['blockchain_reference']?.toString() ?? 'N/A';
+      final reportId = report['id']?.toString() ?? 'N/A';
+
+      pdf.addPage(
+        pw.MultiPage(
+          build: (context) => [
+            pw.Header(level: 0, child: pw.Text(title)),
+            pw.Paragraph(text: 'Report ID: $reportId'),
+            pw.Paragraph(text: 'Election ID: $electionId'),
+            pw.Paragraph(text: 'Generated At: $generatedAt'),
+            pw.Paragraph(text: 'Verification Status: $verificationStatus'),
+            pw.Paragraph(text: 'Blockchain Reference: $blockchainRef'),
+          ],
+        ),
+      );
+
+      final dir = await getTemporaryDirectory();
+      final file = File(
+        '${dir.path}/audit-report-${DateTime.now().millisecondsSinceEpoch}.pdf',
+      );
+      await file.writeAsBytes(await pdf.save());
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Election audit report',
+        subject: title,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not export report: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
   }
 
   void _showInfoDialog() {

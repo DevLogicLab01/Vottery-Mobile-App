@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../routes/app_routes.dart';
 import '../../services/sla_monitoring_service.dart';
 import './widgets/critical_alerts_feed_widget.dart';
 import './widgets/downtime_calendar_widget.dart';
@@ -149,7 +150,7 @@ class _ProductionSlaMonitoringDashboardState
               title: Text('Security Monitoring'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.pushNamed(context, '/security-monitoring-dashboard');
+                Navigator.pushNamed(context, AppRoutes.securityMonitoringDashboard);
               },
             ),
             ListTile(
@@ -159,7 +160,7 @@ class _ProductionSlaMonitoringDashboardState
                 Navigator.pop(context);
                 Navigator.pushNamed(
                   context,
-                  '/automated-incident-response-center',
+                  AppRoutes.automatedIncidentResponseCenter,
                 );
               },
             ),
@@ -170,7 +171,7 @@ class _ProductionSlaMonitoringDashboardState
                 Navigator.pop(context);
                 Navigator.pushNamed(
                   context,
-                  '/real-time-threat-correlation-dashboard',
+                  AppRoutes.realTimeThreatCorrelationDashboard,
                 );
               },
             ),

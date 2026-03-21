@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../framework/shared_constants.dart';
 import './openai_embeddings_service.dart';
 
 /// Feed Ranking Service
@@ -186,13 +188,17 @@ class FeedRankingService {
           currentCategory: content['category'] ?? '',
         );
 
-        // Calculate final ranking score
-        final finalScore =
+        // Calculate final ranking score (sponsored elections: same 2.0× as Web Gemini service)
+        var finalScore =
             ((semanticScore * _semanticWeight) +
             (collaborativeScore * _collaborativeWeight) +
             (recencyBoost * _recencyWeight) +
             (popularityBoost * _popularityWeight) -
             (diversityPenalty * _diversityPenalty));
+        if (contentType == 'election' &&
+            sponsoredElectionIds.contains(contentId)) {
+          finalScore *= SharedConstants.sponsoredElectionRankingWeightMultiplier;
+        }
 
         final rankingExplanation = {
           'semantic_similarity': semanticScore,

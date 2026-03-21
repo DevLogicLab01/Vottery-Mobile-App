@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/perplexity_service.dart';
 
@@ -194,7 +195,7 @@ class AnomalyPredictionSystem {
         response['choices']?[0]?['message']?['content'] as String? ?? '',
       );
     } catch (e) {
-      print('⚠️ Perplexity prediction failed: $e');
+      debugPrint('Perplexity prediction failed: $e');
       return [];
     }
   }
@@ -319,7 +320,7 @@ Return predictions in this format:
           .limit(20);
 
       // Get recent analysis results
-      final recentAnalyses = await _supabase
+      await _supabase
           .from('fraud_analysis_results')
           .select()
           .order('analysis_timestamp', ascending: false)
@@ -343,8 +344,7 @@ Return predictions in this format:
 
   /// Extract features for anomaly detection
   List<Map<String, dynamic>> _extractFeatures(List<Map<String, dynamic>> logs) {
-    // Group logs by time windows (e.g., 1-hour windows)
-    final windowSize = Duration(hours: 1);
+    // Group logs by 1-hour windows
     final windows = <DateTime, List<Map<String, dynamic>>>{};
 
     for (final log in logs) {

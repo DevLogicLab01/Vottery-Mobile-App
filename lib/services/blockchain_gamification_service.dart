@@ -21,8 +21,6 @@ class BlockchainGamificationService {
   AuthService get _auth => AuthService.instance;
 
   // Blockchain configuration (Polygon network for low gas fees)
-  static const String _polygonRpcUrl =
-      'https://polygon-rpc.com'; // Production: Use environment variable
   static const String _blockchainNetwork = 'polygon';
 
   /// Log VP transaction to blockchain

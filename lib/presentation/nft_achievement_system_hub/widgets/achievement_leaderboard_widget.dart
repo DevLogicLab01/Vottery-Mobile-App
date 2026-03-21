@@ -18,10 +18,18 @@ class AchievementLeaderboardWidget extends StatelessWidget {
             Icon(Icons.leaderboard, size: 80, color: theme.colorScheme.outline),
             SizedBox(height: 2.h),
             Text(
-              'Leaderboard Coming Soon',
+              'No leaderboard data yet',
               style: theme.textTheme.titleLarge?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
+            ),
+            SizedBox(height: 1.h),
+            Text(
+              'Achievements will appear once users start earning badges.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

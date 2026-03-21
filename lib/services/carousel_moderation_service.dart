@@ -16,7 +16,6 @@ class CarouselModerationService {
   CarouselModerationService._();
 
   final SupabaseService _supabaseService = SupabaseService.instance;
-  final AnthropicService _claudeService = AnthropicService.instance;
   final PerplexityService _perplexityService = PerplexityService.instance;
 
   StreamSubscription? _moderationSubscription;

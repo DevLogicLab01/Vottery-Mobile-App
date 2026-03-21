@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../../../routes/app_routes.dart';
 import '../../../theme/app_theme.dart';
 
 class DeferredImportsManagerWidget extends StatelessWidget {
@@ -11,7 +12,7 @@ class DeferredImportsManagerWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final deferredRoutes = [
       {
-        'route': '/admin-dashboard',
+        'route': AppRoutes.adminDashboard,
         'status': 'deferred',
         'size': 2.1,
         'loadTime': 340,
@@ -23,7 +24,7 @@ class DeferredImportsManagerWidget extends StatelessWidget {
         'loadTime': 280,
       },
       {
-        'route': '/ai-analytics-hub',
+        'route': AppRoutes.aiAnalyticsHub,
         'status': 'deferred',
         'size': 2.5,
         'loadTime': 420,

@@ -42,7 +42,7 @@ class _CreateAutomationRuleDialogState extends State<CreateAutomationRuleDialog>
           .where((e) => e.value)
           .map((e) => {'action': e.key})
           .toList();
-      await AdminAutomationRulesService.createRule({
+      final ok = await AdminAutomationRulesService.createRule({
         'rule_id': 'rule_${DateTime.now().millisecondsSinceEpoch}',
         'rule_type': _selectedType.name,
         'rule_name': _nameController.text.trim().isEmpty ? '${_selectedType.name} Rule' : _nameController.text.trim(),
@@ -51,9 +51,16 @@ class _CreateAutomationRuleDialogState extends State<CreateAutomationRuleDialog>
         'schedule': _scheduleController.text.trim(),
         'is_enabled': false,
       });
-      if (mounted) {
+      if (mounted && ok) {
         Navigator.pop(context);
         widget.onCreated();
+      } else if (mounted && !ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to create automation rule'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isCreating = false);

@@ -1,4 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../framework/shared_constants.dart';
 import './supabase_service.dart';
 import './ai/ai_service_base.dart';
 import './telnyx_sms_service.dart';
@@ -122,7 +125,15 @@ class CreatorChurnPredictionService {
       final metrics = List<Map<String, dynamic>>.from(metricsResponse);
 
       if (metrics.isEmpty) {
-        return _getDefaultChurnAnalysis();
+        return {
+          'churn_probability': 0.0,
+          'risk_level': 'low',
+          'churn_timeframe_days': 30,
+          'posting_decline_rate': 0.0,
+          'earnings_decline_rate': 0.0,
+          'engagement_decline_rate': 0.0,
+          'login_gap_days': 0,
+        };
       }
 
       // Calculate engagement decline rate
@@ -232,7 +243,15 @@ class CreatorChurnPredictionService {
       };
     } catch (e) {
       debugPrint('Churn analysis error: $e');
-      return _getDefaultChurnAnalysis();
+      return {
+        'churn_probability': 0.0,
+        'risk_level': 'low',
+        'churn_timeframe_days': 30,
+        'posting_decline_rate': 0.0,
+        'earnings_decline_rate': 0.0,
+        'engagement_decline_rate': 0.0,
+        'login_gap_days': 0,
+      };
     }
   }
 
@@ -344,6 +363,7 @@ Return structured JSON with keys: probability, confidence, timeframe_days, prima
     Map<String, dynamic>? claudeAnalysis,
   }) async {
     try {
+      final predictedAt = DateTime.now().toIso8601String();
       final response = await _supabase
           .from('creator_churn_predictions')
           .upsert({
@@ -354,11 +374,27 @@ Return structured JSON with keys: probability, confidence, timeframe_days, prima
             'primary_drivers': primaryDrivers,
             'recommended_interventions': recommendedInterventions,
             'claude_analysis': claudeAnalysis,
-            'predicted_at': DateTime.now().toIso8601String(),
+            'predicted_at': predictedAt,
             'intervention_sent': false,
           }, onConflict: 'creator_user_id')
           .select('prediction_id')
           .single();
+
+      await _supabase.from('ml_predictions').upsert({
+        'model_type': 'churn_prediction',
+        'entity_type': 'creator',
+        'entity_id': creatorUserId,
+        'probability_score': (churnProbability * 100).toDouble(),
+        'risk_level': riskLevel,
+        'prediction_window': '$churnTimeframeDays days',
+        'confidence_score': claudeAnalysis?['confidence'] ?? 0.0,
+        'feature_payload': {
+          'primary_drivers': primaryDrivers,
+          'recommended_interventions': recommendedInterventions,
+          'claude_analysis': claudeAnalysis,
+        },
+        'predicted_at': predictedAt,
+      });
 
       return response['prediction_id'];
     } catch (e) {
@@ -411,7 +447,7 @@ Return structured JSON with keys: probability, confidence, timeframe_days, prima
       }).toList();
     } catch (e) {
       debugPrint('Fetch at-risk creators error: $e');
-      return _getMockPredictions();
+      return [];
     }
   }
 
@@ -428,6 +464,19 @@ Return structured JSON with keys: probability, confidence, timeframe_days, prima
   }) async {
     try {
       bool anySent = false;
+      String? resolvedPhone = phoneNumber;
+      String? resolvedEmail = email;
+
+      if ((resolvedPhone == null || resolvedPhone.isEmpty) &&
+          (resolvedEmail == null || resolvedEmail.isEmpty)) {
+        final profile = await _supabase
+            .from('user_profiles')
+            .select('phone_number, email')
+            .eq('id', creatorUserId)
+            .maybeSingle();
+        resolvedPhone = profile?['phone_number'] as String?;
+        resolvedEmail = profile?['email'] as String?;
+      }
 
       // Determine campaign type based on timeframe
       final isUrgent = churnTimeframeDays <= 7;
@@ -436,7 +485,7 @@ Return structured JSON with keys: probability, confidence, timeframe_days, prima
           : 'proactive_engagement';
 
       // Send SMS if phone available
-      if (phoneNumber != null && phoneNumber.isNotEmpty) {
+      if (resolvedPhone != null && resolvedPhone.isNotEmpty) {
         final smsIntervention = interventions.firstWhere(
           (i) => i['type'] == 'sms',
           orElse: () => {
@@ -450,7 +499,7 @@ Return structured JSON with keys: probability, confidence, timeframe_days, prima
             'Hi $creatorName, we miss your content! Your $tier creator benefits are waiting.';
 
         await _sendSMSRetention(
-          phoneNumber: phoneNumber,
+          phoneNumber: resolvedPhone,
           message: smsMessage,
           creatorName: creatorName,
         );
@@ -458,9 +507,9 @@ Return structured JSON with keys: probability, confidence, timeframe_days, prima
       }
 
       // Send email if available
-      if (email != null && email.isNotEmpty) {
+      if (resolvedEmail != null && resolvedEmail.isNotEmpty) {
         await _sendEmailRetention(
-          email: email,
+          email: resolvedEmail,
           creatorName: creatorName,
           tier: tier,
           isUrgent: isUrgent,
@@ -567,15 +616,15 @@ Return structured JSON with keys: probability, confidence, timeframe_days, prima
     } catch (e) {
       debugPrint('Fetch churn analytics error: $e');
       return {
-        'total_at_risk': 47,
-        'critical_count': 8,
-        'high_count': 15,
-        'medium_count': 16,
-        'low_count': 8,
-        'intervention_sent_count': 23,
-        'response_rate': 0.62,
-        'saved_creators_count': 142,
-        'retention_roi': 21300.0,
+        'total_at_risk': 0,
+        'critical_count': 0,
+        'high_count': 0,
+        'medium_count': 0,
+        'low_count': 0,
+        'intervention_sent_count': 0,
+        'response_rate': 0.0,
+        'saved_creators_count': 0,
+        'retention_roi': 0.0,
       };
     }
   }
@@ -645,18 +694,6 @@ Return structured JSON with keys: probability, confidence, timeframe_days, prima
     }
   }
 
-  Map<String, dynamic> _getDefaultChurnAnalysis() {
-    return {
-      'churn_probability': 0.0,
-      'risk_level': 'low',
-      'churn_timeframe_days': 30,
-      'posting_decline_rate': 0.0,
-      'earnings_decline_rate': 0.0,
-      'engagement_decline_rate': 0.0,
-      'login_gap_days': 0,
-    };
-  }
-
   Map<String, dynamic> _getDefaultClaudeAnalysis(
     Map<String, dynamic> engagementData,
     Map<String, dynamic> creatorProfile,
@@ -681,118 +718,39 @@ Return structured JSON with keys: probability, confidence, timeframe_days, prima
     };
   }
 
-  List<ChurnPrediction> _getMockPredictions() {
-    return [
-      ChurnPrediction(
-        predictionId: 'mock-1',
-        creatorUserId: 'user-1',
-        creatorName: 'Alex Rivera',
-        tier: 'gold',
-        churnProbability: 0.82,
-        churnTimeframeDays: 7,
-        riskLevel: 'critical',
-        primaryDrivers: [
-          {'driver': 'Posting frequency decline', 'impact_percentage': 40},
-          {'driver': 'VP earnings drop', 'impact_percentage': 35},
-        ],
-        recommendedInterventions: [
-          {
-            'type': 'sms',
-            'message': 'Hi Alex, we miss your content!',
-            'effectiveness': 0.75,
-          },
-        ],
-        predictedAt: DateTime.now().subtract(const Duration(hours: 2)),
-        interventionSent: false,
-      ),
-      ChurnPrediction(
-        predictionId: 'mock-2',
-        creatorUserId: 'user-2',
-        creatorName: 'Maria Santos',
-        tier: 'silver',
-        churnProbability: 0.65,
-        churnTimeframeDays: 14,
-        riskLevel: 'high',
-        primaryDrivers: [
-          {'driver': 'Login gap > 7 days', 'impact_percentage': 45},
-          {'driver': 'Engagement rate drop', 'impact_percentage': 30},
-        ],
-        recommendedInterventions: [
-          {
-            'type': 'email',
-            'message': 'We miss you, Maria!',
-            'effectiveness': 0.60,
-          },
-        ],
-        predictedAt: DateTime.now().subtract(const Duration(hours: 5)),
-        interventionSent: true,
-      ),
-      ChurnPrediction(
-        predictionId: 'mock-3',
-        creatorUserId: 'user-3',
-        creatorName: 'James Chen',
-        tier: 'platinum',
-        churnProbability: 0.45,
-        churnTimeframeDays: 21,
-        riskLevel: 'medium',
-        primaryDrivers: [
-          {'driver': 'Content views declining', 'impact_percentage': 35},
-          {'driver': 'Template sales drop', 'impact_percentage': 25},
-        ],
-        recommendedInterventions: [
-          {
-            'type': 'push_notification',
-            'message': 'New opportunities await!',
-            'effectiveness': 0.50,
-          },
-        ],
-        predictedAt: DateTime.now().subtract(const Duration(hours: 8)),
-        interventionSent: false,
-      ),
-      ChurnPrediction(
-        predictionId: 'mock-4',
-        creatorUserId: 'user-4',
-        creatorName: 'Sofia Williams',
-        tier: 'bronze',
-        churnProbability: 0.78,
-        churnTimeframeDays: 7,
-        riskLevel: 'critical',
-        primaryDrivers: [
-          {'driver': 'No posts in 10 days', 'impact_percentage': 50},
-          {'driver': 'Zero earnings this week', 'impact_percentage': 30},
-        ],
-        recommendedInterventions: [
-          {
-            'type': 'sms',
-            'message': 'Sofia, your creator journey needs you!',
-            'effectiveness': 0.70,
-          },
-        ],
-        predictedAt: DateTime.now().subtract(const Duration(hours: 1)),
-        interventionSent: false,
-      ),
-      ChurnPrediction(
-        predictionId: 'mock-5',
-        creatorUserId: 'user-5',
-        creatorName: 'David Kim',
-        tier: 'gold',
-        churnProbability: 0.35,
-        churnTimeframeDays: 30,
-        riskLevel: 'medium',
-        primaryDrivers: [
-          {'driver': 'Reduced posting frequency', 'impact_percentage': 30},
-          {'driver': 'Lower engagement rate', 'impact_percentage': 25},
-        ],
-        recommendedInterventions: [
-          {
-            'type': 'email',
-            'message': 'David, here are your growth opportunities!',
-            'effectiveness': 0.55,
-          },
-        ],
-        predictedAt: DateTime.now().subtract(const Duration(hours: 12)),
-        interventionSent: false,
-      ),
-    ];
+  static const String _prefLastChurnUserRefreshMs =
+      'last_creator_churn_user_refresh_epoch_ms';
+
+  /// Best-effort: invokes Edge `creator-churn-user-refresh` for signed-in users (throttled client-side).
+  /// Server enforces 1× per UTC day; full batch remains `creator-churn-prediction-cron` + CRON_SECRET.
+  Future<void> invokeUserChurnRefreshIfDue() async {
+    if (_supabase.auth.currentUser == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final last = prefs.getInt(_prefLastChurnUserRefreshMs) ?? 0;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - last < const Duration(hours: 20).inMilliseconds) return;
+
+    try {
+      await _supabase.functions.invoke(SharedConstants.creatorChurnUserRefresh);
+      await prefs.setInt(_prefLastChurnUserRefreshMs, now);
+    } catch (e) {
+      debugPrint('invokeUserChurnRefreshIfDue: $e');
+    }
+  }
+
+  /// Geo velocity pipeline (Edge `record-login-geo`); throttled to 1× / 5 min per device.
+  Future<void> invokeRecordLoginGeoIfDue() async {
+    if (_supabase.auth.currentUser == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final last = prefs.getInt(_prefLastRecordLoginGeoMs) ?? 0;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - last < const Duration(minutes: 5).inMilliseconds) return;
+
+    try {
+      await _supabase.functions.invoke(SharedConstants.recordLoginGeo);
+      await prefs.setInt(_prefLastRecordLoginGeoMs, now);
+    } catch (e) {
+      debugPrint('invokeRecordLoginGeoIfDue: $e');
+    }
   }
 }

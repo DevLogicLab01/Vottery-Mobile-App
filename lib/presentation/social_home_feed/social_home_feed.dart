@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../routes/app_routes.dart';
 import '../../services/prediction_service.dart';
 import '../../services/social_service.dart';
 import '../../services/vp_service.dart';
@@ -236,7 +237,7 @@ class _SocialHomeFeedState extends State<SocialHomeFeed> {
                         onPoolTap: (poolId) {
                           Navigator.pushNamed(
                             context,
-                            '/prediction-detail',
+                            AppRoutes.predictionAnalyticsDashboard,
                             arguments: poolId,
                           );
                         },
@@ -352,7 +353,7 @@ class _SocialHomeFeedState extends State<SocialHomeFeed> {
               ),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.pushNamed(context, '/create-vote');
+                Navigator.pushNamed(context, AppRoutes.createVote);
               },
             ),
             ListTile(
@@ -404,10 +405,14 @@ class _SocialHomeFeedState extends State<SocialHomeFeed> {
   }
 
   Future<void> _handleEnterPrediction(String poolId) async {
-    Navigator.pushNamed(context, '/prediction-detail', arguments: poolId);
+    Navigator.pushNamed(
+      context,
+      AppRoutes.predictionAnalyticsDashboard,
+      arguments: poolId,
+    );
   }
 
   Future<void> _handleQuickVote(String electionId) async {
-    Navigator.pushNamed(context, '/vote-casting', arguments: electionId);
+    Navigator.pushNamed(context, AppRoutes.voteCasting, arguments: electionId);
   }
 }

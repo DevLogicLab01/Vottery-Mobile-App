@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../widgets/custom_icon_widget.dart';
 
@@ -170,16 +171,7 @@ class BlockchainProofWidget extends StatelessWidget {
                         ),
                         SizedBox(height: 2.h),
                         ElevatedButton.icon(
-                          onPressed: () {
-                            // TODO: Open blockchain explorer
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Blockchain explorer integration coming soon',
-                                ),
-                              ),
-                            );
-                          },
+                          onPressed: () => _openBlockchainExplorer(context),
                           icon: Icon(Icons.open_in_new),
                           label: Text('View on Blockchain Explorer'),
                           style: ElevatedButton.styleFrom(
@@ -274,6 +266,30 @@ class BlockchainProofWidget extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _openBlockchainExplorer(BuildContext context) async {
+    final hash = result['transaction_hash']?.toString() ?? '';
+    if (hash.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No transaction hash available')),
+      );
+      return;
+    }
+
+    final uri = hash.startsWith('0x')
+        ? Uri.parse('https://etherscan.io/tx/$hash')
+        : Uri.parse('https://explorer.solana.com/tx/$hash');
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (launched) return;
+
+    await Clipboard.setData(ClipboardData(text: hash));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Could not open explorer. Transaction hash copied.'),
       ),
     );
   }

@@ -54,7 +54,9 @@ class CarouselInteractionLogger {
       if (result['fraud_detected'] == true) {
         debugPrint('Carousel fraud detected for $userId: $result');
       }
-    }).catchError((e) => debugPrint('Fraud check error: $e'));
+    }).catchError((e) {
+      debugPrint('Fraud check error: $e');
+    });
   }
 
   String _getDeviceFingerprint() {

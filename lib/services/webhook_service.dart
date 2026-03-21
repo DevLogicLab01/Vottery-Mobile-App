@@ -2,8 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:http/http.dart' as http;
 import './supabase_service.dart';
 import './auth_service.dart';
+import './supabase_query_cache_service.dart';
 
 /// Webhook Service for lottery event delivery and management
 class WebhookService {
@@ -14,9 +16,12 @@ class WebhookService {
 
   SupabaseClient get _client => SupabaseService.instance.client;
   AuthService get _auth => AuthService.instance;
+  static const int _maxRetries = 5;
+  static const Duration _baseRetryDelay = Duration(seconds: 1);
 
   /// Create webhook configuration
   Future<Map<String, dynamic>?> createWebhookConfiguration({
+    String? name,
     required String webhookUrl,
     required List<String> eventTypes,
     String? description,
@@ -37,6 +42,7 @@ class WebhookService {
           .from('webhook_configurations')
           .insert({
             'user_id': userId,
+            'name': name,
             'webhook_url': webhookUrl,
             'event_types': eventTypes,
             'description': description,
@@ -166,26 +172,96 @@ class WebhookService {
   }) async {
     try {
       final signature = _generateHMACSignature(payload, secretKey);
+      final timestamp = DateTime.now().toUtc().toIso8601String();
+      final idempotencyKey = _buildIdempotencyKey(
+        configId: configId,
+        eventType: eventType,
+        payload: payload,
+        timestamp: timestamp,
+      );
 
       final logId = await _createDeliveryLog(
         configId: configId,
         eventType: eventType,
         payload: payload,
       );
+      final requestBody = jsonEncode(payload);
 
-      // In production, this would make actual HTTP request
-      // For now, simulate delivery
-      await Future.delayed(Duration(milliseconds: 100));
+      for (int attempt = 1; attempt <= _maxRetries; attempt++) {
+        final stopwatch = Stopwatch()..start();
+        try {
+          final response = await http
+              .post(
+                Uri.parse(webhookUrl),
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-Vottery-Event': eventType,
+                  'X-Vottery-Timestamp': timestamp,
+                  'X-Vottery-Attempt': '$attempt',
+                  'X-Vottery-Signature': signature,
+                  'Idempotency-Key': idempotencyKey,
+                  ...customHeaders,
+                },
+                body: requestBody,
+              )
+              .timeout(Duration(seconds: timeoutSeconds));
+          stopwatch.stop();
 
-      await _updateDeliveryLog(
-        logId: logId,
-        status: 'success',
-        httpStatusCode: 200,
-        responseBody: 'Webhook delivered successfully',
-      );
+          final isSuccess = response.statusCode >= 200 && response.statusCode < 300;
+          final shouldRetry = !isSuccess && response.statusCode >= 500 && attempt < _maxRetries;
+
+          if (isSuccess) {
+            await _updateDeliveryLog(
+              logId: logId,
+              status: 'delivered',
+              httpStatusCode: response.statusCode,
+              responseBody: response.body,
+              attemptCount: attempt,
+              responseTimeMs: stopwatch.elapsedMilliseconds,
+            );
+            SupabaseQueryCacheService.instance
+                .onWebhookDeliveryLogged(webhookId: configId);
+            return;
+          }
+
+          await _updateDeliveryLog(
+            logId: logId,
+            status: shouldRetry ? 'retrying' : 'failed',
+            httpStatusCode: response.statusCode,
+            responseBody: response.body,
+            errorMessage: 'HTTP ${response.statusCode}',
+            attemptCount: attempt,
+            responseTimeMs: stopwatch.elapsedMilliseconds,
+          );
+
+          if (shouldRetry) {
+            await Future.delayed(_retryDelayForAttempt(attempt));
+            continue;
+          }
+          SupabaseQueryCacheService.instance
+              .onWebhookDeliveryLogged(webhookId: configId);
+          return;
+        } catch (deliveryError) {
+          stopwatch.stop();
+          final shouldRetry = attempt < _maxRetries;
+          await _updateDeliveryLog(
+            logId: logId,
+            status: shouldRetry ? 'retrying' : 'failed',
+            errorMessage: deliveryError.toString(),
+            attemptCount: attempt,
+            responseTimeMs: stopwatch.elapsedMilliseconds,
+          );
+          if (shouldRetry) {
+            await Future.delayed(_retryDelayForAttempt(attempt));
+            continue;
+          }
+          SupabaseQueryCacheService.instance
+              .onWebhookDeliveryLogged(webhookId: configId);
+          return;
+        }
+      }
     } catch (e) {
       debugPrint('Deliver webhook error: $e');
-      // Schedule retry if enabled
     }
   }
 
@@ -199,10 +275,13 @@ class WebhookService {
         .from('webhook_delivery_logs')
         .insert({
           'webhook_config_id': configId,
+          'webhook_id': configId,
           'event_type': eventType,
           'payload': payload,
           'delivery_status': 'pending',
+          'status': 'pending',
           'attempt_count': 1,
+          'attempts': 1,
         })
         .select('id')
         .single();
@@ -217,13 +296,27 @@ class WebhookService {
     int? httpStatusCode,
     String? responseBody,
     String? errorMessage,
+    int? attemptCount,
+    int? responseTimeMs,
   }) async {
-    final updates = <String, dynamic>{'delivery_status': status};
+    final updates = <String, dynamic>{
+      'delivery_status': status,
+      'status': status,
+    };
 
     if (httpStatusCode != null) updates['http_status_code'] = httpStatusCode;
+    if (httpStatusCode != null) updates['status_code'] = httpStatusCode;
     if (responseBody != null) updates['response_body'] = responseBody;
     if (errorMessage != null) updates['error_message'] = errorMessage;
-    if (status == 'success') {
+    if (attemptCount != null) {
+      updates['attempt_count'] = attemptCount;
+      updates['attempts'] = attemptCount;
+    }
+    if (responseTimeMs != null) {
+      updates['response_time_ms'] = responseTimeMs;
+      updates['duration_ms'] = responseTimeMs;
+    }
+    if (status == 'success' || status == 'delivered') {
       updates['delivered_at'] = DateTime.now().toIso8601String();
     }
 
@@ -232,16 +325,19 @@ class WebhookService {
 
   /// Get webhook delivery logs
   Future<List<Map<String, dynamic>>> getDeliveryLogs({
-    required String configId,
+    String? configId,
     int limit = 50,
   }) async {
     try {
-      final response = await _client
+      var query = _client
           .from('webhook_delivery_logs')
           .select()
-          .eq('webhook_config_id', configId)
           .order('created_at', ascending: false)
           .limit(limit);
+      if (configId != null && configId.isNotEmpty) {
+        query = query.eq('webhook_config_id', configId);
+      }
+      final response = await query;
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
@@ -289,18 +385,78 @@ class WebhookService {
   /// Test webhook with sample payload
   Future<Map<String, dynamic>> testWebhook({required String configId}) async {
     try {
+      final config = await _client
+          .from('webhook_configurations')
+          .select()
+          .eq('id', configId)
+          .maybeSingle();
+      if (config == null) {
+        return {'success': false, 'message': 'Webhook configuration not found'};
+      }
+
       final testPayload = {
         'event_type': 'test',
         'timestamp': DateTime.now().toIso8601String(),
         'data': {'message': 'This is a test webhook delivery'},
       };
 
-      await triggerWebhook(eventType: 'vote.cast', payload: testPayload);
+      await _deliverWebhook(
+        configId: configId,
+        eventType: 'test.webhook',
+        payload: testPayload,
+        webhookUrl: config['webhook_url']?.toString() ?? '',
+        secretKey: config['secret_key']?.toString() ?? '',
+        customHeaders: Map<String, String>.from(config['custom_headers'] ?? {}),
+        timeoutSeconds: (config['timeout_seconds'] as int?) ?? 30,
+      );
 
       return {'success': true, 'message': 'Test webhook sent successfully'};
     } catch (e) {
       debugPrint('Test webhook error: $e');
       return {'success': false, 'message': 'Test webhook failed: $e'};
+    }
+  }
+
+  /// Retry a failed delivery using its original webhook configuration.
+  Future<Map<String, dynamic>> retryDelivery({required String logId}) async {
+    try {
+      final log = await _client
+          .from('webhook_delivery_logs')
+          .select()
+          .eq('id', logId)
+          .maybeSingle();
+      if (log == null) {
+        return {'success': false, 'message': 'Delivery log not found'};
+      }
+
+      final configId = log['webhook_config_id']?.toString();
+      if (configId == null || configId.isEmpty) {
+        return {'success': false, 'message': 'Missing webhook configuration id'};
+      }
+
+      final config = await _client
+          .from('webhook_configurations')
+          .select()
+          .eq('id', configId)
+          .maybeSingle();
+      if (config == null) {
+        return {'success': false, 'message': 'Webhook configuration not found'};
+      }
+
+      await _deliverWebhook(
+        configId: configId,
+        eventType: log['event_type']?.toString() ?? 'retry.webhook',
+        payload: Map<String, dynamic>.from(log['payload'] ?? {}),
+        webhookUrl: config['webhook_url']?.toString() ?? '',
+        secretKey: config['secret_key']?.toString() ?? '',
+        customHeaders: Map<String, String>.from(config['custom_headers'] ?? {}),
+        timeoutSeconds: (config['timeout_seconds'] as int?) ?? 30,
+      );
+
+      return {'success': true, 'message': 'Retry initiated successfully'};
+    } catch (e) {
+      debugPrint('Retry delivery error: $e');
+      return {'success': false, 'message': 'Retry failed: $e'};
     }
   }
 
@@ -323,5 +479,21 @@ class WebhookService {
     final bytes = utf8.encode(random);
     final digest = sha256.convert(bytes);
     return 'whsec_${digest.toString().substring(0, 32)}';
+  }
+
+  Duration _retryDelayForAttempt(int attempt) {
+    final exponent = attempt - 1;
+    final multiplier = 1 << exponent;
+    return Duration(seconds: _baseRetryDelay.inSeconds * multiplier);
+  }
+
+  String _buildIdempotencyKey({
+    required String configId,
+    required String eventType,
+    required Map<String, dynamic> payload,
+    required String timestamp,
+  }) {
+    final raw = '$configId|$eventType|$timestamp|${jsonEncode(payload)}';
+    return sha256.convert(utf8.encode(raw)).toString();
   }
 }

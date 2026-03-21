@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../services/realtime_dashboard_service.dart';
 import './widgets/connection_status_widget.dart';
@@ -157,7 +158,7 @@ class _RealTimeDashboardRefreshControlCenterState
             title: Text('Analytics Dashboard'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.pushNamed(context, '/admin-dashboard');
+              Navigator.pushNamed(context, AppRoutes.adminDashboard);
             },
           ),
           ListTile(
@@ -165,7 +166,7 @@ class _RealTimeDashboardRefreshControlCenterState
             title: Text('Security Dashboard'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.pushNamed(context, '/ai-security-dashboard');
+              Navigator.pushNamed(context, AppRoutes.aiSecurityDashboard);
             },
           ),
         ],

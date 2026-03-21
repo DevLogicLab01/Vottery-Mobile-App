@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../routes/app_routes.dart';
+import '../../services/supabase_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/error_boundary_wrapper.dart';
 import '../../widgets/shimmer_skeleton_loader.dart';
@@ -23,160 +25,215 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _isRefreshing = false;
+  final _client = SupabaseService.instance.client;
 
-  // Mock data for metrics
-  final List<Map<String, dynamic>> _metrics = [
-    {
-      'title': 'Active Votes',
-      'value': '24',
-      'subtitle': '+3 from yesterday',
-      'iconName': 'how_to_vote',
-      'color': Color(0xFF3B82F6),
-    },
-    {
-      'title': 'User Engagement',
-      'value': '89%',
-      'subtitle': '+5% this week',
-      'iconName': 'trending_up',
-      'color': Color(0xFF10B981),
-    },
-    {
-      'title': 'System Health',
-      'value': '98%',
-      'subtitle': 'All systems operational',
-      'iconName': 'check_circle',
-      'color': Color(0xFF10B981),
-    },
-    {
-      'title': 'Total Users',
-      'value': '1,247',
-      'subtitle': '+42 new this week',
-      'iconName': 'people',
-      'color': Color(0xFF3B82F6),
-    },
-  ];
+  /// Populated from Supabase on load (no seeded mock rows).
+  List<Map<String, dynamic>> _metrics = [];
 
-  // Mock data for recent votes requiring moderation
-  final List<Map<String, dynamic>> _recentVotes = [
-    {
-      'id': 1,
-      'title': 'Community Park Renovation Project',
-      'creator': 'Sarah Johnson',
-      'time': '2 hours ago',
-      'votes': 156,
-      'status': 'Pending',
-    },
-    {
-      'id': 2,
-      'title': 'New Library Hours Extension',
-      'creator': 'Michael Chen',
-      'time': '4 hours ago',
-      'votes': 89,
-      'status': 'Pending',
-    },
-    {
-      'id': 3,
-      'title': 'School Budget Allocation 2026',
-      'creator': 'Emily Rodriguez',
-      'time': '6 hours ago',
-      'votes': 234,
-      'status': 'Approved',
-    },
-  ];
+  List<Map<String, dynamic>> _recentVotes = [];
 
-  // Mock data for system status
-  final List<Map<String, dynamic>> _systemStatus = [
-    {
-      'label': 'Server Health',
-      'value': '99.8% Uptime',
-      'isHealthy': true,
-      'iconName': 'dns',
-    },
-    {
-      'label': 'Database Sync',
-      'value': 'Real-time',
-      'isHealthy': true,
-      'iconName': 'sync',
-    },
-    {
-      'label': 'Notification Delivery',
-      'value': '97.2% Success',
-      'isHealthy': true,
-      'iconName': 'notifications_active',
-    },
-  ];
+  List<Map<String, dynamic>> _systemStatus = [];
 
-  // Mock data for activity feed
-  final List<Map<String, dynamic>> _activityFeed = [
-    {
-      'type': 'user',
-      'title': 'New User Registration',
-      'description': 'John Smith registered as a new voter',
-      'time': '5 minutes ago',
-    },
-    {
-      'type': 'vote',
-      'title': 'Vote Submitted',
-      'description': 'Community Park Renovation received 10 new votes',
-      'time': '12 minutes ago',
-    },
-    {
-      'type': 'alert',
-      'title': 'System Alert',
-      'description': 'High traffic detected on voting endpoint',
-      'time': '25 minutes ago',
-    },
-    {
-      'type': 'user',
-      'title': 'User Verification',
-      'description': 'Maria Garcia completed biometric verification',
-      'time': '1 hour ago',
-    },
-    {
-      'type': 'system',
-      'title': 'Database Backup',
-      'description': 'Automated backup completed successfully',
-      'time': '2 hours ago',
-    },
-  ];
+  List<Map<String, dynamic>> _activityFeed = [];
 
-  // Mock data for quick actions
+  /// Quick actions navigate to production screens (parity with web admin flows).
   List<Map<String, dynamic>> get _quickActions => [
     {
       'label': 'Churn Prediction',
       'iconName': 'warning_amber',
       'color': Color(0xFFEF4444),
-      'route': '/creator-churn-prediction-dashboard',
+      'route': AppRoutes.creatorChurnPredictionDashboard,
     },
     {
       'label': 'Growth Analytics',
       'iconName': 'trending_up',
       'color': Color(0xFF10B981),
-      'route': '/creator-growth-analytics-dashboard',
+      'route': AppRoutes.creatorGrowthAnalyticsDashboard,
     },
     {
       'label': 'Performance Hub',
       'iconName': 'speed',
       'color': Color(0xFF3B82F6),
-      'route': '/mobile-performance-optimization-hub',
+      'route': AppRoutes.mobilePerformanceOptimizationHub,
     },
     {
       'label': 'Metrics Monitor',
       'iconName': 'monitor_heart',
       'color': Color(0xFF8B5CF6),
-      'route': '/real-time-creator-metrics-monitor',
+      'route': AppRoutes.realTimeCreatorMetricsMonitor,
     },
     {
       'label': 'Launch Checklist',
       'iconName': 'rocket_launch',
       'color': Color(0xFFF59E0B),
-      'route': '/mobile-launch-readiness-checklist',
+      'route': AppRoutes.mobileLaunchReadinessChecklist,
     },
   ];
 
   // Add this method
   Future<void> _loadData() async {
-    await _handleRefresh();
+    await _loadDashboardData();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    try {
+      final elections = await _client
+          .from('elections')
+          .select('id, title, created_at, created_by, vote_count, status')
+          .order('created_at', ascending: false)
+          .limit(8);
+      final users = await _client
+          .from('user_profiles')
+          .select('id, created_at, role, status');
+      final flags = await _client
+          .from('content_flags')
+          .select('id, status, created_at')
+          .order('created_at', ascending: false)
+          .limit(10);
+
+      final activeVotes = elections
+          .where((e) => (e['status']?.toString() ?? '') == 'active')
+          .length;
+      final activeUsers = users
+          .where((u) => (u['status']?.toString() ?? 'active') == 'active')
+          .length;
+      final pendingVotes = elections
+          .where((e) => (e['status']?.toString() ?? '') == 'pending')
+          .toList();
+      final recentActivities = <Map<String, dynamic>>[];
+
+      for (final election in elections.take(5)) {
+        recentActivities.add({
+          'type': 'vote',
+          'title': 'Election update',
+          'description': '${election['title'] ?? 'Election'} received activity',
+          'time': _relativeTime(election['created_at']?.toString()),
+        });
+      }
+
+      for (final flag in flags.take(3)) {
+        recentActivities.add({
+          'type': 'alert',
+          'title': 'Moderation alert',
+          'description':
+              'Content flag status: ${flag['status']?.toString() ?? 'pending_review'}',
+          'time': _relativeTime(flag['created_at']?.toString()),
+        });
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _metrics = [
+          {
+            'title': 'Active Votes',
+            'value': '$activeVotes',
+            'subtitle': '${pendingVotes.length} pending approvals',
+            'iconName': 'how_to_vote',
+            'color': const Color(0xFF3B82F6),
+          },
+          {
+            'title': 'User Engagement',
+            'value': users.isEmpty
+                ? '0%'
+                : '${((activeUsers / users.length) * 100).toStringAsFixed(0)}%',
+            'subtitle': '$activeUsers active users',
+            'iconName': 'trending_up',
+            'color': const Color(0xFF10B981),
+          },
+          {
+            'title': 'System Health',
+            'value': 'Live',
+            'subtitle': 'Supabase-connected',
+            'iconName': 'check_circle',
+            'color': const Color(0xFF10B981),
+          },
+          {
+            'title': 'Total Users',
+            'value': '${users.length}',
+            'subtitle': 'Production records',
+            'iconName': 'people',
+            'color': const Color(0xFF3B82F6),
+          },
+        ];
+
+        _recentVotes = pendingVotes
+            .map(
+              (vote) => {
+                'id': vote['id'],
+                'title': vote['title'] ?? 'Untitled Election',
+                'creator': vote['created_by']?.toString() ?? 'Unknown',
+                'time': _relativeTime(vote['created_at']?.toString()),
+                'votes': vote['vote_count'] ?? 0,
+                'status': (vote['status']?.toString() ?? 'Pending')
+                    .replaceFirstMapped(RegExp(r'^[a-z]'),
+                        (match) => match.group(0)!.toUpperCase()),
+              },
+            )
+            .toList();
+
+        _activityFeed = recentActivities;
+
+        _systemStatus = [
+          {
+            'label': 'Database',
+            'value': 'Connected',
+            'isHealthy': true,
+            'iconName': 'cloud_done',
+          },
+          {
+            'label': 'Elections loaded',
+            'value': '${elections.length} records',
+            'isHealthy': true,
+            'iconName': 'how_to_vote',
+          },
+          {
+            'label': 'Moderation flags',
+            'value': '${flags.length} recent',
+            'isHealthy': true,
+            'iconName': 'flag',
+          },
+        ];
+      });
+    } catch (e, st) {
+      debugPrint('Admin dashboard load failed: $e\n$st');
+      if (!mounted) return;
+      setState(() {
+        _metrics = [];
+        _recentVotes = [];
+        _activityFeed = [];
+        _systemStatus = [
+          {
+            'label': 'Data source',
+            'value': 'Unavailable',
+            'isHealthy': false,
+            'iconName': 'error_outline',
+          },
+        ];
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not load admin data: ${e.toString()}'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  String _relativeTime(String? iso) {
+    if (iso == null) return 'just now';
+    final timestamp = DateTime.tryParse(iso);
+    if (timestamp == null) return 'just now';
+    final diff = DateTime.now().difference(timestamp);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inHours < 1) return '${diff.inMinutes} minutes ago';
+    if (diff.inDays < 1) return '${diff.inHours} hours ago';
+    return '${diff.inDays} days ago';
   }
 
   @override
@@ -297,14 +354,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                   _buildDrawerItem(context, 'Users', 'people', false, () {
                     Navigator.pop(context);
-                    _showComingSoon(context, 'Users Management');
+                    Navigator.of(context, rootNavigator: true)
+                        .pushNamed(AppRoutes.bulkManagementScreen);
                   }),
                   _buildDrawerItem(context, 'Votes', 'how_to_vote', false, () {
                     Navigator.pop(context);
                     Navigator.of(
                       context,
                       rootNavigator: true,
-                    ).pushNamed('/vote-dashboard');
+                    ).pushNamed(AppRoutes.voteDashboard);
                   }),
                   _buildDrawerItem(
                     context,
@@ -313,7 +371,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     false,
                     () {
                       Navigator.pop(context);
-                      _showComingSoon(context, 'Analytics');
+                      Navigator.of(context, rootNavigator: true)
+                          .pushNamed(AppRoutes.analyticsExportReportingHub);
                     },
                   ),
                   _buildDrawerItem(context, 'Settings', 'settings', false, () {
@@ -321,7 +380,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     Navigator.of(
                       context,
                       rootNavigator: true,
-                    ).pushNamed('/user-profile');
+                    ).pushNamed(AppRoutes.userProfile);
                   }),
                   Divider(
                     height: 1,
@@ -337,7 +396,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       Navigator.of(
                         context,
                         rootNavigator: true,
-                      ).pushNamed('/vote-history');
+                      ).pushNamed(AppRoutes.voteHistory);
                     },
                   ),
                   _buildDrawerItem(
@@ -350,7 +409,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       Navigator.of(
                         context,
                         rootNavigator: true,
-                      ).pushNamed('/create-vote');
+                      ).pushNamed(AppRoutes.createVote);
                     },
                   ),
                   _buildDrawerItem(
@@ -363,7 +422,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       Navigator.of(
                         context,
                         rootNavigator: true,
-                      ).pushNamed('/offlineSyncDiagnostics');
+                      ).pushNamed(AppRoutes.offlineSyncDiagnostics);
                     },
                   ),
                   _buildDrawerItem(
@@ -389,7 +448,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       Navigator.of(
                         context,
                         rootNavigator: true,
-                      ).pushNamed('/ai-quest-generation');
+                      ).pushNamed(AppRoutes.aiQuestGeneration);
                     },
                   ),
                   _buildDrawerItem(
@@ -402,7 +461,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       Navigator.of(
                         context,
                         rootNavigator: true,
-                      ).pushNamed('/ai-security-dashboard');
+                      ).pushNamed(AppRoutes.aiSecurityDashboard);
                     },
                   ),
                   ListTile(
@@ -412,7 +471,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                     title: Text('AI Analytics Hub'),
                     onTap: () {
-                      Navigator.pushNamed(context, '/ai-analytics-hub');
+                      Navigator.pushNamed(context, AppRoutes.aiAnalyticsHub);
                     },
                   ),
                   ListTile(
@@ -424,7 +483,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     onTap: () {
                       Navigator.pushNamed(
                         context,
-                        '/collaborative-voting-room',
+                        AppRoutes.collaborativeVotingRoom,
                       );
                     },
                   ),
@@ -435,7 +494,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                     title: Text('Location Voting'),
                     onTap: () {
-                      Navigator.pushNamed(context, '/location-voting');
+                      Navigator.pushNamed(context, AppRoutes.locationVoting);
                     },
                   ),
                   ListTile(
@@ -445,7 +504,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       Navigator.pop(context);
                       Navigator.pushNamed(
                         context,
-                        '/content-distribution-control-center',
+                        AppRoutes.contentDistributionControlCenter,
                       );
                     },
                   ),
@@ -483,10 +542,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                   ListTile(
                     leading: Icon(Icons.gavel, color: theme.colorScheme.primary),
-                    title: Text('Dispute resolution'),
+                    title: Text('International payment disputes'),
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.pushNamed(context, AppRoutes.claudeDisputeResolutionAdmin);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.psychology_outlined, color: theme.colorScheme.primary),
+                    title: Text('Claude dispute moderation (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.claudeAiDisputeModerationAdmin);
                     },
                   ),
                   ListTile(
@@ -495,6 +562,142 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.pushNamed(context, AppRoutes.multiCurrencySettlementAdmin);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.subscriptions_outlined, color: theme.colorScheme.primary),
+                    title: Text('Admin subscription analytics (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.adminSubscriptionAnalyticsAdmin);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.payment, color: theme.colorScheme.primary),
+                    title: Text('Stripe subscriptions (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.stripeSubscriptionManagementAdmin);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.credit_card, color: theme.colorScheme.primary),
+                    title: Text('Stripe payment hub (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.stripePaymentIntegrationHubAdmin);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.calculate_outlined, color: theme.colorScheme.primary),
+                    title: Text('Automated payout calculation (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.automatedPayoutCalculationEngineAdmin);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.language, color: theme.colorScheme.primary),
+                    title: Text('Country-based payout processing (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.countryBasedPayoutProcessingEngineAdmin);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.videogame_asset, color: theme.colorScheme.primary),
+                    title: Text('Gamification admin (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.comprehensiveGamificationAdminWeb);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.settings_suggest, color: theme.colorScheme.primary),
+                    title: Text('Platform gamification engine (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.platformGamificationCoreEngineAdmin);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.campaign, color: theme.colorScheme.primary),
+                    title: Text('Gamification campaigns (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.gamificationCampaignManagementAdmin);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.emoji_events_outlined, color: theme.colorScheme.primary),
+                    title: Text('Gamification rewards (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.gamificationRewardsManagementAdmin);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.verified_user, color: theme.colorScheme.primary),
+                    title: Text('Security compliance automation (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.securityComplianceAutomationAdmin);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.public, color: theme.colorScheme.primary),
+                    title: Text('Localization & tax reporting (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.localizationTaxReportingAdmin);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.policy, color: theme.colorScheme.primary),
+                    title: Text('Compliance dashboard (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.complianceDashboardWeb);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.fact_check, color: theme.colorScheme.primary),
+                    title: Text('Compliance audit (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.complianceAuditDashboardWeb);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.gavel_outlined, color: theme.colorScheme.primary),
+                    title: Text('Regulatory automation (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.regulatoryComplianceAutomationWeb);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.article_outlined, color: theme.colorScheme.primary),
+                    title: Text('Public bulletin board (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.publicBulletinBoardWeb);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.how_to_vote_outlined, color: theme.colorScheme.primary),
+                    title: Text('Vote verification portal (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.voteVerificationPortalWeb);
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.auto_awesome, color: theme.colorScheme.primary),
+                    title: Text('Admin quest configuration (Web)'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, AppRoutes.adminQuestConfigurationControlCenterWeb);
                     },
                   ),
                 ],
@@ -592,38 +795,43 @@ class _AdminDashboardState extends State<AdminDashboard> {
             label: 'Announcement',
             iconName: 'campaign',
             color: theme.colorScheme.primary,
-            onTap: () => _showComingSoon(context, 'Create Announcement'),
+            onTap: () => Navigator.of(context, rootNavigator: true)
+                .pushNamed(AppRoutes.notificationCenterHub),
           ).build(context),
           QuickActionButtonWidget(
             label: 'Moderate',
             iconName: 'verified_user',
             color: const Color(0xFF10B981),
-            onTap: () => _showComingSoon(context, 'Moderate Content'),
+            onTap: () => Navigator.of(context, rootNavigator: true)
+                .pushNamed(AppRoutes.contentModerationControlCenter),
           ).build(context),
           QuickActionButtonWidget(
             label: 'Export Data',
             iconName: 'download',
             color: const Color(0xFF3B82F6),
-            onTap: () => _showComingSoon(context, 'Export Data'),
+            onTap: () => Navigator.of(context, rootNavigator: true)
+                .pushNamed(AppRoutes.analyticsExportReportingHub),
           ).build(context),
           QuickActionButtonWidget(
             label: 'System Logs',
             iconName: 'article',
             color: const Color(0xFFEF4444),
             onTap: () =>
-                Navigator.pushNamed(context, '/mobile-logging-dashboard'),
+                Navigator.pushNamed(context, AppRoutes.mobileLoggingDashboard),
           ).build(context),
           QuickActionButtonWidget(
             label: 'Payout Settings',
             iconName: 'schedule',
             color: const Color(0xFF10B981),
-            onTap: () => _showComingSoon(context, 'Payout Settings'),
+            onTap: () => Navigator.of(context, rootNavigator: true)
+                .pushNamed(AppRoutes.payoutScheduleSettingsScreen),
           ).build(context),
           QuickActionButtonWidget(
             label: 'Fraud Monitor',
             iconName: 'security',
             color: const Color(0xFFEF4444),
-            onTap: () => _showComingSoon(context, 'Fraud Monitor'),
+            onTap: () => Navigator.of(context, rootNavigator: true)
+                .pushNamed(AppRoutes.fraudMonitoringDashboard),
           ).build(context),
         ],
       ),
@@ -652,7 +860,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   label: 'Cast Vote',
                   color: theme.colorScheme.primary,
                   onTap: () =>
-                      Navigator.pushNamed(context, '/vote-casting'),
+                      Navigator.pushNamed(context, AppRoutes.voteCasting),
                 ).build(context),
               ),
               SizedBox(width: 3.w),
@@ -663,7 +871,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   color: theme.colorScheme.tertiary,
                   onTap: () => Navigator.pushNamed(
                     context,
-                    '/enhanced-vote-casting',
+                    AppRoutes.enhancedVoteCasting,
                   ),
                 ).build(context),
               ),
@@ -678,7 +886,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   label: 'Create Vote',
                   color: theme.colorScheme.secondary,
                   onTap: () =>
-                      Navigator.pushNamed(context, '/create-vote'),
+                      Navigator.pushNamed(context, AppRoutes.createVote),
                 ).build(context),
               ),
               SizedBox(width: 3.w),
@@ -688,7 +896,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   label: 'Analytics',
                   color: theme.colorScheme.tertiary,
                   onTap: () =>
-                      Navigator.pushNamed(context, '/vote-analytics'),
+                      Navigator.pushNamed(context, AppRoutes.voteAnalytics),
                 ).build(context),
               ),
             ],
@@ -719,7 +927,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 onPressed: () => Navigator.of(
                   context,
                   rootNavigator: true,
-                ).pushNamed('/vote-dashboard'),
+                ).pushNamed(AppRoutes.voteDashboard),
                 child: Text('View All'),
               ),
             ],
@@ -741,7 +949,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 onTap: () => Navigator.of(
                   context,
                   rootNavigator: true,
-                ).pushNamed('/vote-results'),
+                ).pushNamed(AppRoutes.voteResults),
               );
             },
           ),
@@ -829,7 +1037,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Future<void> _handleRefresh() async {
     setState(() => _isRefreshing = true);
-    await Future.delayed(const Duration(seconds: 2));
+    await _loadDashboardData();
     setState(() => _isRefreshing = false);
     if (mounted) {
       ScaffoldMessenger.of(
@@ -1002,7 +1210,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
               'campaign',
               () {
                 Navigator.pop(context);
-                _showComingSoon(context, 'Create Announcement');
+                Navigator.of(context, rootNavigator: true)
+                    .pushNamed(AppRoutes.notificationCenterHub);
               },
             ),
             _buildQuickActionTile(
@@ -1011,19 +1220,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
               'verified_user',
               () {
                 Navigator.pop(context);
-                _showComingSoon(context, 'Moderate Content');
+                Navigator.of(context, rootNavigator: true)
+                    .pushNamed(AppRoutes.contentModerationControlCenter);
               },
             ),
             _buildQuickActionTile(context, 'Export Data', 'download', () {
               Navigator.pop(context);
-              _showComingSoon(context, 'Export Data');
+              Navigator.of(context, rootNavigator: true)
+                  .pushNamed(AppRoutes.analyticsExportReportingHub);
             }),
             _buildQuickActionTile(context, 'System Settings', 'settings', () {
               Navigator.pop(context);
               Navigator.of(
                 context,
                 rootNavigator: true,
-              ).pushNamed('/user-profile');
+              ).pushNamed(AppRoutes.userProfile);
             }),
             SizedBox(height: 2.h),
           ],
@@ -1151,12 +1362,4 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature feature coming soon'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
 }

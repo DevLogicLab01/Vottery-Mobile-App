@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import './supabase_service.dart';
-import './auth_service.dart';
 
 class AdvertiserAnalyticsService {
   static AdvertiserAnalyticsService? _instance;
@@ -11,7 +10,6 @@ class AdvertiserAnalyticsService {
   AdvertiserAnalyticsService._();
 
   SupabaseClient get _client => SupabaseService.instance.client;
-  AuthService get _auth => AuthService.instance;
 
   // ──────────────────────────────────────────────────────────────────────────
   // Vottery Ads Studio (unified) analytics (vottery_* tables + ad_events)
@@ -52,7 +50,7 @@ class AdvertiserAnalyticsService {
       final groups = await _client
           .from('vottery_ad_groups')
           .select('id,campaign_id')
-          .in_('campaign_id', campaignIds);
+          .inFilter('campaign_id', campaignIds);
       final groupIds = (groups as List)
           .map((g) => (g as Map)['id'].toString())
           .toList();
@@ -61,7 +59,7 @@ class AdvertiserAnalyticsService {
       final ads = await _client
           .from('vottery_ads')
           .select('id,bid_amount_cents')
-          .in_('ad_group_id', groupIds);
+          .inFilter('ad_group_id', groupIds);
       final adList = (ads as List).map((a) => Map<String, dynamic>.from(a)).toList();
       final adIds = adList.map((a) => a['id'].toString()).toList();
       if (adIds.isEmpty) return _getDefaultAnalytics();
@@ -69,14 +67,12 @@ class AdvertiserAnalyticsService {
       final events = await _client
           .from('ad_events')
           .select('ad_id,event_type,metadata,timestamp,user_id')
-          .in_('ad_id', adIds)
+          .inFilter('ad_id', adIds)
           .gte('timestamp', startDate);
 
       int impressions = 0;
       int clicks = 0;
       int completes = 0;
-      int hides = 0;
-      int reports = 0;
       int spendCents = 0;
 
       final bidByAd = <String, int>{};
@@ -102,10 +98,6 @@ class AdvertiserAnalyticsService {
           clicks++;
         } else if (type == 'COMPLETE') {
           completes++;
-        } else if (type == 'HIDE') {
-          hides++;
-        } else if (type == 'REPORT') {
-          reports++;
         }
       }
 
@@ -143,17 +135,17 @@ class AdvertiserAnalyticsService {
           .eq('advertiser_id', advertiserId);
       final campaignIds = (campaigns as List).map((c) => (c as Map)['id']).toList();
       if (campaignIds.isEmpty) return _getDefaultZoneReach();
-      final groups = await _client.from('vottery_ad_groups').select('id').in_('campaign_id', campaignIds);
+      final groups = await _client.from('vottery_ad_groups').select('id').inFilter('campaign_id', campaignIds);
       final groupIds = (groups as List).map((g) => (g as Map)['id']).toList();
       if (groupIds.isEmpty) return _getDefaultZoneReach();
-      final ads = await _client.from('vottery_ads').select('id').in_('ad_group_id', groupIds);
+      final ads = await _client.from('vottery_ads').select('id').inFilter('ad_group_id', groupIds);
       final adIds = (ads as List).map((a) => (a as Map)['id']).toList();
       if (adIds.isEmpty) return _getDefaultZoneReach();
 
       final events = await _client
           .from('ad_events')
           .select('user_id,event_type,timestamp')
-          .in_('ad_id', adIds)
+          .inFilter('ad_id', adIds)
           .eq('event_type', 'IMPRESSION')
           .gte('timestamp', startDate);
       final userIds = (events as List)
@@ -167,7 +159,7 @@ class AdvertiserAnalyticsService {
       final users = await _client
           .from('user_profiles')
           .select('id,purchasing_power_zone')
-          .in_('id', userIds);
+          .inFilter('id', userIds);
       final zoneByUser = <String, int>{};
       for (final u in (users as List)) {
         final m = Map<String, dynamic>.from(u as Map);
@@ -204,17 +196,17 @@ class AdvertiserAnalyticsService {
           .eq('advertiser_id', advertiserId);
       final campaignIds = (campaigns as List).map((c) => (c as Map)['id']).toList();
       if (campaignIds.isEmpty) return {};
-      final groups = await _client.from('vottery_ad_groups').select('id').in_('campaign_id', campaignIds);
+      final groups = await _client.from('vottery_ad_groups').select('id').inFilter('campaign_id', campaignIds);
       final groupIds = (groups as List).map((g) => (g as Map)['id']).toList();
       if (groupIds.isEmpty) return {};
-      final ads = await _client.from('vottery_ads').select('id').in_('ad_group_id', groupIds);
+      final ads = await _client.from('vottery_ads').select('id').inFilter('ad_group_id', groupIds);
       final adIds = (ads as List).map((a) => (a as Map)['id']).toList();
       if (adIds.isEmpty) return {};
 
       final events = await _client
           .from('ad_events')
           .select('user_id,event_type,timestamp')
-          .in_('ad_id', adIds)
+          .inFilter('ad_id', adIds)
           .eq('event_type', 'IMPRESSION')
           .gte('timestamp', startDate);
       final userIds = (events as List)
@@ -228,7 +220,7 @@ class AdvertiserAnalyticsService {
       final users = await _client
           .from('user_profiles')
           .select('id,country_iso,region_code,region_name')
-          .in_('id', userIds);
+          .inFilter('id', userIds);
       final uById = <String, Map<String, dynamic>>{};
       for (final u in (users as List)) {
         final m = Map<String, dynamic>.from(u as Map);

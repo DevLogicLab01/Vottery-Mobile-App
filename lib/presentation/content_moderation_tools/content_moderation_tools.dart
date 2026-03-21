@@ -68,10 +68,15 @@ class _ContentModerationToolsState extends State<ContentModerationTools>
           .eq('moderation_action', 'pending_review')
           .isFilter('reviewed_at', null);
 
+      final appealResponse = await _client
+          .from('content_appeals')
+          .select('id')
+          .eq('status', 'pending');
+
       setState(() {
         _flaggedCount = (flaggedResponse as List).length;
         _pendingQueueCount = (pendingResponse as List).length;
-        _appealCount = 0; // TODO: Add appeals table query
+        _appealCount = (appealResponse as List).length;
       });
     } catch (e) {
       debugPrint('Load moderation stats error: $e');
@@ -570,12 +575,93 @@ class _ContentModerationToolsState extends State<ContentModerationTools>
     }
   }
 
-  void _showEmergencyAlerts(BuildContext context) {
-    // TODO: Implement emergency alerts modal
+  Future<void> _showEmergencyAlerts(BuildContext context) async {
+    List<Map<String, dynamic>> rows = [];
+    try {
+      final res = await _client
+          .from('system_alerts')
+          .select('severity,message,created_at,is_resolved')
+          .eq('is_resolved', false)
+          .order('created_at', ascending: false)
+          .limit(25);
+      rows = List<Map<String, dynamic>>.from(res as List);
+    } catch (e) {
+      debugPrint('Emergency alerts load error: $e');
+    }
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Active system alerts'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: rows.isEmpty
+              ? const Text('No unresolved system alerts.')
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: rows.length,
+                  itemBuilder: (c, i) {
+                    final r = rows[i];
+                    return ListTile(
+                      dense: true,
+                      title: Text(r['message']?.toString() ?? ''),
+                      subtitle: Text(
+                        '${r['severity'] ?? ''} · ${r['created_at'] ?? ''}',
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showModerationSettings(BuildContext context) {
-    // TODO: Implement moderation settings
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(4.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Moderation settings',
+                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              SizedBox(height: 2.h),
+              Text(
+                'Policy thresholds and team workflows are managed in the Content Moderation Control Center and Supabase-backed tables (content_flags, content_appeals, moderation_log).',
+                style: Theme.of(ctx).textTheme.bodyMedium,
+              ),
+              SizedBox(height: 2.h),
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.of(context, rootNavigator: true)
+                      .pushNamed(AppRoutes.contentModerationControlCenter);
+                },
+                child: const Text('Open moderation control center'),
+              ),
+              SizedBox(height: 1.h),
+              OutlinedButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showBulkModerationModal(BuildContext context) {

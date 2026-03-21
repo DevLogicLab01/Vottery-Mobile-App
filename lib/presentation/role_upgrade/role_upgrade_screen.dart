@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../constants/roles.dart';
+import '../../routes/app_routes.dart';
+import '../../services/auth_service_new.dart';
+import '../../services/supabase_service.dart';
 
 class _RoleInfo {
   const _RoleInfo(this.label, this.icon, this.color, this.benefits, this.ctaRoute);
@@ -11,10 +14,6 @@ class _RoleInfo {
   final List<String> benefits;
   final String ctaRoute;
 }
-
-import '../../routes/app_routes.dart';
-import '../../services/auth_service_new.dart';
-import '../../services/supabase_service.dart';
 
 /// Role upgrade request screen. Users can request creator or advertiser access.
 class RoleUpgradeScreen extends StatefulWidget {
@@ -166,10 +165,10 @@ class _RoleUpgradeScreenState extends State<RoleUpgradeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(info.$2, size: 48, color: Colors.white),
+                      Icon(info.icon, size: 48, color: Colors.white),
                       SizedBox(height: 2.h),
                       Text(
-                        'Upgrade to ${info.$1}',
+                        'Upgrade to ${info.label}',
                         style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white),
                       ),
                       SizedBox(height: 1.h),

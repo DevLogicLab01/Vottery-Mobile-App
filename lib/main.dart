@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +31,7 @@ import './presentation/subscription_architecture_screen/subscription_architectur
 import './presentation/unified_production_monitoring_hub/unified_production_monitoring_hub.dart';
 import './presentation/ai_guided_interactive_tutorial/ai_guided_interactive_tutorial_screen.dart';
 import './presentation/community_engagement_dashboard/community_engagement_dashboard_screen.dart';
+import './presentation/voter_education_hub/voter_education_hub.dart';
 import './presentation/real_time_revenue_optimization/real_time_revenue_optimization_screen.dart';
 import './presentation/analytics_export_reporting_hub/analytics_export_reporting_hub_screen.dart';
 import './presentation/performance_testing_dashboard/performance_testing_dashboard_screen.dart';
@@ -52,9 +56,9 @@ import './presentation/ga4_enhanced_analytics_dashboard/ga4_enhanced_analytics_d
 import './presentation/real_time_analytics_dashboard/real_time_analytics_dashboard_screen.dart';
 import './presentation/live_platform_monitoring_dashboard/live_platform_monitoring_dashboard_screen.dart';
 import './presentation/personal_analytics_dashboard/personal_analytics_dashboard_screen.dart';
+import './presentation/social_connections_manager/social_connections_manager.dart';
 import './presentation/social_activity_timeline/social_activity_timeline_screen.dart';
 import './presentation/advanced_unified_search_screen/advanced_unified_search_screen.dart';
-import './presentation/role_upgrade/role_upgrade_screen.dart';
 import './config/route_feature_keys.dart';
 import './config/route_registry.dart';
 import './presentation/route_placeholder_screen/route_placeholder_screen.dart';
@@ -74,6 +78,7 @@ import './services/offline_sync_service.dart';
 import './services/payment_service.dart';
 import './services/realtime_gamification_notification_service.dart';
 import './services/sentry_service.dart';
+import './services/creator_churn_prediction_service.dart';
 import './services/supabase_service.dart';
 
 void main() async {
@@ -117,6 +122,18 @@ void main() async {
   // Initialize Supabase
   try {
     await SupabaseService.initialize();
+    SupabaseService.instance.client.auth.onAuthStateChange.listen((data) {
+      if (data.session == null) return;
+      if (data.event == AuthChangeEvent.signedIn ||
+          data.event == AuthChangeEvent.initialSession) {
+        unawaited(
+          CreatorChurnPredictionService.instance.invokeUserChurnRefreshIfDue(),
+        );
+        unawaited(
+          CreatorChurnPredictionService.instance.invokeRecordLoginGeoIfDue(),
+        );
+      }
+    });
   } catch (e) {
     debugPrint('Failed to initialize Supabase: $e');
   }
@@ -276,7 +293,9 @@ class _VotteryAppState extends State<MyApp> {
             themeMode: _themeMode,
             builder: (context, child) {
               return MediaQuery(
-                data: MediaQuery.of(context).copyWith(textScaleFactor: _fontScale),
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: TextScaler.linear(_fontScale),
+                ),
                 child: child!,
               );
             },
@@ -410,15 +429,6 @@ class _VotteryAppState extends State<MyApp> {
               GlobalCupertinoLocalizations.delegate,
             ],
             navigatorObservers: [DatadogRumNavigationObserver()],
-            builder: (context, child) {
-              return MediaQuery(
-                data: MediaQuery.of(context).copyWith(
-                  textScaleFactor: _fontScale,
-                  textScaler: TextScaler.linear(_fontScale),
-                ),
-                child: child!,
-              );
-            },
             debugShowCheckedModeBanner: false,
             initialRoute: AppRoutes.initial,
             onGenerateRoute: (settings) {
@@ -632,6 +642,238 @@ class _VotteryAppState extends State<MyApp> {
                     ),
                     settings: settings,
                   );
+                case AppRoutes.adminSubscriptionAnalyticsAdmin:
+                case AppRoutes.adminSubscriptionAnalyticsHubWebCanonical:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      RoleRouteGuard(
+                        requiredRoles: AppRoles.adminRoles,
+                        child: const WebAdminLauncherScreen(
+                          title: 'Admin subscription analytics',
+                          url: AppUrls.adminSubscriptionAnalyticsHub,
+                        ),
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.stripeSubscriptionManagementAdmin:
+                case AppRoutes.stripeSubscriptionManagementCenterWebCanonical:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      RoleRouteGuard(
+                        requiredRoles: AppRoles.adminRoles,
+                        child: const WebAdminLauncherScreen(
+                          title: 'Stripe subscription management',
+                          url: AppUrls.stripeSubscriptionManagementCenter,
+                        ),
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.stripePaymentIntegrationHubAdmin:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      RoleRouteGuard(
+                        requiredRoles: AppRoles.adminRoles,
+                        child: const WebAdminLauncherScreen(
+                          title: 'Stripe payment integration',
+                          url: AppUrls.stripePaymentIntegrationHub,
+                        ),
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.automatedPayoutCalculationEngineAdmin:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      RoleRouteGuard(
+                        requiredRoles: AppRoles.adminRoles,
+                        child: const WebAdminLauncherScreen(
+                          title: 'Automated payout calculation engine',
+                          url: AppUrls.automatedPayoutCalculationEngine,
+                        ),
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.countryBasedPayoutProcessingEngineAdmin:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      RoleRouteGuard(
+                        requiredRoles: AppRoles.adminRoles,
+                        child: const WebAdminLauncherScreen(
+                          title: 'Country-based payout processing engine',
+                          url: AppUrls.countryBasedPayoutProcessingEngine,
+                        ),
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.comprehensiveGamificationAdminWeb:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      RoleRouteGuard(
+                        requiredRoles: AppRoles.adminRoles,
+                        child: const WebAdminLauncherScreen(
+                          title: 'Gamification admin control center',
+                          url: AppUrls.comprehensiveGamificationAdminControlCenter,
+                        ),
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.platformGamificationCoreEngineAdmin:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      RoleRouteGuard(
+                        requiredRoles: AppRoles.adminRoles,
+                        child: const WebAdminLauncherScreen(
+                          title: 'Platform gamification core engine',
+                          url: AppUrls.platformGamificationCoreEngine,
+                        ),
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.gamificationCampaignManagementAdmin:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      RoleRouteGuard(
+                        requiredRoles: AppRoles.adminRoles,
+                        child: const WebAdminLauncherScreen(
+                          title: 'Gamification campaign management',
+                          url: AppUrls.gamificationCampaignManagementCenter,
+                        ),
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.gamificationRewardsManagementAdmin:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      RoleRouteGuard(
+                        requiredRoles: AppRoles.adminRoles,
+                        child: const WebAdminLauncherScreen(
+                          title: 'Gamification rewards management',
+                          url: AppUrls.gamificationRewardsManagementCenter,
+                        ),
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.securityComplianceAutomationAdmin:
+                case AppRoutes.securityComplianceAutomationCenterWebCanonical:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      RoleRouteGuard(
+                        requiredRoles: AppRoles.adminRoles,
+                        child: const WebAdminLauncherScreen(
+                          title: 'Security compliance automation',
+                          url: AppUrls.securityComplianceAutomationCenter,
+                        ),
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.localizationTaxReportingAdmin:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      RoleRouteGuard(
+                        requiredRoles: AppRoles.adminRoles,
+                        child: const WebAdminLauncherScreen(
+                          title: 'Localization & tax reporting',
+                          url: AppUrls.localizationTaxReportingIntelligenceCenter,
+                        ),
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.complianceDashboardWeb:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      RoleRouteGuard(
+                        requiredRoles: AppRoles.adminRoles,
+                        child: const WebAdminLauncherScreen(
+                          title: 'Compliance dashboard',
+                          url: AppUrls.complianceDashboard,
+                        ),
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.complianceAuditDashboardWeb:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      RoleRouteGuard(
+                        requiredRoles: AppRoles.adminRoles,
+                        child: const WebAdminLauncherScreen(
+                          title: 'Compliance audit dashboard',
+                          url: AppUrls.complianceAuditDashboard,
+                        ),
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.regulatoryComplianceAutomationWeb:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      RoleRouteGuard(
+                        requiredRoles: AppRoles.adminRoles,
+                        child: const WebAdminLauncherScreen(
+                          title: 'Regulatory compliance automation',
+                          url: AppUrls.regulatoryComplianceAutomationHub,
+                        ),
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.claudeAiDisputeModerationAdmin:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      RoleRouteGuard(
+                        requiredRoles: AppRoles.adminRoles,
+                        child: const WebAdminLauncherScreen(
+                          title: 'Claude dispute moderation',
+                          url: AppUrls.claudeAiDisputeModerationCenter,
+                        ),
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.publicBulletinBoardWeb:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      const WebAdminLauncherScreen(
+                        title: 'Public bulletin & audit trail',
+                        url: AppUrls.publicBulletinBoardAuditTrailCenter,
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.voteVerificationPortalWeb:
+                case AppRoutes.voteVerificationPortalWebCanonical:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      const WebAdminLauncherScreen(
+                        title: 'Vote verification portal',
+                        url: AppUrls.voteVerificationPortal,
+                      ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.adminQuestConfigurationControlCenterWeb:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      RoleRouteGuard(
+                        requiredRoles: AppRoles.adminRoles,
+                        child: const WebAdminLauncherScreen(
+                          title: 'Admin quest configuration control center',
+                          url: AppUrls.adminQuestConfigurationControlCenter,
+                        ),
+                      ),
+                    ),
+                    settings: settings,
+                  );
                 case AppRoutes.multiRegionFailoverDashboard:
                   return MaterialPageRoute(
                     builder: (_) => gate(
@@ -643,6 +885,7 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 case AppRoutes.securityComplianceAudit:
+                case AppRoutes.securityComplianceAuditWebCanonical:
                   return MaterialPageRoute(
                     builder: (_) => gate(
                       RoleRouteGuard(
@@ -700,12 +943,21 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 case AppRoutes.communityEngagementDashboard:
+                case AppRoutes.communityEngagementDashboardWebCanonical:
                   return MaterialPageRoute(
                     builder: (_) => gate(
                       RoleRouteGuard(
                         requiredRoles: AppRoles.creatorRoles,
                         child: const CommunityEngagementDashboardScreen(),
                       ),
+                    ),
+                    settings: settings,
+                  );
+                case AppRoutes.voterEducationHub:
+                case AppRoutes.voterEducationHubWebCanonical:
+                  return MaterialPageRoute(
+                    builder: (_) => gate(
+                      const VoterEducationHub(),
                     ),
                     settings: settings,
                   );
@@ -740,6 +992,7 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 case AppRoutes.analyticsExportReportingHub:
+                case AppRoutes.analyticsExportReportingHubWebCanonical:
                   return MaterialPageRoute(
                     builder: (_) => gate(
                       RoleRouteGuard(
@@ -750,6 +1003,7 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 case AppRoutes.performanceTestingDashboard:
+                case AppRoutes.performanceTestingDashboardWebCanonical:
                   return MaterialPageRoute(
                     builder: (_) => gate(
                       RoleRouteGuard(
@@ -760,6 +1014,7 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 case AppRoutes.apiDocumentationPortal:
+                case AppRoutes.apiDocumentationPortalWebCanonical:
                   return MaterialPageRoute(
                     builder: (_) => gate(
                       const ApiDocumentationPortalScreen(),
@@ -767,6 +1022,7 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 case AppRoutes.apiRateLimitingDashboard:
+                case AppRoutes.apiRateLimitingDashboardWebCanonical:
                   return MaterialPageRoute(
                     builder: (_) => gate(
                       RoleRouteGuard(
@@ -794,6 +1050,7 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 case AppRoutes.communityElectionsHub:
+                case AppRoutes.communityElectionsHubWebCanonical:
                   return MaterialPageRoute(
                     builder: (_) => gate(
                       const CommunityElectionsHubScreen(),
@@ -811,6 +1068,7 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 case AppRoutes.realTimeAnalyticsDashboard:
+                case AppRoutes.realTimeAnalyticsDashboardWeb:
                   return MaterialPageRoute(
                     builder: (_) => gate(
                       RoleRouteGuard(
@@ -821,6 +1079,7 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 case AppRoutes.livePlatformMonitoringDashboard:
+                case AppRoutes.livePlatformMonitoringDashboardWebCanonical:
                   return MaterialPageRoute(
                     builder: (_) => gate(
                       RoleRouteGuard(
@@ -831,6 +1090,7 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 case AppRoutes.personalAnalyticsDashboard:
+                case AppRoutes.personalAnalyticsDashboardWebCanonical:
                   return MaterialPageRoute(
                     builder: (_) => gate(
                       const PersonalAnalyticsDashboardScreen(),
@@ -838,6 +1098,7 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 case AppRoutes.socialActivityTimeline:
+                case AppRoutes.socialActivityTimelineWebCanonical:
                   return MaterialPageRoute(
                     builder: (_) => gate(
                       const SocialActivityTimelineScreen(),
@@ -845,13 +1106,15 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 case AppRoutes.friendsManagementHub:
+                case AppRoutes.friendsManagementHubWebCanonical:
                   return MaterialPageRoute(
                     builder: (_) => gate(
-                      const CommunityEngagementDashboardScreen(),
+                      const SocialConnectionsManager(),
                     ),
                     settings: settings,
                   );
                 case AppRoutes.advancedUnifiedSearchScreen:
+                case AppRoutes.advancedUnifiedSearchScreenWebCanonical:
                   return MaterialPageRoute(
                     builder: (_) => gate(
                       const AdvancedUnifiedSearchScreen(),
@@ -866,6 +1129,7 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 case AppRoutes.contentModerationControlCenter:
+                case AppRoutes.contentModerationControlCenterWebCanonical:
                   return MaterialPageRoute(
                     builder: (_) => gate(
                       const ContentModerationControlCenterScreen(),

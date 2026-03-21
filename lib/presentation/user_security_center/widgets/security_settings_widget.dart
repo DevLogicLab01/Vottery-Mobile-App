@@ -22,6 +22,14 @@ class _SecuritySettingsWidgetState extends State<SecuritySettingsWidget> {
   bool _biometricEnabled = false;
   bool _breachNotifications = true;
   int _sessionTimeout = 60;
+  final TextEditingController _twoFactorRecipientController =
+      TextEditingController();
+  final TextEditingController _twoFactorCodeController = TextEditingController();
+  bool _isSendingTwoFactorCode = false;
+  bool _isVerifyingTwoFactorCode = false;
+  bool _isSettingUpAuthenticator = false;
+  String? _authenticatorSecret;
+  String? _authenticatorQrUri;
 
   @override
   void initState() {
@@ -42,6 +50,13 @@ class _SecuritySettingsWidgetState extends State<SecuritySettingsWidget> {
     }
   }
 
+  @override
+  void dispose() {
+    _twoFactorRecipientController.dispose();
+    _twoFactorCodeController.dispose();
+    super.dispose();
+  }
+
   Future<void> _updateSettings() async {
     final success = await UserSecurityService.instance.updateSecuritySettings(
       twoFactorEnabled: _twoFactorEnabled,
@@ -60,6 +75,109 @@ class _SecuritySettingsWidgetState extends State<SecuritySettingsWidget> {
       );
       widget.onSettingsChanged();
     }
+  }
+
+  Future<void> _sendTwoFactorCode() async {
+    if (_twoFactorMethod == 'authenticator') {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Use your authenticator app to generate the current code.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final recipient = _twoFactorRecipientController.text.trim();
+    if (recipient.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter email or phone for 2FA')),
+      );
+      return;
+    }
+
+    setState(() => _isSendingTwoFactorCode = true);
+    final success = await UserSecurityService.instance.sendTwoFactorCode(
+      method: _twoFactorMethod,
+      recipient: recipient,
+    );
+    if (!mounted) return;
+    setState(() => _isSendingTwoFactorCode = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Verification code sent successfully'
+              : 'Failed to send verification code',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _verifyTwoFactorCode() async {
+    final recipient = _twoFactorRecipientController.text.trim();
+    final code = _twoFactorCodeController.text.trim();
+    if (code.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter the verification code')),
+      );
+      return;
+    }
+
+    if (_twoFactorMethod != 'authenticator' && recipient.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter email or phone for verification')),
+      );
+      return;
+    }
+
+    setState(() => _isVerifyingTwoFactorCode = true);
+    final success = _twoFactorMethod == 'authenticator'
+        ? await UserSecurityService.instance.verifyAuthenticatorCode(
+            code: code,
+          )
+        : await UserSecurityService.instance.verifyTwoFactorCode(
+            method: _twoFactorMethod,
+            recipient: recipient,
+            code: code,
+          );
+    if (!mounted) return;
+    setState(() => _isVerifyingTwoFactorCode = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? '2FA code verified successfully'
+              : 'Invalid or expired verification code',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _setupAuthenticator() async {
+    setState(() => _isSettingUpAuthenticator = true);
+    final setupData = await UserSecurityService.instance.setupAuthenticator();
+    if (!mounted) return;
+    setState(() {
+      _isSettingUpAuthenticator = false;
+      _authenticatorSecret = setupData?['secret']?.toString();
+      _authenticatorQrUri =
+          setupData?['qrCode']?.toString() ?? setupData?['otpauthUrl']?.toString();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          setupData == null
+              ? 'Failed to setup authenticator'
+              : 'Authenticator setup data generated',
+        ),
+      ),
+    );
   }
 
   @override
@@ -97,25 +215,125 @@ class _SecuritySettingsWidgetState extends State<SecuritySettingsWidget> {
                 if (_twoFactorEnabled)
                   Padding(
                     padding: EdgeInsets.all(3.w),
-                    child: DropdownButtonFormField<String>(
-                      value: _twoFactorMethod,
-                      decoration: const InputDecoration(
-                        labelText: '2FA Method',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'sms', child: Text('SMS')),
-                        DropdownMenuItem(
-                          value: 'authenticator',
-                          child: Text('Authenticator App'),
+                    child: Column(
+                      children: [
+                        DropdownButtonFormField<String>(
+                          initialValue: _twoFactorMethod,
+                          decoration: const InputDecoration(
+                            labelText: '2FA Method',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'sms', child: Text('SMS')),
+                            DropdownMenuItem(
+                              value: 'authenticator',
+                              child: Text('Authenticator App'),
+                            ),
+                            DropdownMenuItem(value: 'email', child: Text('Email')),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _twoFactorMethod = value);
+                            }
+                          },
                         ),
-                        DropdownMenuItem(value: 'email', child: Text('Email')),
+                        SizedBox(height: 1.h),
+                        if (_twoFactorMethod != 'authenticator')
+                          TextFormField(
+                            controller: _twoFactorRecipientController,
+                            decoration: InputDecoration(
+                              labelText: _twoFactorMethod == 'email'
+                                  ? 'Email for OTP'
+                                  : 'Phone for OTP',
+                              border: const OutlineInputBorder(),
+                            ),
+                          ),
+                        if (_twoFactorMethod == 'authenticator')
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Generate setup secret, add it in your authenticator app, then enter the current code below.',
+                                  style: TextStyle(
+                                    fontSize: 11.sp,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 1.h),
+                              OutlinedButton(
+                                onPressed: _isSettingUpAuthenticator
+                                    ? null
+                                    : _setupAuthenticator,
+                                child: Text(
+                                  _isSettingUpAuthenticator
+                                      ? 'Preparing...'
+                                      : 'Setup Authenticator',
+                                ),
+                              ),
+                              if (_authenticatorSecret != null) ...[
+                                SizedBox(height: 1.h),
+                                Text(
+                                  'Secret: $_authenticatorSecret',
+                                  style: TextStyle(
+                                    fontSize: 10.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                              if (_authenticatorQrUri != null) ...[
+                                SizedBox(height: 0.5.h),
+                                Text(
+                                  'QR/URI: $_authenticatorQrUri',
+                                  style: TextStyle(
+                                    fontSize: 9.sp,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        SizedBox(height: 1.h),
+                        TextFormField(
+                          controller: _twoFactorCodeController,
+                          decoration: const InputDecoration(
+                            labelText: 'Verification code',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        SizedBox(height: 1.h),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: _isSendingTwoFactorCode
+                                    ? null
+                                    : _sendTwoFactorCode,
+                                child: Text(
+                                  _isSendingTwoFactorCode
+                                      ? 'Sending...'
+                                      : 'Send code',
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 2.w),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _isVerifyingTwoFactorCode
+                                    ? null
+                                    : _verifyTwoFactorCode,
+                                child: Text(
+                                  _isVerifyingTwoFactorCode
+                                      ? 'Verifying...'
+                                      : 'Verify',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() => _twoFactorMethod = value);
-                        }
-                      },
                     ),
                   ),
               ],

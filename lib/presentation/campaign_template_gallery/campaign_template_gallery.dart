@@ -151,7 +151,7 @@ class _CampaignTemplateGalleryState extends State<CampaignTemplateGallery> {
     // Navigate to Participatory Ads Studio with template data
     Navigator.pushNamed(
       context,
-      '/election-creation-studio',
+      AppRoutes.electionCreationStudio,
       arguments: {'template_id': template['id'], 'template_data': template},
     );
 

@@ -28,7 +28,7 @@ class PushNotificationIntelligenceService {
           .order('session_start', ascending: false)
           .limit(100);
 
-      final sessions = response is List ? response : <dynamic>[];
+      final sessions = List<dynamic>.from(response);
       if (sessions.isEmpty) {
         return {
           'startHour': 9,
@@ -120,15 +120,14 @@ class PushNotificationIntelligenceService {
       final optimal = await getSmartPushOptimalTime(userId);
       final nextSend = optimal['nextSendTime'] as String?;
       if (nextSend != null) {
-        await _client.from('notifications').insert({
+        await _client.from('scheduled_notifications').insert({
           'user_id': userId,
           'title': title,
-          'message': body,
-          'type': 'push',
+          'body': body,
           'data': data ?? {},
-          'is_read': false,
-          'scheduled_for': nextSend,
-          'created_at': DateTime.now().toIso8601String(),
+          'scheduled_at': nextSend,
+          'timing_confidence': optimal['confidence']?.toString() ?? 'low',
+          'optimal_hour': (optimal['optimalHour'] as num?)?.toInt() ?? 12,
         });
       }
     } catch (e) {

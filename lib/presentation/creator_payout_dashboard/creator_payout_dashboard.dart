@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
-import '../../services/stripe_connect_service.dart';
 import '../../services/supabase_service.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
@@ -22,7 +21,6 @@ class CreatorPayoutDashboard extends StatefulWidget {
 
 class _CreatorPayoutDashboardState extends State<CreatorPayoutDashboard>
     with SingleTickerProviderStateMixin {
-  final StripeConnectService _stripeService = StripeConnectService.instance;
   final AuthService _auth = AuthService.instance;
   late TabController _tabController;
 
@@ -31,6 +29,7 @@ class _CreatorPayoutDashboardState extends State<CreatorPayoutDashboard>
   List<Map<String, dynamic>> _payouts = [];
   List<Map<String, dynamic>> _dailyEarnings = [];
   Map<String, dynamic> _earningsSummary = {};
+  String? _error;
 
   @override
   void initState() {
@@ -46,7 +45,10 @@ class _CreatorPayoutDashboardState extends State<CreatorPayoutDashboard>
   }
 
   Future<void> _loadCreatorData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
 
     try {
       final userId = _auth.currentUser?.id;
@@ -101,12 +103,11 @@ class _CreatorPayoutDashboardState extends State<CreatorPayoutDashboard>
     } catch (e) {
       debugPrint('Load creator data error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load earnings data'),
-            backgroundColor: AppTheme.errorLight,
-          ),
-        );
+        setState(() {
+          _error = e.toString().toLowerCase().contains('not authenticated')
+              ? 'Sign in required to view creator payouts.'
+              : 'Failed to load earnings data.';
+        });
       }
     } finally {
       setState(() => _isLoading = false);
@@ -196,6 +197,25 @@ class _CreatorPayoutDashboardState extends State<CreatorPayoutDashboard>
                   physics: const AlwaysScrollableScrollPhysics(),
                   child: Column(
                     children: [
+                      if (_error != null)
+                        Container(
+                          width: double.infinity,
+                          margin: EdgeInsets.fromLTRB(2.h, 1.h, 2.h, 0),
+                          padding: EdgeInsets.all(2.h),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(10.0),
+                            border: Border.all(color: const Color(0xFFF59E0B)),
+                          ),
+                          child: Text(
+                            _error!,
+                            style: TextStyle(
+                              color: const Color(0xFF92400E),
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       // Earnings Overview Section
                       _buildEarningsOverview(),
 

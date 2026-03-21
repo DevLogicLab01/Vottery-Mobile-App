@@ -27,41 +27,37 @@ class _AdminActivityLogWidgetState extends State<AdminActivityLogWidget> {
     setState(() => _isLoading = true);
 
     try {
-      // Mock activity log data
-      _activityLog = [
-        {
-          'action': 'pause_campaign',
-          'admin': 'admin@vottery.com',
-          'timestamp': DateTime.now()
-              .subtract(const Duration(minutes: 5))
-              .toIso8601String(),
-          'ip_address': '192.168.1.100',
-          'biometric_verified': true,
-        },
-        {
-          'action': 'freeze_account',
-          'admin': 'security@vottery.com',
-          'timestamp': DateTime.now()
-              .subtract(const Duration(hours: 1))
-              .toIso8601String(),
-          'ip_address': '192.168.1.101',
-          'biometric_verified': true,
-        },
-        {
-          'action': 'bulk_suspend',
-          'admin': 'admin@vottery.com',
-          'timestamp': DateTime.now()
-              .subtract(const Duration(hours: 3))
-              .toIso8601String(),
-          'ip_address': '192.168.1.100',
-          'biometric_verified': true,
-        },
-      ];
+      final auditLogs = await _adminService.getAuditLogs(limit: 50);
+      final mapped = auditLogs
+          .map(
+            (entry) => {
+              'action': entry['action_type'] ?? entry['action'] ?? 'unknown',
+              'admin':
+                  entry['admin_id']?.toString() ??
+                  entry['user_id']?.toString() ??
+                  'Unknown',
+              'timestamp':
+                  entry['created_at']?.toString() ??
+                  DateTime.now().toIso8601String(),
+              'ip_address': entry['ip_address']?.toString() ?? 'N/A',
+              'biometric_verified':
+                  entry['biometric_verified'] == true ||
+                  entry['is_biometric_verified'] == true,
+            },
+          )
+          .toList();
 
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _activityLog = mapped;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       debugPrint('Load activity log error: $e');
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

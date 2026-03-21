@@ -3,6 +3,7 @@ import 'package:sizer/sizer.dart';
 
 import '../../features/payouts/api/payout_api.dart';
 import '../../features/payouts/constants/payout_constants.dart';
+import '../../routes/app_routes.dart';
 import '../../services/stripe_connect_service.dart';
 import '../../services/wallet_service.dart';
 import './widgets/prize_breakdown_dashboard_widget.dart';
@@ -327,6 +328,28 @@ class _DigitalWalletPrizeRedemptionSystemState
               amount: amount,
               additionalData: {'provider': provider},
             ),
+          ),
+          SizedBox(height: 2.h),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      Navigator.pushNamed(context, AppRoutes.vpCharityHub),
+                  icon: const Icon(Icons.volunteer_activism),
+                  label: const Text('VP Charity Hub'),
+                ),
+              ),
+              SizedBox(width: 2.w),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      Navigator.pushNamed(context, AppRoutes.vpCryptoConversion),
+                  icon: const Icon(Icons.currency_bitcoin),
+                  label: const Text('Crypto Conversion'),
+                ),
+              ),
+            ],
           ),
           SizedBox(height: 3.h),
 

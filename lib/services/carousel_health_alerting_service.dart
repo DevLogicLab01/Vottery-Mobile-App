@@ -59,7 +59,7 @@ class CarouselHealthAlertingService {
 
   Future<void> _subscribeToIncidents() async {
     try {
-      final channel = _supabaseService.client
+      _supabaseService.client
           .channel('carousel_critical_incidents')
           .onPostgresChanges(
             event: PostgresChangeEvent.insert,
@@ -82,7 +82,7 @@ class CarouselHealthAlertingService {
 
   Future<void> _subscribeToAnomalies() async {
     try {
-      final channel = _supabaseService.client
+      _supabaseService.client
           .channel('carousel_critical_anomalies')
           .onPostgresChanges(
             event: PostgresChangeEvent.insert,
@@ -105,7 +105,7 @@ class CarouselHealthAlertingService {
 
   Future<void> _subscribeToPerformanceAlerts() async {
     try {
-      final channel = _supabaseService.client
+      _supabaseService.client
           .channel('carousel_performance_alerts')
           .onPostgresChanges(
             event: PostgresChangeEvent.insert,

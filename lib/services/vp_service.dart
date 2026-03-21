@@ -14,17 +14,22 @@ class VPService {
   AuthService get _auth => AuthService.instance;
 
   // VP Earning Sources
-  static const int vpVoting = 10;
+  static const int vpVotingMin = 5;
+  static const int vpVotingMax = 50;
+  static const int vpDailyLogin = 10;
   static const int vpSocialInteraction = 5;
   static const int vpChallengeMin = 50;
   static const int vpChallengeMax = 500;
   static const int vpPredictionMax = 1000;
+  static const int vpReferral = 100;
 
   // VP Spending Options
   static const int vpAdFree = 500;
   static const int vpCustomTheme = 300;
   static const int vpPredictionEntry = 100;
   static const int vpPremiumContent = 200;
+  static const int vpQuestPack = 250;
+  static const int vpVipTierUnlock = 1500;
 
   /// Get user's VP balance
   Future<Map<String, dynamic>?> getVPBalance() async {
@@ -63,13 +68,37 @@ class VPService {
   }
 
   /// Award VP for voting
-  Future<bool> awardVotingVP(String electionId) async {
+  Future<bool> awardVotingVP(String electionId, {double qualityScore = 0.5}) async {
+    final score = qualityScore.clamp(0.0, 1.0);
+    final amount =
+        (vpVotingMin + ((vpVotingMax - vpVotingMin) * score)).round();
     return await _awardVP(
-      amount: vpVoting,
+      amount: amount,
       transactionType: 'voting',
       description: 'Voted in election',
       referenceId: electionId,
       referenceType: 'election',
+    );
+  }
+
+  /// Award VP for daily login
+  Future<bool> awardDailyLoginVP() async {
+    return await _awardVP(
+      amount: vpDailyLogin,
+      transactionType: 'daily_login',
+      description: 'Daily login bonus',
+      referenceType: 'daily_login',
+    );
+  }
+
+  /// Award VP for successful referral
+  Future<bool> awardReferralVP(String referralUserId) async {
+    return await _awardVP(
+      amount: vpReferral,
+      transactionType: 'referral_success',
+      description: 'Successful referral reward',
+      referenceId: referralUserId,
+      referenceType: 'referral',
     );
   }
 
@@ -168,6 +197,49 @@ class VPService {
     );
   }
 
+  Future<bool> spendVPForQuestPack(String packId) async {
+    return await _spendVP(
+      amount: vpQuestPack,
+      description: 'Quest pack purchase',
+      referenceId: packId,
+      referenceType: 'quest_pack',
+    );
+  }
+
+  Future<bool> spendVPForVipTier(String tierId) async {
+    return await _spendVP(
+      amount: vpVipTierUnlock,
+      description: 'VIP tier unlock',
+      referenceId: tierId,
+      referenceType: 'vip_tier',
+    );
+  }
+
+  Future<bool> donateVPToCharity({
+    required String charityId,
+    required int vpAmount,
+  }) async {
+    return await _spendVP(
+      amount: vpAmount,
+      description: 'VP charity donation',
+      referenceId: charityId,
+      referenceType: 'charity_donation',
+    );
+  }
+
+  Future<bool> convertVPToCrypto({
+    required String token,
+    required int vpAmount,
+    required double exchangeRate,
+  }) async {
+    return await _spendVP(
+      amount: vpAmount,
+      description:
+          'VP crypto conversion to $token at rate $exchangeRate',
+      referenceType: 'crypto_conversion',
+    );
+  }
+
   /// Get VP transaction history
   Future<List<Map<String, dynamic>>> getVPTransactionHistory({
     int limit = 100,
@@ -196,9 +268,18 @@ class VPService {
         'id': 'voting',
         'title': 'Cast a Vote',
         'description': 'Participate in elections and earn VP',
-        'vp_reward': vpVoting,
+        'vp_reward_min': vpVotingMin,
+        'vp_reward_max': vpVotingMax,
         'icon': 'how_to_vote',
         'action': 'vote',
+      },
+      {
+        'id': 'daily_login',
+        'title': 'Daily Login Bonus',
+        'description': 'Log in daily to keep your streak alive',
+        'vp_reward': vpDailyLogin,
+        'icon': 'calendar_today',
+        'action': 'daily_login',
       },
       {
         'id': 'social',
@@ -207,6 +288,14 @@ class VPService {
         'vp_reward': vpSocialInteraction,
         'icon': 'groups',
         'action': 'interact',
+      },
+      {
+        'id': 'referral',
+        'title': 'Referral Bonus',
+        'description': 'Earn VP for every successful referral',
+        'vp_reward': vpReferral,
+        'icon': 'person_add',
+        'action': 'referral',
       },
       {
         'id': 'challenge',
@@ -238,6 +327,38 @@ class VPService {
         'vp_cost': vpAdFree,
         'icon': 'block',
         'duration': '30 days',
+      },
+      {
+        'id': 'quest_pack',
+        'title': 'Quest Pack Bundle',
+        'description': 'Unlock premium quest bundles',
+        'vp_cost': vpQuestPack,
+        'icon': 'inventory_2',
+        'duration': 'Per pack',
+      },
+      {
+        'id': 'vip_tier',
+        'title': 'VIP Tier Unlock',
+        'description': 'Unlock exclusive VIP tier access',
+        'vp_cost': vpVipTierUnlock,
+        'icon': 'workspace_premium',
+        'duration': '30 days',
+      },
+      {
+        'id': 'crypto_conversion',
+        'title': 'Crypto Conversion',
+        'description': 'Convert VP to supported cryptocurrency',
+        'vp_cost': 0,
+        'icon': 'currency_bitcoin',
+        'duration': 'Instant',
+      },
+      {
+        'id': 'charity_donation',
+        'title': 'Charity Donation',
+        'description': 'Donate VP to verified charity partners',
+        'vp_cost': 0,
+        'icon': 'volunteer_activism',
+        'duration': 'Instant',
       },
       {
         'id': 'custom_theme',

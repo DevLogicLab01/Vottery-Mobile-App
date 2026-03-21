@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../theme/app_theme.dart';
@@ -75,6 +76,63 @@ class _ExportOptionsWidgetState extends State<ExportOptionsWidget> {
     }
   }
 
+  Future<void> _exportAnalyticsReport() async {
+    if (widget.electionId == null) return;
+
+    setState(() => _isExporting = true);
+    try {
+      final analytics = await _mcqService.getFreeTextAnalytics(
+        electionId: widget.electionId!,
+      );
+      final totalResponses = analytics['total_responses'] ?? 0;
+      final avgChars = analytics['average_character_count'] ?? 0.0;
+      final moderationFlags = analytics['moderation_flags'] ?? 0;
+      final sentiment = Map<String, dynamic>.from(
+        analytics['sentiment_distribution'] ?? <String, dynamic>{},
+      );
+      final themes = (analytics['common_themes'] as List?) ?? const [];
+
+      final report = StringBuffer()
+        ..writeln('Vottery Open-Ended Answers Analytics')
+        ..writeln('Election ID: ${widget.electionId}')
+        ..writeln('Generated: ${DateTime.now().toIso8601String()}')
+        ..writeln('')
+        ..writeln('Summary')
+        ..writeln('- Total responses: $totalResponses')
+        ..writeln('- Avg character count: $avgChars')
+        ..writeln('- Moderation flags: $moderationFlags')
+        ..writeln('')
+        ..writeln('Sentiment distribution')
+        ..writeln(
+          sentiment.isEmpty
+              ? '- No sentiment data'
+              : sentiment.entries.map((e) => '- ${e.key}: ${e.value}').join('\n'),
+        )
+        ..writeln('')
+        ..writeln('Common themes')
+        ..writeln(
+          themes.isEmpty
+              ? '- No themes detected'
+              : themes.map((t) => '- $t').join('\n'),
+        );
+
+      await Share.share(
+        report.toString(),
+        subject: 'Open-ended analytics report',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Export failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.electionId == null) {
@@ -112,13 +170,7 @@ class _ExportOptionsWidgetState extends State<ExportOptionsWidget> {
             'Generate comprehensive analytics report with charts and insights',
             Icons.analytics,
             Colors.purple,
-            () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Analytics report generation coming soon'),
-                ),
-              );
-            },
+            _exportAnalyticsReport,
           ),
         ],
       ),

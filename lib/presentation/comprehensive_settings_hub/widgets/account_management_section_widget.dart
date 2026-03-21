@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../routes/app_routes.dart';
 import '../../user_profile/widgets/settings_section_widget.dart';
 
 /// Account management section widget for profile and account settings.
@@ -17,7 +18,7 @@ class AccountManagementSectionWidget extends StatelessWidget {
           'title': 'Edit Profile',
           'subtitle': 'Update your profile information',
           'onTap': () {
-            Navigator.pushNamed(context, '/user_profile');
+            Navigator.pushNamed(context, AppRoutes.userProfile);
           },
         },
         {

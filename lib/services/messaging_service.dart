@@ -357,7 +357,7 @@ class MessagingService {
       RealtimeChannel? channel = _broadcastTypingChannels[conversationId];
       if (channel == null) {
         channel = _client.channel('dm-typing-$conversationId');
-        await channel.subscribe();
+        channel.subscribe();
         _broadcastTypingChannels[conversationId] = channel;
       }
 
@@ -392,9 +392,7 @@ class MessagingService {
       channel.onBroadcast(
         event: 'typing',
         callback: (payload) {
-          if (payload is Map<String, dynamic>) {
-            streamController.add(payload);
-          }
+          streamController.add(Map<String, dynamic>.from(payload));
         },
       ).subscribe();
 
@@ -421,7 +419,7 @@ class MessagingService {
       final bytes = await file.readAsBytes();
 
       final name = fileName ??
-          'voice-${conversationId}-${DateTime.now().millisecondsSinceEpoch}.m4a';
+          'voice-$conversationId-${DateTime.now().millisecondsSinceEpoch}.m4a';
       final storagePath = '$conversationId/$name';
       await _client.storage.from(voiceMessagesBucket).uploadBinary(
             storagePath,
@@ -438,6 +436,67 @@ class MessagingService {
     } catch (e) {
       debugPrint('Upload voice message error: $e');
       return null;
+    }
+  }
+
+  /// Upload image/video attachment for a conversation and return public URL.
+  Future<String?> uploadConversationMedia({
+    required String conversationId,
+    required String filePath,
+    required String mediaType,
+    String? fileName,
+  }) async {
+    try {
+      if (!_auth.isAuthenticated) return null;
+
+      final file = File(filePath);
+      if (!await file.exists()) return null;
+      final bytes = await file.readAsBytes();
+
+      final extension = file.path.split('.').last.toLowerCase();
+      final safeType = mediaType == 'video' ? 'video' : 'image';
+      final generatedName = fileName ??
+          '$safeType-$conversationId-${DateTime.now().millisecondsSinceEpoch}.$extension';
+      final storagePath = '$conversationId/$generatedName';
+      final contentType = _inferContentType(extension, safeType);
+
+      await _client.storage.from(voiceMessagesBucket).uploadBinary(
+            storagePath,
+            bytes,
+            fileOptions: FileOptions(
+              contentType: contentType,
+              upsert: false,
+            ),
+          );
+
+      return _client.storage.from(voiceMessagesBucket).getPublicUrl(storagePath);
+    } catch (e) {
+      debugPrint('Upload conversation media error: $e');
+      return null;
+    }
+  }
+
+  String _inferContentType(String extension, String mediaType) {
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'webp':
+        return 'image/webp';
+      case 'mp4':
+        return 'video/mp4';
+      case 'mov':
+        return 'video/quicktime';
+      case 'm4v':
+        return 'video/x-m4v';
+      default:
+        return mediaType == 'video'
+            ? 'application/octet-stream'
+            : 'image/jpeg';
     }
   }
 

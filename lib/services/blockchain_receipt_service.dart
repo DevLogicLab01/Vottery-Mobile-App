@@ -1,27 +1,19 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
-import 'package:web3dart/web3dart.dart';
-import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 class BlockchainReceiptService {
+  static const String stateVerified = 'verified';
+  static const String stateFailed = 'failed';
+  static const String stateUnavailable = 'unavailable';
+  static const String stateUnsupported = 'unsupported';
+  static const String statePendingBackend = 'pending_backend';
+
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  static const String _polygonRpcUrl = String.fromEnvironment(
-    'POLYGON_RPC_URL',
-    defaultValue: 'https://polygon-rpc.com',
-  );
-  static const String _contractAddress = String.fromEnvironment(
-    'VOTING_CONTRACT_ADDRESS',
-  );
-
-  late Web3Client _web3Client;
-
-  BlockchainReceiptService() {
-    _web3Client = Web3Client(_polygonRpcUrl, http.Client());
-  }
+  BlockchainReceiptService();
 
   // Generate cryptographic vote hash
   String generateVoteHash({
@@ -80,9 +72,25 @@ class BlockchainReceiptService {
 
   // Verify vote receipt
   Future<Map<String, dynamic>> verifyReceipt(String receiptJson) async {
+    final trimmedReceipt = receiptJson.trim();
+    if (trimmedReceipt.isEmpty) {
+      return {
+        'valid': false,
+        'state': stateFailed,
+        'reason': 'Receipt payload is empty',
+      };
+    }
+
     try {
-      final receipt = jsonDecode(receiptJson) as Map<String, dynamic>;
+      final receipt = jsonDecode(trimmedReceipt) as Map<String, dynamic>;
       final voteHash = receipt['vote_hash'] as String;
+      if (voteHash.trim().isEmpty) {
+        return {
+          'valid': false,
+          'state': stateFailed,
+          'reason': 'Receipt is missing vote_hash',
+        };
+      }
 
       // Query blockchain/database for verification
       final stored = await _supabase
@@ -92,7 +100,11 @@ class BlockchainReceiptService {
           .maybeSingle();
 
       if (stored == null) {
-        return {'valid': false, 'reason': 'Receipt not found in blockchain'};
+        return {
+          'valid': false,
+          'state': statePendingBackend,
+          'reason': 'Receipt not found in blockchain verification records',
+        };
       }
 
       // Verify hash matches
@@ -106,18 +118,24 @@ class BlockchainReceiptService {
       if (regeneratedHash != voteHash) {
         return {
           'valid': false,
+          'state': stateFailed,
           'reason': 'Hash mismatch - receipt may be tampered',
         };
       }
 
       return {
         'valid': true,
+        'state': stateVerified,
         'receipt': stored,
         'verified_at': DateTime.now().toIso8601String(),
       };
     } catch (e) {
       if (kDebugMode) print('Error verifying receipt: $e');
-      return {'valid': false, 'reason': 'Verification error: $e'};
+      return {
+        'valid': false,
+        'state': stateUnavailable,
+        'reason': 'Verification error: $e',
+      };
     }
   }
 

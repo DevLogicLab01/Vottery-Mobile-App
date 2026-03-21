@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import './supabase_service.dart';
 import './auth_service.dart';
@@ -467,24 +468,18 @@ Provide analysis in JSON format:
 
   Map<String, dynamic> _parseEarningAnalysis(String response) {
     try {
-      // Simple parsing - in production, use proper JSON parsing
+      final jsonObject = _extractJsonObject(response);
+      if (jsonObject == null) return _getDefaultAnalysis();
       return {
-        'opportunities': [
-          {
-            'type': 'pricing',
-            'title': 'Increase Service Prices',
-            'description': 'Your services are priced below market average',
-            'estimated_impact_usd': 2400.0,
-            'confidence': 0.85,
-            'priority': 'high',
-            'timeframe': 'immediate',
-          },
-        ],
-        'recommendations': [
-          'Focus on high-engagement content categories',
-          'Optimize posting schedule for peak audience times',
-        ],
-        'insights': 'Strong growth potential with pricing optimization',
+        'opportunities': List<Map<String, dynamic>>.from(
+          (jsonObject['opportunities'] as List? ?? []).map(
+            (item) => Map<String, dynamic>.from(item as Map),
+          ),
+        ),
+        'recommendations': List<dynamic>.from(
+          jsonObject['recommendations'] as List? ?? [],
+        ),
+        'insights': jsonObject['insights']?.toString() ?? '',
       };
     } catch (e) {
       return _getDefaultAnalysis();
@@ -492,20 +487,33 @@ Provide analysis in JSON format:
   }
 
   Map<String, dynamic> _parsePricingRecommendations(String response) {
+    final jsonObject = _extractJsonObject(response);
+    if (jsonObject == null) {
+      return {
+        'has_services': true,
+        'recommendations': <Map<String, dynamic>>[],
+        'overall_strategy': '',
+      };
+    }
     return {
       'has_services': true,
-      'recommendations': [
-        {
-          'service_id': '1',
-          'current_price': 500.0,
-          'suggested_price': 575.0,
-          'reasoning': 'Market analysis shows 15% pricing power',
-          'expected_revenue_increase': 2400.0,
-          'confidence': 0.85,
-        },
-      ],
-      'overall_strategy': 'Gradual price increases with value additions',
+      'recommendations': List<Map<String, dynamic>>.from(
+        (jsonObject['services'] as List? ?? jsonObject['recommendations'] as List? ?? []).map(
+          (item) => Map<String, dynamic>.from(item as Map),
+        ),
+      ),
+      'overall_strategy': jsonObject['overall_strategy']?.toString() ?? '',
     };
+  }
+
+  Map<String, dynamic>? _extractJsonObject(String response) {
+    final match = RegExp(r'\{[\s\S]*\}').firstMatch(response);
+    if (match == null) return null;
+    try {
+      return Map<String, dynamic>.from(jsonDecode(match.group(0)!) as Map);
+    } catch (_) {
+      return null;
+    }
   }
 
   double _calculateCurrentTrend(List<dynamic> snapshots) {

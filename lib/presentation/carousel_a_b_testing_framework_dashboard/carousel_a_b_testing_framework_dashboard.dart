@@ -365,11 +365,44 @@ class _CarouselABTestingFrameworkDashboardState
   }
 
   Widget _buildResultsAnalysisTab() {
-    return Center(
-      child: Text(
-        'Results analysis coming soon',
-        style: TextStyle(fontSize: 14.sp, color: AppTheme.textSecondaryDark),
-      ),
+    if (_historicalExperiments.isEmpty) {
+      return Center(
+        child: Text(
+          'No completed experiments to analyze yet',
+          style: TextStyle(fontSize: 14.sp, color: AppTheme.textSecondaryDark),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: EdgeInsets.all(4.w),
+      itemCount: _historicalExperiments.length,
+      itemBuilder: (context, index) {
+        final experiment = _historicalExperiments[index];
+        return Card(
+          color: AppTheme.surfaceDark,
+          margin: EdgeInsets.only(bottom: 2.h),
+          child: ListTile(
+            title: Text(
+              experiment['experiment_name']?.toString() ?? 'Experiment',
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimaryDark,
+              ),
+            ),
+            subtitle: Text(
+              'Tap for full analysis',
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: AppTheme.textSecondaryDark,
+              ),
+            ),
+            trailing: Icon(Icons.analytics, color: AppThemeColors.electricGold),
+            onTap: () => _viewExperimentDetails(experiment),
+          ),
+        );
+      },
     );
   }
 
@@ -418,7 +451,42 @@ class _CarouselABTestingFrameworkDashboardState
   }
 
   void _viewExperimentDetails(Map<String, dynamic> experiment) {
-    // TODO: Navigate to detailed experiment view
+    showDialog(
+      context: context,
+      builder: (context) {
+        final confidence = experiment['confidence_score'];
+        final winner = experiment['winning_variant_id'] ?? 'N/A';
+        final status = experiment['status'] ?? 'unknown';
+        final start = experiment['start_time']?.toString() ?? 'N/A';
+        final end = experiment['end_time']?.toString() ?? 'N/A';
+        return AlertDialog(
+          title: Text(experiment['experiment_name']?.toString() ?? 'Experiment'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Status: $status'),
+              SizedBox(height: 0.8.h),
+              Text('Winner: $winner'),
+              SizedBox(height: 0.8.h),
+              Text(
+                'Confidence: ${confidence == null ? 'N/A' : '${(confidence as num).toStringAsFixed(2)}'}',
+              ),
+              SizedBox(height: 0.8.h),
+              Text('Start: $start'),
+              SizedBox(height: 0.8.h),
+              Text('End: $end'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _pauseExperiment(String experimentId) async {

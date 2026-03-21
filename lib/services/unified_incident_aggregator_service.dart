@@ -212,6 +212,8 @@ class UnifiedIncidentAggregator {
         return IncidentStatus.investigating;
       case 'resolved':
         return IncidentStatus.resolved;
+      case 'escalated':
+        return IncidentStatus.escalated;
       default:
         return IncidentStatus.newIncident;
     }
@@ -287,6 +289,169 @@ class UnifiedIncidentAggregator {
     }
   }
 
+  /// Create an incident workflow record.
+  Future<Map<String, dynamic>> createIncident(
+    Map<String, dynamic> incidentData,
+  ) async {
+    try {
+      final payload = _toSnakeCaseMap(incidentData);
+      final response = await _supabase
+          .from('incident_response_workflows')
+          .insert(payload)
+          .select()
+          .single();
+      return {'data': _toCamelCaseMap(response), 'error': null};
+    } catch (e) {
+      return {'data': null, 'error': {'message': e.toString()}};
+    }
+  }
+
+  /// Update an incident workflow record.
+  Future<Map<String, dynamic>> updateIncident(
+    String incidentId,
+    Map<String, dynamic> updates,
+  ) async {
+    try {
+      final payload = _toSnakeCaseMap(updates);
+      final response = await _supabase
+          .from('incident_response_workflows')
+          .update(payload)
+          .eq('id', incidentId)
+          .select()
+          .single();
+      return {'data': _toCamelCaseMap(response), 'error': null};
+    } catch (e) {
+      return {'data': null, 'error': {'message': e.toString()}};
+    }
+  }
+
+  /// Assign incident owner and optional note.
+  Future<Map<String, dynamic>> assignIncidentOwner(
+    String incidentId,
+    String ownerUserId, {
+    String? notes,
+  }) async {
+    try {
+      final payload = <String, dynamic>{
+        'assigned_to': ownerUserId,
+        'assigned_at': DateTime.now().toUtc().toIso8601String(),
+        if (notes != null && notes.isNotEmpty) 'assignment_notes': notes,
+      };
+      final response = await _supabase
+          .from('incident_response_workflows')
+          .update(payload)
+          .eq('id', incidentId)
+          .select()
+          .single();
+      return {'data': _toCamelCaseMap(response), 'error': null};
+    } catch (e) {
+      return {'data': null, 'error': {'message': e.toString()}};
+    }
+  }
+
+  /// Escalate incident and map P-level to threat level.
+  Future<Map<String, dynamic>> escalateIncident(
+    String incidentId, {
+    String escalationLevel = 'P0',
+    String? escalationNotes,
+  }) async {
+    try {
+      final mappedThreatLevel = escalationLevel == 'P0'
+          ? 'critical'
+          : (escalationLevel == 'P1' ? 'high' : 'medium');
+      final payload = <String, dynamic>{
+        'status': 'escalated',
+        'threat_level': mappedThreatLevel,
+        'escalation_level': escalationLevel,
+        'escalated_at': DateTime.now().toUtc().toIso8601String(),
+        if (escalationNotes != null && escalationNotes.isNotEmpty)
+          'escalation_notes': escalationNotes,
+      };
+
+      final response = await _supabase
+          .from('incident_response_workflows')
+          .update(payload)
+          .eq('id', incidentId)
+          .select()
+          .single();
+      return {'data': _toCamelCaseMap(response), 'error': null};
+    } catch (e) {
+      return {'data': null, 'error': {'message': e.toString()}};
+    }
+  }
+
+  /// Execute automation actions on an incident workflow.
+  Future<Map<String, dynamic>> executeAutomatedResponse(
+    String incidentId,
+    List<dynamic> actions,
+  ) async {
+    try {
+      final payload = <String, dynamic>{
+        'automated_actions_taken': actions,
+        'status': 'in_progress',
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      };
+      final response = await _supabase
+          .from('incident_response_workflows')
+          .update(payload)
+          .eq('id', incidentId)
+          .select()
+          .single();
+      return {'data': _toCamelCaseMap(response), 'error': null};
+    } catch (e) {
+      return {'data': null, 'error': {'message': e.toString()}};
+    }
+  }
+
+  /// Upsert incident SLA row.
+  Future<Map<String, dynamic>> upsertIncidentSla(
+    String incidentId,
+    String slaDeadlineIso, {
+    int warningThresholdHours = 2,
+  }) async {
+    try {
+      final response = await _supabase
+          .from('sla_tracking')
+          .upsert({
+            'entity_type': 'incident',
+            'entity_id': incidentId,
+            'sla_type': 'incident_response',
+            'sla_deadline': slaDeadlineIso,
+            'warning_threshold_hours': warningThresholdHours,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          }, onConflict: 'entity_type,entity_id,sla_type')
+          .select()
+          .single();
+      return {'data': _toCamelCaseMap(response), 'error': null};
+    } catch (e) {
+      return {'data': null, 'error': {'message': e.toString()}};
+    }
+  }
+
+  Map<String, dynamic> _toSnakeCaseMap(Map<String, dynamic> input) {
+    final output = <String, dynamic>{};
+    input.forEach((key, value) {
+      final snake = key.replaceAllMapped(
+        RegExp(r'[A-Z]'),
+        (match) => '_${match.group(0)!.toLowerCase()}',
+      );
+      output[snake] = value;
+    });
+    return output;
+  }
+
+  Map<String, dynamic> _toCamelCaseMap(Map<String, dynamic> input) {
+    final output = <String, dynamic>{};
+    input.forEach((key, value) {
+      final camel = key.replaceAllMapped(
+        RegExp(r'_([a-z])'),
+        (match) => match.group(1)!.toUpperCase(),
+      );
+      output[camel] = value;
+    });
+    return output;
+  }
+
   void dispose() {
     _incidentStreamController?.close();
   }
@@ -321,6 +486,36 @@ class UnifiedIncident {
     this.assignedTo,
     this.priorityScore,
   });
+
+  UnifiedIncident copyWith({
+    String? incidentId,
+    IncidentType? incidentType,
+    IncidentSeverity? severity,
+    String? title,
+    String? description,
+    String? sourceSystem,
+    DateTime? detectedAt,
+    IncidentStatus? status,
+    List<String>? affectedResources,
+    Map<String, dynamic>? metadata,
+    String? assignedTo,
+    int? priorityScore,
+  }) {
+    return UnifiedIncident(
+      incidentId: incidentId ?? this.incidentId,
+      incidentType: incidentType ?? this.incidentType,
+      severity: severity ?? this.severity,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      sourceSystem: sourceSystem ?? this.sourceSystem,
+      detectedAt: detectedAt ?? this.detectedAt,
+      status: status ?? this.status,
+      affectedResources: affectedResources ?? this.affectedResources,
+      metadata: metadata ?? this.metadata,
+      assignedTo: assignedTo ?? this.assignedTo,
+      priorityScore: priorityScore ?? this.priorityScore,
+    );
+  }
 }
 
 enum IncidentType {
@@ -334,4 +529,4 @@ enum IncidentType {
 
 enum IncidentSeverity { critical, high, medium, low }
 
-enum IncidentStatus { newIncident, triaged, investigating, resolved }
+enum IncidentStatus { newIncident, triaged, investigating, resolved, escalated }

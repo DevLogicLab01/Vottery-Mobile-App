@@ -14,7 +14,7 @@ Future<Map<String, dynamic>?> mintNFTImpl({
       defaultValue: 'https://api.mainnet-beta.solana.com',
     );
 
-    final client = SolanaClient(
+    SolanaClient(
       rpcUrl: Uri.parse(rpcUrl),
       websocketUrl: Uri.parse(rpcUrl.replaceAll('https', 'wss')),
     );
@@ -45,7 +45,7 @@ Future<double> getWalletBalanceImpl(String walletAddress) async {
       defaultValue: 'https://api.mainnet-beta.solana.com',
     );
 
-    final client = SolanaClient(
+    SolanaClient(
       rpcUrl: Uri.parse(rpcUrl),
       websocketUrl: Uri.parse(rpcUrl.replaceAll('https', 'wss')),
     );

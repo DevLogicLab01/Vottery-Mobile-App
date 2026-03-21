@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:sizer/sizer.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -78,6 +79,28 @@ class _WarRoomChatWidgetState extends State<WarRoomChatWidget> {
     );
   }
 
+  Future<void> _attachFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      withData: false,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.first;
+    final sent = await _warRoomService.sendMessage(
+      roomId: widget.roomId,
+      messageText: 'Attached file: ${file.name}',
+      attachments: [file.name],
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          sent ? 'Attachment added to chat' : 'Could not attach file',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -135,9 +158,7 @@ class _WarRoomChatWidgetState extends State<WarRoomChatWidget> {
               // Attachment button
               IconButton(
                 icon: const Icon(Icons.attach_file),
-                onPressed: () {
-                  // TODO: Implement file attachment
-                },
+                onPressed: _attachFile,
               ),
               // Message input field
               Expanded(

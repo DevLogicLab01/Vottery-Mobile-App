@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../../../routes/app_routes.dart';
 import '../../../services/creator_earnings_service.dart';
 
 class SettlementPreviewWidget extends StatelessWidget {
@@ -83,7 +84,7 @@ class SettlementPreviewWidget extends StatelessWidget {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pushNamed(context, '/request-payout');
+                      Navigator.pushNamed(context, AppRoutes.creatorPayoutDashboard);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.accentLight,

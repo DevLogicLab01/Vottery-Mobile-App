@@ -43,7 +43,7 @@ class PredictiveRevenuePanelWidget extends StatelessWidget {
           ),
           SizedBox(height: 0.5.h),
           Text(
-            'OpenAI-powered 30/60/90-day forecasts',
+            'Claude-powered 30/60/90-day forecasts (same model as Web)',
             style: GoogleFonts.inter(fontSize: 9.sp, color: Colors.white38),
           ),
           SizedBox(height: 2.h),

@@ -12,7 +12,6 @@ class SecureStorageService {
 
   static const _androidOptions = AndroidOptions(
     encryptedSharedPreferences: true,
-    keyCipherAlgorithm: KeyCipherAlgorithm.RSA_ECB_OAEPpadding,
     storageCipherAlgorithm: StorageCipherAlgorithm.AES_GCM_NoPadding,
   );
 

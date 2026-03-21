@@ -3,6 +3,7 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../services/auth_service.dart';
+import '../../services/captcha_service.dart';
 import '../../services/participation_fee_service.dart';
 import '../../widgets/error_boundary_wrapper.dart';
 
@@ -35,13 +36,21 @@ class _ParticipationFeePaymentScreenState
   bool _isLoading = true;
   bool _isProcessing = false;
   bool _hasPaid = false;
+  int _failedPaymentAttempts = 0;
   double _feeAmount = 0.0;
   String _userZone = 'zone_1_us_canada';
+  final TextEditingController _captchaTokenController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _checkPaymentStatus();
+  }
+
+  @override
+  void dispose() {
+    _captchaTokenController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkPaymentStatus() async {
@@ -89,6 +98,24 @@ class _ParticipationFeePaymentScreenState
     setState(() => _isProcessing = true);
 
     try {
+      if (_failedPaymentAttempts >= 2) {
+        final captchaValid = await CaptchaService.instance.validateToken(
+          _captchaTokenController.text,
+        );
+        if (!captchaValid) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Captcha verification failed. Enter a valid token and retry.'),
+                backgroundColor: AppTheme.errorLight,
+              ),
+            );
+          }
+          setState(() => _isProcessing = false);
+          return;
+        }
+      }
+
       final result = await _feeService.processPayment(
         electionId: widget.electionId,
         amount: _feeAmount,
@@ -96,6 +123,8 @@ class _ParticipationFeePaymentScreenState
       );
 
       if (result.success) {
+        _failedPaymentAttempts = 0;
+        _captchaTokenController.clear();
         setState(() => _hasPaid = true);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -108,6 +137,7 @@ class _ParticipationFeePaymentScreenState
         await Future.delayed(Duration(seconds: 2));
         _navigateToVoting();
       } else {
+        _failedPaymentAttempts += 1;
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -119,6 +149,7 @@ class _ParticipationFeePaymentScreenState
       }
     } catch (e) {
       debugPrint('Process payment error: $e');
+      _failedPaymentAttempts += 1;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -288,6 +319,20 @@ class _ParticipationFeePaymentScreenState
                       ),
                     ),
                     SizedBox(height: 3.h),
+                    if (_failedPaymentAttempts >= 2) ...[
+                      TextField(
+                        controller: _captchaTokenController,
+                        decoration: InputDecoration(
+                          labelText: 'hCaptcha Token',
+                          hintText: 'Paste token from captcha challenge',
+                          prefixIcon: Icon(Icons.verified_user_outlined),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 2.h),
+                    ],
                     ElevatedButton(
                       onPressed: _isProcessing ? null : _processPayment,
                       style: ElevatedButton.styleFrom(

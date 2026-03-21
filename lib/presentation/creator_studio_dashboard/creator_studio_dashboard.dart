@@ -91,7 +91,7 @@ class _CreatorStudioDashboardState extends State<CreatorStudioDashboard>
               onPressed: () {
                 Navigator.pushNamed(
                   context,
-                  '/real-time-creator-earnings-widget',
+                  AppRoutes.realTimeCreatorEarningsWidget,
                 );
               },
             ),
@@ -104,7 +104,7 @@ class _CreatorStudioDashboardState extends State<CreatorStudioDashboard>
               onPressed: () {
                 Navigator.pushNamed(
                   context,
-                  '/creator-revenue-transparency-hub',
+                  AppRoutes.creatorRevenueTransparencyHub,
                 );
               },
             ),
@@ -117,7 +117,7 @@ class _CreatorStudioDashboardState extends State<CreatorStudioDashboard>
               onPressed: () {
                 Navigator.pushNamed(
                   context,
-                  '/creator-verification-kyc-screen',
+                  AppRoutes.creatorVerificationKycScreen,
                 );
               },
             ),
@@ -141,7 +141,7 @@ class _CreatorStudioDashboardState extends State<CreatorStudioDashboard>
                 color: Color(0xFFFFD700),
               ),
               onPressed: () {
-                Navigator.pushNamed(context, '/creator-tier-dashboard');
+                Navigator.pushNamed(context, AppRoutes.creatorTierDashboardScreen);
               },
             ),
             IconButton(

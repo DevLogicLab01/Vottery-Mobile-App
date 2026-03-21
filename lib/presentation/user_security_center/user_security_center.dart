@@ -22,6 +22,7 @@ class _UserSecurityCenterState extends State<UserSecurityCenter>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = true;
+  bool _showContextualHelp = false;
   Map<String, dynamic>? _fraudRiskScore;
   Map<String, dynamic> _eventsSummary = {};
   List<Map<String, dynamic>> _trustedDevices = [];
@@ -31,7 +32,25 @@ class _UserSecurityCenterState extends State<UserSecurityCenter>
   void initState() {
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
+    _tabController.addListener(() {
+      if (mounted && _showContextualHelp) {
+        setState(() {});
+      }
+    });
     _loadData();
+  }
+
+  String _currentHelpText() {
+    const tabHelp = [
+      'Risk Dashboard shows your current threat level, scan freshness, and top security signals.',
+      'Events lists security incidents, unresolved threats, and response timeline actions.',
+      'Devices lets you review trusted devices and remove unknown sessions quickly.',
+      'Settings controls 2FA, session timeout, and account protection policies.',
+      'Sessions shows active logins and supports session revocation for suspicious access.',
+      'Audit Trail exports security evidence and compliance-grade activity history.',
+    ];
+    final idx = _tabController.index.clamp(0, tabHelp.length - 1);
+    return tabHelp[idx];
   }
 
   @override
@@ -262,6 +281,41 @@ class _UserSecurityCenterState extends State<UserSecurityCenter>
                   ),
                 ],
               ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () {
+            setState(() => _showContextualHelp = !_showContextualHelp);
+          },
+          icon: const Icon(Icons.help_outline),
+          label: Text(_showContextualHelp ? 'Hide Help' : 'What is this?'),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        bottomSheet: _showContextualHelp
+            ? Container(
+                width: double.infinity,
+                padding: EdgeInsets.fromLTRB(4.w, 2.h, 4.w, 2.h),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  border: Border(
+                    top: BorderSide(
+                      color: theme.colorScheme.outline.withValues(alpha: 0.25),
+                    ),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.help_outline, color: theme.colorScheme.primary),
+                    SizedBox(width: 2.w),
+                    Expanded(
+                      child: Text(
+                        _currentHelpText(),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : null,
       ),
     );
   }

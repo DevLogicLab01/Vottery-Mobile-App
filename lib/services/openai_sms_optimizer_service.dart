@@ -1,8 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+import 'dart:convert';
 import './supabase_service.dart';
-import './auth_service.dart';
-import './ai/ai_service_base.dart';
 import './ai/gemini_chat_service.dart';
 
 /// SMS Optimizer Service — uses Gemini via ai-proxy (same as Web). No OpenAI key required.
@@ -19,7 +18,6 @@ class OpenAISMSOptimizerService {
   static const String apiKey = String.fromEnvironment('OPENAI_API_KEY');
   late final Dio _dio;
   final _supabase = SupabaseService.instance.client;
-  final _auth = AuthService.instance;
   bool _openAiAvailable = false;
 
   void _initializeService() {
@@ -266,6 +264,64 @@ Return ONLY the 3 variations, separated by "|||" (no labels, no explanation).
     }
   }
 
+  /// Generate email subject A/B variants with predicted open rates.
+  Future<List<Map<String, dynamic>>> generateEmailSubjectVariants(
+    String subject, {
+    int variantCount = 3,
+    String audience = 'general',
+    String tone = 'professional',
+  }) async {
+    try {
+      final prompt = '''
+Generate $variantCount email subject line variants.
+Original subject: "$subject"
+Audience: $audience
+Tone: $tone
+
+Return ONLY valid JSON:
+{
+  "variants": [
+    { "subject": "...", "predictedOpenRate": 0, "reason": "..." }
+  ]
+}
+''';
+      final response = await _callGeminiOrOpenAI(prompt);
+      final parsed = _extractJsonObject(response);
+      final variants = (parsed?['variants'] as List?) ?? [];
+      return variants
+          .map((v) => Map<String, dynamic>.from(v as Map))
+          .take(variantCount)
+          .toList();
+    } catch (e) {
+      debugPrint('Generate email subject variants error: $e');
+      return [];
+    }
+  }
+
+  /// Select best-performing email subject variant.
+  Future<Map<String, dynamic>?> selectBestEmailSubjectVariant(
+    String subject, {
+    int variantCount = 3,
+    String audience = 'general',
+    String tone = 'professional',
+  }) async {
+    final variants = await generateEmailSubjectVariants(
+      subject,
+      variantCount: variantCount,
+      audience: audience,
+      tone: tone,
+    );
+    if (variants.isEmpty) return null;
+    variants.sort(
+      (a, b) => ((b['predictedOpenRate'] as num?) ?? 0)
+          .compareTo((a['predictedOpenRate'] as num?) ?? 0),
+    );
+    return {
+      'best': variants.first,
+      'alternatives': variants.skip(1).toList(),
+    };
+  }
+
   /// Get optimization analytics (uses created_at, original_length/optimized_length — aligned with Web/Supabase).
   Future<Map<String, dynamic>> getOptimizationAnalytics({
     DateTime? startDate,
@@ -401,6 +457,16 @@ Return ONLY the 3 variations, separated by "|||" (no labels, no explanation).
       }
     } catch (e) {
       debugPrint('Update daily analytics error: $e');
+    }
+  }
+
+  Map<String, dynamic>? _extractJsonObject(String raw) {
+    final match = RegExp(r'\{[\s\S]*\}').firstMatch(raw);
+    if (match == null) return null;
+    try {
+      return Map<String, dynamic>.from(jsonDecode(match.group(0)!) as Map);
+    } catch (_) {
+      return null;
     }
   }
 }

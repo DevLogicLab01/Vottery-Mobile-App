@@ -64,12 +64,8 @@ class _LivePredictionTrackerWidgetState
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (mounted) {
         setState(() {
-          // Simulate live crowd prediction updates
-          for (final key in _liveCrowdPredictions.keys) {
-            final current = _liveCrowdPredictions[key]!;
-            final delta = (current * 0.05) - (current * 0.025);
-            _liveCrowdPredictions[key] = (current + delta).clamp(0, 100);
-          }
+          // Keep tracker deterministic in production paths until realtime
+          // crowd stream is available.
 
           // Update chart
           final firstOptId = widget.options.isNotEmpty
@@ -85,11 +81,6 @@ class _LivePredictionTrackerWidgetState
           if (_crowdSpots.length > 10) _crowdSpots.removeAt(0);
 
           _timeIndex++;
-
-          // Simulate rank changes
-          if (_userRank > 1 && DateTime.now().second % 15 == 0) {
-            _userRank = (_userRank - 1).clamp(1, _totalPredictors);
-          }
         });
       }
     });

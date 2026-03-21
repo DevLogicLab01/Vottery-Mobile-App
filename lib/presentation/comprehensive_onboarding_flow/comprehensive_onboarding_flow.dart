@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
@@ -21,7 +22,7 @@ class _ComprehensiveOnboardingFlowState
 
   int _currentStep = 0;
   final int _totalSteps = 5;
-  final bool _showTutorial = true;
+  bool _showTutorial = true;
 
   late TutorialCoachMark tutorialCoachMark;
   List<TargetFocus> targets = [];
@@ -35,6 +36,23 @@ class _ComprehensiveOnboardingFlowState
   @override
   void initState() {
     super.initState();
+    _initializeOnboardingState();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initializeOnboardingState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final completed = prefs.getBool('onboarding_tutorial_completed') ?? false;
+    if (!mounted) return;
+    setState(() {
+      _showTutorial = !completed;
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_showTutorial) {
         _initTutorial();
@@ -43,10 +61,9 @@ class _ComprehensiveOnboardingFlowState
     });
   }
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
+  Future<void> _persistOnboardingCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_tutorial_completed', true);
   }
 
   void _initTutorial() {
@@ -181,16 +198,21 @@ class _ComprehensiveOnboardingFlowState
 
   Future<void> _awardOnboardingCompletion() async {
     try {
-      // Remove this block - addPoints method doesn't exist in GamificationService
-      // await _gamificationService.addPoints(
-      //   points: 100,
-      //   source: 'Completed onboarding tutorial',
-      // );
+      final xpResult = await _gamificationService.addXP(
+        100,
+        'completed_onboarding_tutorial',
+      );
+      await _persistOnboardingCompleted();
 
       if (mounted) {
+        final xpApplied = xpResult['success'] == true;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('🎉 Onboarding completed! +100 VP awarded'),
+            content: Text(
+              xpApplied
+                  ? '🎉 Onboarding completed! +100 XP awarded'
+                  : '🎉 Onboarding completed successfully',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -223,6 +245,7 @@ class _ComprehensiveOnboardingFlowState
   }
 
   void _skipOnboarding() {
+    _persistOnboardingCompleted();
     Navigator.of(
       context,
       rootNavigator: true,

@@ -186,9 +186,9 @@ class _EmergencyControlsWidgetState extends State<EmergencyControlsWidget> {
   }
 
   void _showBulkAdjustmentDialog() {
-    // TODO: Implement bulk VP adjustment dialog
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Bulk VP adjustment feature coming soon')),
-    );
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).pushNamed(AppRoutes.bulkManagementScreen);
   }
 }

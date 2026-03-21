@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../framework/shared_constants.dart';
 import '../../services/moderation_shared_service.dart';
-import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_icon_widget.dart';
 import '../../widgets/error_boundary_wrapper.dart';
 import '../../widgets/shimmer_skeleton_loader.dart';
@@ -107,19 +107,119 @@ class _ContentModerationControlCenterScreenState
     if (mounted) setState(() => _refreshing = false);
   }
 
-  Future<void> _onModerationAction(String flagId, String action) async {
-    final ok = await _mod.performModerationAction(
-      flagId,
-      action,
-      'Moderator review',
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(ok ? 'Action applied' : 'Action failed'),
-        ),
+  bool _isLikelyAutomatedDetection(Map<String, dynamic> item) {
+    final m = (item['detectionMethod'] as String?)?.toLowerCase() ?? '';
+    if (m.isEmpty) return true;
+    return m != 'manual' && m != 'human';
+  }
+
+  String _actionVerb(String action) {
+    final a = action.toLowerCase();
+    if (a == 'approve') return 'Approve content';
+    if (a == 'remove') return 'Remove content';
+    if (a == 'warn') return 'Warn user';
+    return 'Moderate';
+  }
+
+  Future<void> _onModerationAction(
+    String flagId,
+    String action,
+    Map<String, dynamic> item,
+  ) async {
+    final controller = TextEditingController();
+    var overrideAi = _isLikelyAutomatedDetection(item);
+    try {
+      final result = await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (ctx) {
+          return StatefulBuilder(
+            builder: (ctx, setLocal) {
+              return AlertDialog(
+                title: Text(_actionVerb(action)),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      CheckboxListTile(
+                        value: overrideAi,
+                        onChanged: (v) =>
+                            setLocal(() => overrideAi = v ?? false),
+                        title: const Text(
+                          'Log as moderator override of automated / AI detection',
+                        ),
+                        controlAffinity: ListTileControlAffinity.leading,
+                      ),
+                      TextField(
+                        controller: controller,
+                        maxLines: 4,
+                        decoration: const InputDecoration(
+                          labelText: 'Audit reason',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      SizedBox(height: 1.h),
+                      Text(
+                        'When override is on, use at least '
+                        '${SharedConstants.moderationMinOverrideReasonLength} characters.',
+                        style: Theme.of(ctx).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, null),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: () {
+                      final t = controller.text.trim();
+                      if (overrideAi &&
+                          t.length <
+                              SharedConstants.moderationMinOverrideReasonLength) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Override requires at least '
+                              '${SharedConstants.moderationMinOverrideReasonLength} characters.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                      Navigator.pop(ctx, <String, dynamic>{
+                        'reason': t.isEmpty ? 'Moderator review' : t,
+                        'overrideAi': overrideAi,
+                      });
+                    },
+                    child: const Text('Confirm'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
       );
-      if (ok) await _loadAll();
+      if (result == null || !mounted) return;
+      final ok = await _mod.performModerationAction(
+        flagId,
+        action,
+        result['reason'] as String,
+        overrideAi: result['overrideAi'] as bool,
+        detectionMethod: item['detectionMethod'] as String?,
+        confidenceScore: (item['confidenceScore'] as num?)?.toDouble(),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ok ? 'Action applied' : 'Action failed'),
+          ),
+        );
+        if (ok) await _loadAll();
+      }
+    } finally {
+      controller.dispose();
     }
   }
 
@@ -373,7 +473,7 @@ class _ContentModerationControlCenterScreenState
         final item = list[i];
         final id = item['id'] as String?;
         final status = item['status'] as String? ?? '';
-        final severity = item['severity'] as String? ?? '';
+        final sev = (item['severity'] as String?) ?? '';
         final violationType = item['violationType'] as String? ?? '';
         final content = item['content'] as String? ?? '';
         return Card(
@@ -383,23 +483,39 @@ class _ContentModerationControlCenterScreenState
               violationType.toString().replaceAll('_', ' ').toUpperCase(),
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-            subtitle: Text(
-              content.toString().length > 80
-                  ? '${content.toString().substring(0, 80)}...'
-                  : content.toString(),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (sev.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 0.5.h),
+                    child: Text(
+                      'Severity: $sev',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.secondary,
+                      ),
+                    ),
+                  ),
+                Text(
+                  content.toString().length > 80
+                      ? '${content.toString().substring(0, 80)}...'
+                      : content.toString(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (status == 'pending_review' || status == 'under_review') ...[
                   TextButton(
-                    onPressed: () => _onModerationAction(id!, 'approve'),
+                    onPressed: () => _onModerationAction(id!, 'approve', item),
                     child: const Text('Approve'),
                   ),
                   TextButton(
-                    onPressed: () => _onModerationAction(id!, 'remove'),
+                    onPressed: () => _onModerationAction(id!, 'remove', item),
                     child: const Text('Remove'),
                   ),
                 ],

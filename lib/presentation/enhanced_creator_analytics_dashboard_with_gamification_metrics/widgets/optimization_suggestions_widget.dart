@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../routes/app_routes.dart';
 import '../../../theme/app_theme.dart';
 
 class OptimizationSuggestionsWidget extends StatelessWidget {
@@ -220,16 +221,16 @@ class OptimizationSuggestionsWidget extends StatelessWidget {
   void _handleAction(BuildContext context, String action) {
     switch (action) {
       case 'create_jolt':
-        Navigator.pushNamed(context, '/jolts-video-feed');
+        Navigator.pushNamed(context, AppRoutes.joltsVideoFeed);
         break;
       case 'join_prediction':
-        Navigator.pushNamed(context, '/social-home-feed');
+        Navigator.pushNamed(context, AppRoutes.socialHomeFeed);
         break;
       case 'view_quests':
-        Navigator.pushNamed(context, '/feed-quest-dashboard');
+        Navigator.pushNamed(context, AppRoutes.feedQuestDashboard);
         break;
       case 'browse_elections':
-        Navigator.pushNamed(context, '/vote-discovery');
+        Navigator.pushNamed(context, AppRoutes.voteDiscovery);
         break;
       default:
         ScaffoldMessenger.of(context).showSnackBar(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
+import 'package:vottery/routes/app_routes.dart';
 
 class AutomationRulesWidget extends StatelessWidget {
   final List<Map<String, dynamic>> rules;
@@ -298,21 +299,8 @@ class AutomationRulesWidget extends StatelessWidget {
   }
 
   void _showCreateRuleDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create Automation Rule'),
-        content: Text(
-          'Automation rule creation interface coming soon. This will allow you to set custom triggers and actions for automated campaign management.',
-          style: TextStyle(fontSize: 14.sp),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
+    Navigator.of(context, rootNavigator: true).pushNamed(
+      AppRoutes.adminAutomationControlPanel,
     );
   }
 

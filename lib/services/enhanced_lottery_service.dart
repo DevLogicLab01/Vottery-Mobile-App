@@ -163,12 +163,48 @@ class EnhancedLotteryService {
     required Map<String, dynamic> notificationContent,
   }) async {
     try {
-      await _client.from('winner_notifications').insert({
+      final inserted = await _client.from('winner_notifications').insert({
         'lottery_winner_id': lotteryWinnerId,
         'notification_type': notificationType,
         'notification_content': notificationContent,
-        'notification_status': 'pending',
-      });
+        'notification_status': 'sent',
+      }).select('id, lottery_winner_id').single();
+
+      final winner = await _client
+          .from('lottery_winners')
+          .select('user_id, lottery_id')
+          .eq('id', lotteryWinnerId)
+          .maybeSingle();
+
+      final winnerUserId = winner?['user_id'] as String?;
+      if (winnerUserId != null) {
+        await _client.from('notifications').insert({
+          'user_id': winnerUserId,
+          'title': notificationContent['title'] ?? 'Winner announcement',
+          'message': notificationContent['message'] ??
+              'Congratulations! You won. Open your wallet for details.',
+          'type': 'winner_announcement',
+          'data': {
+            'lotteryWinnerId': lotteryWinnerId,
+            'winnerNotificationId': inserted['id'],
+            ...notificationContent,
+          },
+          'is_read': false,
+        });
+
+        await _client.from('notification_delivery_logs').insert({
+          'user_id': winnerUserId,
+          'category': 'winner_announcement',
+          'channel': 'in_app',
+          'entity_id': lotteryWinnerId,
+          'status': 'sent',
+          'metadata': {
+            'notificationType': notificationType,
+            'winnerNotificationId': inserted['id'],
+          },
+          'sent_at': DateTime.now().toIso8601String(),
+        });
+      }
 
       return true;
     } catch (e) {

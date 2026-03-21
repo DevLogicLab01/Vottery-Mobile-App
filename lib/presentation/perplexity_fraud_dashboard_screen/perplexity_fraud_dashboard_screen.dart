@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
+import '../../services/advanced_perplexity_fraud_service.dart';
 import '../../services/perplexity_fraud_analyzer_service.dart';
 import '../../services/platform_log_aggregator_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -65,6 +66,8 @@ class _PerplexityFraudDashboardScreenState
     try {
       // Load summary statistics
       await _loadSummaryStats();
+
+      await _loadSupabaseFraudSignals();
 
       // Load detected patterns
       await _loadDetectedPatterns();
@@ -390,6 +393,46 @@ class _PerplexityFraudDashboardScreenState
             ],
           ),
           SizedBox(height: 3.h),
+
+          if (_supabaseFraudSignals != null) ...[
+            Text(
+              'Internal signals (30d, Supabase)',
+              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 1.h),
+            Card(
+              elevation: 2,
+              child: Padding(
+                padding: EdgeInsets.all(3.w),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Historical / forecasting inputs: ${_supabaseFraudSignals!['historicalData']}',
+                      style: TextStyle(fontSize: 11.sp),
+                    ),
+                    SizedBox(height: 1.h),
+                    Text(
+                      'Threat correlation inputs: ${_supabaseFraudSignals!['threatData']}',
+                      style: TextStyle(fontSize: 11.sp),
+                    ),
+                    if (_supabaseFraudSignals!['errors'] != null)
+                      Padding(
+                        padding: EdgeInsets.only(top: 1.h),
+                        child: Text(
+                          'Errors: ${_supabaseFraudSignals!['errors']}',
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            color: Colors.orange.shade800,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 3.h),
+          ],
 
           // Recent Analyses
           Text(

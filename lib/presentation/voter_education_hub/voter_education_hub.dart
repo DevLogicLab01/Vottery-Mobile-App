@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../services/claude_faq_service.dart';
 
 class VoterEducationHub extends StatefulWidget {
   const VoterEducationHub({super.key});
@@ -17,6 +18,7 @@ class _VoterEducationHubState extends State<VoterEducationHub>
   final ScrollController _chatScrollController = ScrollController();
   final List<Map<String, String>> _chatHistory = [];
   bool _showChat = false;
+  bool _isSending = false;
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
   late Animation<Offset> _slideAnim;
@@ -200,22 +202,30 @@ class _VoterEducationHubState extends State<VoterEducationHub>
     _animController.forward();
   }
 
-  void _sendChatMessage() {
+  Future<void> _sendChatMessage() async {
     final text = _chatController.text.trim();
     if (text.isEmpty) return;
 
-    final topic = _topics[_selectedTopicIndex]['title'] as String;
     setState(() {
       _chatHistory.add({'role': 'user', 'content': text});
+      _isSending = true;
     });
     _chatController.clear();
+
+    final topic = _topics[_selectedTopicIndex]['title'] as String;
+    final prompt = 'Voter Education topic: $topic. Question: $text';
+
+    final result = await ClaudeFAQService.instance.askQuestion(question: prompt);
+    final answer = (result['answer'] as String?)?.trim();
 
     setState(() {
       _chatHistory.add({
         'role': 'assistant',
-        'content':
-            'Chat functionality requires provider setup. Please configure the chat provider.',
+        'content': (answer == null || answer.isEmpty)
+            ? 'I could not generate an answer right now. Please try again.'
+            : answer,
       });
+      _isSending = false;
     });
 
     Future.delayed(const Duration(milliseconds: 100), () {
@@ -609,13 +619,15 @@ class _VoterEducationHubState extends State<VoterEducationHub>
         Expanded(
           child: _chatHistory.isEmpty
               ? _buildChatEmptyState(topicColor)
-              : ListView.builder(
+              : ListView(
                   controller: _chatScrollController,
                   padding: EdgeInsets.all(3.w),
-                  itemCount: _chatHistory.length,
-                  itemBuilder: (context, index) {
-                    return _buildChatBubble(_chatHistory[index], topicColor);
-                  },
+                  children: [
+                    ..._chatHistory.map(
+                      (message) => _buildChatBubble(message, topicColor),
+                    ),
+                    if (_isSending) _buildTypingIndicator(topicColor),
+                  ],
                 ),
         ),
         _buildChatInput(topicColor),
@@ -827,20 +839,20 @@ class _VoterEducationHubState extends State<VoterEducationHub>
                 isDense: true,
               ),
               style: GoogleFonts.inter(fontSize: 11.sp),
-              onSubmitted: (_) => _sendChatMessage(),
+              onSubmitted: (_) async => _sendChatMessage(),
               maxLines: 3,
               minLines: 1,
             ),
           ),
           SizedBox(width: 2.w),
           GestureDetector(
-            onTap: _sendChatMessage,
+            onTap: _isSending ? null : _sendChatMessage,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 11.w,
               height: 11.w,
               decoration: BoxDecoration(
-                color: color,
+                color: _isSending ? Colors.grey : color,
                 shape: BoxShape.circle,
               ),
               child: Icon(

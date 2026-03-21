@@ -296,7 +296,7 @@ class _CreateVoteState extends State<CreateVote> {
       Navigator.of(
         context,
         rootNavigator: true,
-      ).pushReplacementNamed('/vote-dashboard');
+      ).pushReplacementNamed(AppRoutes.voteDashboard);
     }
   }
 

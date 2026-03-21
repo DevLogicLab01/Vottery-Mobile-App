@@ -22,6 +22,7 @@ class _CreatorMonetizationAnalyticsDashboardState
   bool _isLoading = true;
   bool _autoRefreshEnabled = true;
   Timer? _refreshTimer;
+  String? _error;
 
   Map<String, dynamic> _earningsOverview = {};
   List<Map<String, dynamic>> _contentTypeBreakdown = [];
@@ -55,7 +56,10 @@ class _CreatorMonetizationAnalyticsDashboardState
 
   Future<void> _loadAnalyticsData({bool silent = false}) async {
     if (!silent) {
-      setState(() => _isLoading = true);
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
     }
 
     try {
@@ -82,7 +86,10 @@ class _CreatorMonetizationAnalyticsDashboardState
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _error = 'Unable to load monetization analytics.';
+        });
       }
     }
   }
@@ -303,6 +310,25 @@ class _CreatorMonetizationAnalyticsDashboardState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (_error != null)
+                        Container(
+                          width: double.infinity,
+                          margin: EdgeInsets.only(bottom: 2.h),
+                          padding: EdgeInsets.all(3.w),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(10.0),
+                            border: Border.all(color: const Color(0xFFF59E0B)),
+                          ),
+                          child: Text(
+                            _error!,
+                            style: TextStyle(
+                              color: const Color(0xFF92400E),
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       Card(
                         child: Padding(
                           padding: EdgeInsets.all(4.w),

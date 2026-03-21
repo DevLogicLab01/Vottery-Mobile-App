@@ -17,64 +17,7 @@ class GamificationService {
   AuthService get _auth => AuthService.instance;
   VPService get _vpService => VPService.instance;
 
-  // Level system configuration (10 tiers)
-  static const List<Map<String, dynamic>> levelTiers = [
-    {'level': 1, 'title': 'Novice', 'xp_required': 0, 'vp_multiplier': 1.00},
-    {
-      'level': 2,
-      'title': 'Bronze Voter',
-      'xp_required': 100,
-      'vp_multiplier': 1.25,
-    },
-    {
-      'level': 3,
-      'title': 'Bronze Participant',
-      'xp_required': 500,
-      'vp_multiplier': 1.50,
-    },
-    {
-      'level': 4,
-      'title': 'Bronze Activist',
-      'xp_required': 1000,
-      'vp_multiplier': 1.75,
-    },
-    {
-      'level': 5,
-      'title': 'Silver Contributor',
-      'xp_required': 2500,
-      'vp_multiplier': 2.00,
-    },
-    {
-      'level': 6,
-      'title': 'Silver Leader',
-      'xp_required': 5000,
-      'vp_multiplier': 2.50,
-    },
-    {
-      'level': 7,
-      'title': 'Gold Advocate',
-      'xp_required': 10000,
-      'vp_multiplier': 3.00,
-    },
-    {
-      'level': 8,
-      'title': 'Gold Expert',
-      'xp_required': 15000,
-      'vp_multiplier': 3.50,
-    },
-    {
-      'level': 9,
-      'title': 'Platinum Champion',
-      'xp_required': 25000,
-      'vp_multiplier': 4.00,
-    },
-    {
-      'level': 10,
-      'title': 'Elite Master',
-      'xp_required': 50000,
-      'vp_multiplier': 5.00,
-    },
-  ];
+  static const int maxLevel = 100;
 
   /// Get user's current level
   Future<Map<String, dynamic>?> getUserLevel() async {
@@ -394,6 +337,8 @@ class GamificationService {
           })
           .eq('user_id', _auth.currentUser!.id);
 
+      await scheduleStreakExpiryReminders();
+
       return {
         'success': true,
         'streak': newStreak,
@@ -409,13 +354,31 @@ class GamificationService {
 
   /// Calculate level from XP
   Map<String, dynamic> _calculateLevelFromXP(int totalXP) {
-    for (int i = levelTiers.length - 1; i >= 0; i--) {
-      final tier = levelTiers[i];
-      if (totalXP >= (tier['xp_required'] as int)) {
-        return tier;
-      }
-    }
-    return levelTiers[0];
+    final boundedLevel = ((totalXP / 100).floor() + 1).clamp(1, maxLevel);
+    final level = boundedLevel;
+    return {
+      'level': level,
+      'title': _titleForLevel(level),
+      'xp_required': (level - 1) * 100,
+      'vp_multiplier': _multiplierForLevel(level),
+    };
+  }
+
+  String _titleForLevel(int level) {
+    if (level >= 90) return 'Legendary Master';
+    if (level >= 75) return 'Elite Champion';
+    if (level >= 60) return 'Diamond Leader';
+    if (level >= 45) return 'Platinum Strategist';
+    if (level >= 30) return 'Gold Advocate';
+    if (level >= 15) return 'Silver Contributor';
+    if (level >= 5) return 'Bronze Voter';
+    return 'Novice';
+  }
+
+  double _multiplierForLevel(int level) {
+    if (level >= maxLevel) return 5.0;
+    final growth = 1.0 + (level / maxLevel) * 4.0;
+    return double.parse(growth.toStringAsFixed(2));
   }
 
   /// Calculate streak multiplier
@@ -425,6 +388,58 @@ class GamificationService {
     if (streakDays >= 7) return 1.50;
     if (streakDays >= 3) return 1.25;
     return 1.00;
+  }
+
+  Future<void> scheduleStreakExpiryReminders() async {
+    try {
+      if (!_auth.isAuthenticated) return;
+      final streak = await getUserStreak();
+      if (streak == null) return;
+      final lastActivityRaw = streak['last_activity_date']?.toString();
+      final parsedLastActivity = DateTime.tryParse(lastActivityRaw ?? '');
+      if (parsedLastActivity == null) return;
+
+      // Some rows store date-only values (midnight). Normalize to "now" for same-day
+      // activity to avoid scheduling reminders in the past.
+      final now = DateTime.now();
+      final normalizedLastActivity = (parsedLastActivity.year == now.year &&
+              parsedLastActivity.month == now.month &&
+              parsedLastActivity.day == now.day)
+          ? now
+          : parsedLastActivity;
+
+      final expiryAt = normalizedLastActivity.add(const Duration(days: 1));
+      final reminder24h = expiryAt.subtract(const Duration(hours: 24));
+      final reminder1h = expiryAt.subtract(const Duration(hours: 1));
+
+      if (reminder1h.isBefore(now)) return;
+
+      await _client.from('user_streak_reminders').upsert([
+        {
+          'user_id': _auth.currentUser!.id,
+          'reminder_type': 'streak_expiry_24h',
+          'scheduled_for': (reminder24h.isBefore(now) ? now : reminder24h)
+              .toIso8601String(),
+          'status': 'scheduled',
+        },
+        {
+          'user_id': _auth.currentUser!.id,
+          'reminder_type': 'streak_expiry_1h',
+          'scheduled_for': reminder1h.toIso8601String(),
+          'status': 'scheduled',
+        },
+      ]);
+
+      // Best-effort nudge so due reminders can be dispatched without waiting for
+      // external cron in environments where scheduler is not active.
+      try {
+        await _client.functions.invoke('streak-expiration-alerts');
+      } catch (_) {
+        // Ignore: server cron may handle dispatch in production.
+      }
+    } catch (e) {
+      debugPrint('Schedule streak reminders error: $e');
+    }
   }
 
   /// Check and unlock level achievements

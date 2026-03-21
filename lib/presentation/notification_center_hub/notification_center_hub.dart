@@ -289,7 +289,10 @@ class _NotificationCenterHubState extends State<NotificationCenterHub> {
               IconButton(
                 icon: Icon(Icons.settings, size: 6.w),
                 onPressed: () {
-                  // Navigate to notification settings
+                  Navigator.pushNamed(
+                    context,
+                    AppRoutes.pushNotificationManagementCenter,
+                  );
                 },
               ),
             ],

@@ -217,28 +217,28 @@ class _PaymentAlertsPanelWidgetState extends State<PaymentAlertsPanelWidget> {
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  if (!isRead)
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 2.w,
-                                        vertical: 0.3.h,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.amber.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        'New',
-                                        style: TextStyle(
-                                          fontSize: 10.sp,
-                                          color: Colors.amber[800],
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                ),
+                                if (!isRead)
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 2.w,
+                                      vertical: 0.3.h,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'New',
+                                      style: TextStyle(
+                                        fontSize: 10.sp,
+                                        color: Colors.amber[800],
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
+                                  ),
                                 ],
                               ),
-                            ),
                             if (description != null && description.isNotEmpty) ...[
                               SizedBox(height: 0.5.h),
                               Text(

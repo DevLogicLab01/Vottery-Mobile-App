@@ -23,13 +23,13 @@ class CreatorOnboardingWizardScreen extends StatelessWidget {
         title: 'Tax setup',
         subtitle: 'Add tax ID and jurisdiction details',
         icon: Icons.receipt_long_outlined,
-        route: AppRoutes.creatorVerificationKycScreen,
+        route: AppRoutes.taxComplianceDashboard,
       ),
       _Step(
         title: 'Banking method',
         subtitle: 'Connect payout account',
         icon: Icons.account_balance_outlined,
-        route: AppRoutes.stripeConnectPayoutManagementHub,
+        route: AppRoutes.bankAccountLinkingScreen,
       ),
       _Step(
         title: 'First earnings',

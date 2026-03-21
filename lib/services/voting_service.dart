@@ -121,7 +121,7 @@ class VotingService {
           .from('votes')
           .insert(voteData)
           .select()
-          .single() as Map<String, dynamic>;
+          .single();
 
       final voteId = inserted['id'];
 
@@ -326,7 +326,6 @@ class VotingService {
           .eq('id', electionId)
           .single();
 
-      if (source == null) throw Exception('Election not found');
       if (source['created_by'] != userId) {
         throw Exception('Only the creator can clone this election');
       }
@@ -357,7 +356,7 @@ class VotingService {
           .from('elections')
           .insert(newElection)
           .select()
-          .single() as Map<String, dynamic>;
+          .single();
 
       final newElectionId = created['id'] as String;
 
@@ -427,7 +426,7 @@ class VotingService {
           .from('elections')
           .insert(newElection)
           .select()
-          .single() as Map<String, dynamic>;
+          .single();
       final newElectionId = created['id'] as String;
 
       final newOptions = optionsToClone.map((o) {
@@ -468,8 +467,10 @@ class VotingService {
         },
       );
 
-      if (response.error != null) {
-        throw Exception(response.error!.message);
+      if (response.status >= 400) {
+        throw Exception(
+          'Refund function failed with status ${response.status}',
+        );
       }
 
       return true;

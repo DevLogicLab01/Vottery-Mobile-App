@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lottie/lottie.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/app_export.dart';
 import '../../services/supabase_service.dart';
@@ -399,9 +400,33 @@ class _WinnerRevealCeremonyState extends State<WinnerRevealCeremony>
   }
 
   Future<void> _shareWinners() async {
-    // Implement share functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Share functionality coming soon!')),
+    if (_winners.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No winners available to share')),
+      );
+      return;
+    }
+
+    final electionTitle = _election?['title']?.toString() ?? 'Election';
+    final winnerLines = _winners.map((winner) {
+      final position = winner['winner_position'] ?? 0;
+      final username =
+          winner['user_profiles']?['username']?.toString() ?? 'Unknown';
+      final prize =
+          ((winner['prize_amount'] ?? 0.0) as num).toDouble().toStringAsFixed(2);
+      return '#$position $username - \$$prize';
+    }).join('\n');
+
+    final message = StringBuffer()
+      ..writeln('Vottery Winners Announced')
+      ..writeln('Election: $electionTitle')
+      ..writeln('')
+      ..writeln('Winners')
+      ..writeln(winnerLines);
+
+    await Share.share(
+      message.toString(),
+      subject: 'Winners for $electionTitle',
     );
   }
 }

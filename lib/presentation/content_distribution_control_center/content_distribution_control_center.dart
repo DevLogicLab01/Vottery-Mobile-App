@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../services/enhanced_analytics_service.dart';
+import '../../services/supabase_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/error_boundary_wrapper.dart';
 import '../../widgets/shimmer_skeleton_loader.dart';
@@ -153,56 +154,77 @@ class _ContentDistributionControlCenterState
   }
 
   Future<Map<String, dynamic>> _fetchDistributionConfig() async {
-    // Simulated fetch - replace with actual Supabase query
-    await Future.delayed(Duration(milliseconds: 500));
+    final client = SupabaseService.instance.client;
+    final response = await client
+        .from('content_distribution_settings')
+        .select()
+        .order('updated_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    if (response == null) {
+      return <String, dynamic>{};
+    }
+
     return {
-      'election': _electionContentPercentage,
-      'social': _socialContentPercentage,
-      'ad': _adContentPercentage,
-      'election_enabled': _electionContentEnabled,
-      'social_enabled': _socialContentEnabled,
-      'ad_enabled': _adContentEnabled,
+      'election': (response['election_content_percentage'] as num?)?.toDouble(),
+      'social': (response['social_media_percentage'] as num?)?.toDouble(),
+      'ad': (response['ads_percentage'] as num?)?.toDouble() ?? 20.0,
+      'election_enabled': response['election_enabled'] ?? true,
+      'social_enabled': response['social_enabled'] ?? true,
+      'ad_enabled': response['ads_enabled'] ?? true,
     };
   }
 
   Future<Map<String, dynamic>> _fetchEngagementMetrics() async {
-    await Future.delayed(Duration(milliseconds: 300));
+    final client = SupabaseService.instance.client;
+    final rows = await client
+        .from('content_distribution_metrics')
+        .select()
+        .order('timestamp', ascending: false)
+        .limit(1);
+    if (rows.isEmpty) {
+      return <String, dynamic>{};
+    }
+    final row = rows.first;
     return {
-      'user_satisfaction': 87.5,
-      'engagement_rate': 72.3,
-      'retention_rate': 84.1,
-      'avg_session_duration': 18.5,
+      'user_satisfaction': (row['user_satisfaction'] as num?)?.toDouble() ?? 0.0,
+      'engagement_rate': (row['engagement_rate'] as num?)?.toDouble() ?? 0.0,
+      'retention_rate': (row['retention_rate'] as num?)?.toDouble() ?? 0.0,
+      'avg_session_duration':
+          (row['avg_session_duration'] as num?)?.toDouble() ?? 0.0,
     };
   }
 
   Future<Map<String, dynamic>> _fetchDistributionEffectiveness() async {
-    await Future.delayed(Duration(milliseconds: 300));
+    final client = SupabaseService.instance.client;
+    final rows = await client
+        .from('content_distribution_metrics')
+        .select()
+        .order('timestamp', ascending: false)
+        .limit(1);
+    if (rows.isEmpty) {
+      return <String, dynamic>{};
+    }
+    final row = rows.first;
     return {
-      'election_performance': 92.0,
-      'social_performance': 88.5,
-      'ad_performance': 76.2,
-      'overall_health': 85.6,
+      'election_performance':
+          (row['election_performance'] as num?)?.toDouble() ?? 0.0,
+      'social_performance':
+          (row['social_performance'] as num?)?.toDouble() ?? 0.0,
+      'ad_performance': (row['ad_performance'] as num?)?.toDouble() ?? 0.0,
+      'overall_health': (row['overall_health'] as num?)?.toDouble() ?? 0.0,
     };
   }
 
   Future<List<Map<String, dynamic>>> _fetchActiveAdjustmentRules() async {
-    await Future.delayed(Duration(milliseconds: 300));
-    return [
-      {
-        'id': '1',
-        'name': 'Peak Hours Boost',
-        'description': 'Increase election content during peak hours',
-        'active': true,
-        'impact': '+5% engagement',
-      },
-      {
-        'id': '2',
-        'name': 'Weekend Social Priority',
-        'description': 'Boost social content on weekends',
-        'active': true,
-        'impact': '+8% retention',
-      },
-    ];
+    final client = SupabaseService.instance.client;
+    final rows = await client
+        .from('content_distribution_rules')
+        .select()
+        .eq('active', true)
+        .order('updated_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
   }
 
   void _onRatioChanged(String contentType, double value) {
@@ -298,8 +320,37 @@ class _ContentDistributionControlCenterState
 
   Future<void> _saveDistributionConfig() async {
     try {
-      // Save to Supabase - implement actual save logic
-      await Future.delayed(Duration(milliseconds: 500));
+      final client = SupabaseService.instance.client;
+      final currentUserId = client.auth.currentUser?.id;
+      if (currentUserId == null) {
+        throw Exception('User authentication required');
+      }
+
+      final existing = await client
+          .from('content_distribution_settings')
+          .select('id')
+          .order('updated_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      final payload = {
+        'election_content_percentage': _electionContentPercentage,
+        'social_media_percentage': _socialContentPercentage,
+        'ads_percentage': _adContentPercentage,
+        'election_enabled': _electionContentEnabled,
+        'social_enabled': _socialContentEnabled,
+        'ads_enabled': _adContentEnabled,
+        'updated_by': currentUserId,
+      };
+
+      if (existing == null) {
+        await client.from('content_distribution_settings').insert(payload);
+      } else {
+        await client
+            .from('content_distribution_settings')
+            .update(payload)
+            .eq('id', existing['id']);
+      }
 
       EnhancedAnalyticsService.instance.trackUserEngagement(
         action: 'content_distribution_updated',
@@ -428,23 +479,21 @@ class _ContentDistributionControlCenterState
         ),
         body: _isLoading
             ? const SkeletonDashboard()
-            : SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _buildDistributionOverviewHeader(),
-                    _buildTabBar(),
-                    Expanded(
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildControlsTab(),
-                          _buildMonitoringTab(),
-                          _buildPresetsTab(),
-                        ],
-                      ),
+            : Column(
+                children: [
+                  _buildDistributionOverviewHeader(),
+                  _buildTabBar(),
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildControlsTab(),
+                        _buildMonitoringTab(),
+                        _buildPresetsTab(),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
       ),
     );

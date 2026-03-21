@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../routes/app_routes.dart';
 import './widgets/step_completion_widget.dart';
 import './widgets/step_earnings_preview_widget.dart';
 import './widgets/step_payout_config_widget.dart';
@@ -89,7 +90,7 @@ class _CreatorMonetizationStudioState extends State<CreatorMonetizationStudio> {
   void _skipToDashboard() {
     Navigator.pushNamedAndRemoveUntil(
       context,
-      '/creator-analytics-dashboard',
+      AppRoutes.creatorAnalyticsDashboard,
       (route) => false,
     );
   }

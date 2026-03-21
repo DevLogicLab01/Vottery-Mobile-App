@@ -95,18 +95,28 @@ class _UnifiedSearchSystemHubState extends State<UnifiedSearchSystemHub>
 
     try {
       final domains = _selectedFilter == 'all' ? null : [_selectedFilter];
-
-      // Remove this block - using placeholder results instead
-      // final results = await _searchService.search(
-      //   query: query,
-      //   domains: domains,
-      //   sortBy: _sortBy,
-      //   limit: 20,
-      // );
-
-      // Add this block - placeholder results until service method is implemented
+      final grouped = await _searchService.searchAll(query);
+      final flattened = <Map<String, dynamic>>[];
+      grouped.forEach((domain, items) {
+        for (final item in items) {
+          flattened.add({...item, 'domain': domain});
+        }
+      });
+      if (domains != null && domains.isNotEmpty) {
+        flattened.removeWhere((item) => !domains.contains(item['domain']));
+      }
+      if (_sortBy == 'recent') {
+        flattened.sort((a, b) {
+          final ad = DateTime.tryParse(a['created_at']?.toString() ?? '');
+          final bd = DateTime.tryParse(b['created_at']?.toString() ?? '');
+          if (ad == null && bd == null) return 0;
+          if (ad == null) return 1;
+          if (bd == null) return -1;
+          return bd.compareTo(ad);
+        });
+      }
       final results = <String, dynamic>{
-        'results': [],
+        'results': flattened.take(20).toList(),
         'query': query,
         'domains': domains,
         'sortBy': _sortBy,

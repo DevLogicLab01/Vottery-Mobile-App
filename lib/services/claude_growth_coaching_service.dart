@@ -1,4 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:convert';
+
+import './claude_service.dart';
 
 class CreatorBehaviorData {
   final String creatorUserId;
@@ -165,6 +168,7 @@ class ClaudeGrowthCoachingService {
   ClaudeGrowthCoachingService._();
 
   final SupabaseClient _supabase = Supabase.instance.client;
+  final ClaudeService _claude = ClaudeService.instance;
 
   /// Fetch creator behavior data from Supabase
   Future<CreatorBehaviorData> fetchCreatorBehaviorData(String userId) async {
@@ -380,12 +384,30 @@ Generate a comprehensive growth analysis. Return ONLY valid JSON with this exact
       final behaviorData = await fetchCreatorBehaviorData(userId);
       final templateROI = await fetchTemplateROI(userId);
       final prompt = _buildGrowthPrompt(behaviorData);
+      final response = await _claude.callClaudeAPI(prompt);
+      final parsed = _extractJsonObject(response);
+      if (parsed == null) {
+        return GrowthAnalysisResult.fallback;
+      }
 
-      // Since getChatCompletion is not available, return fallback
-      // The AI integration would need to be implemented separately
-      return GrowthAnalysisResult.fallback;
+      final merged = Map<String, dynamic>.from(parsed);
+      merged['template_roi'] = templateROI;
+      return GrowthAnalysisResult.fromJson(merged);
     } catch (e) {
       return GrowthAnalysisResult.fallback;
+    }
+  }
+
+  Map<String, dynamic>? _extractJsonObject(String response) {
+    if (response.trim().isEmpty) return null;
+    final match = RegExp(r'\{[\s\S]*\}').firstMatch(response);
+    if (match == null) return null;
+    try {
+      return Map<String, dynamic>.from(
+        jsonDecode(match.group(0)!) as Map<String, dynamic>,
+      );
+    } catch (_) {
+      return null;
     }
   }
 

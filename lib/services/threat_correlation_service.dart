@@ -8,7 +8,6 @@ import './gemini_service.dart';
 import './twilio_notification_service.dart';
 import './resend_email_service.dart';
 import 'dart:math';
-import 'dart:convert';
 import './datadog_tracing_service.dart';
 
 class ThreatCorrelationService {
@@ -19,10 +18,7 @@ class ThreatCorrelationService {
   ThreatCorrelationService._();
 
   SupabaseClient get _client => SupabaseService.instance.client;
-  OpenAIService get _openai => OpenAIService.instance;
-  AnthropicService get _anthropic => AnthropicService.instance;
   PerplexityService get _perplexity => PerplexityService.instance;
-  GeminiService get _gemini => GeminiService.instance;
   TwilioNotificationService get _twilio => TwilioNotificationService.instance;
   ResendEmailService get _resend => ResendEmailService.instance;
   final DatadogTracingService _tracing = DatadogTracingService.instance;
@@ -232,9 +228,9 @@ Respond in JSON format: {"threat_score": 0.0-1.0, "patterns": [], "justification
       );
 
       return {
-        'correlation_score': (response.confidenceScore ?? 0.5),
+        'correlation_score': response.confidenceScore,
         'relationships': [],
-        'explanation': response.recommendation ?? 'Analysis completed',
+        'explanation': response.recommendation,
       };
     } catch (e) {
       debugPrint('Anthropic analysis error: $e');
@@ -504,20 +500,6 @@ Immediate investigation required.''';
       );
     } catch (e) {
       debugPrint('Send cluster alert error: $e');
-    }
-  }
-
-  /// Helper: Parse JSON response from AI
-  Map<String, dynamic> _parseJsonResponse(String response) {
-    try {
-      // Extract JSON from markdown code blocks if present
-      final jsonMatch = RegExp(
-        r'```json\s*([\s\S]*?)\s*```',
-      ).firstMatch(response);
-      final jsonStr = jsonMatch?.group(1) ?? response;
-      return Map<String, dynamic>.from(jsonDecode(jsonStr) as Map);
-    } catch (e) {
-      return {};
     }
   }
 

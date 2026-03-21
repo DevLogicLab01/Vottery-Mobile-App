@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../routes/app_routes.dart';
+
 class MiniGameSectionWidget extends StatelessWidget {
   const MiniGameSectionWidget({super.key});
 
@@ -51,9 +53,10 @@ class MiniGameSectionWidget extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       child: InkWell(
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$title mini-game coming soon!')),
-          );
+          Navigator.of(
+            context,
+            rootNavigator: true,
+          ).pushNamed(AppRoutes.adventurePaths);
         },
         borderRadius: BorderRadius.circular(12.0),
         child: Container(

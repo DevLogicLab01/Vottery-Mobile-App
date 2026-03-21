@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
-import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
+import '../../services/captcha_service.dart';
 import '../../services/supabase_service.dart';
-import '../../theme/app_theme.dart';
 import '../../widgets/custom_app_bar.dart';
 
 class QuickRegistrationScreen extends StatefulWidget {
@@ -30,9 +29,11 @@ class _QuickRegistrationScreenState extends State<QuickRegistrationScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _captchaTokenController = TextEditingController();
 
   bool _termsAccepted = false;
   bool _isLoading = false;
+  int _failedAttempts = 0;
   String? _errorMessage;
 
   @override
@@ -40,6 +41,7 @@ class _QuickRegistrationScreenState extends State<QuickRegistrationScreen> {
     _emailController.dispose();
     _nameController.dispose();
     _phoneController.dispose();
+    _captchaTokenController.dispose();
     super.dispose();
   }
 
@@ -59,6 +61,20 @@ class _QuickRegistrationScreenState extends State<QuickRegistrationScreen> {
     });
 
     try {
+      final captchaRequired = _failedAttempts >= 2;
+      if (captchaRequired) {
+        final isCaptchaValid = await CaptchaService.instance.validateToken(
+          _captchaTokenController.text,
+        );
+        if (!isCaptchaValid) {
+          setState(() {
+            _errorMessage = 'hCaptcha validation failed. Enter a valid captcha token and retry.';
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+
       // Create quick account
       final response = await _authService.signUpWithEmail(
         email: _emailController.text.trim(),
@@ -67,8 +83,11 @@ class _QuickRegistrationScreenState extends State<QuickRegistrationScreen> {
       );
 
       if (response.user != null) {
+        _failedAttempts = 0;
+        _captchaTokenController.clear();
         // Record quick registration
         await _recordQuickRegistration(response.user!.id);
+        if (!mounted) return;
 
         // Navigate to election or show success
         if (widget.electionId != null) {
@@ -91,6 +110,7 @@ class _QuickRegistrationScreenState extends State<QuickRegistrationScreen> {
       }
     } catch (e) {
       setState(() {
+        _failedAttempts += 1;
         _errorMessage = 'Registration failed: ${e.toString()}';
       });
     } finally {
@@ -129,7 +149,7 @@ class _QuickRegistrationScreenState extends State<QuickRegistrationScreen> {
             action: SnackBarAction(
               label: 'Complete Now',
               onPressed: () {
-                Navigator.pushNamed(context, '/user-profile');
+                Navigator.pushNamed(context, AppRoutes.userProfile);
               },
             ),
           ),
@@ -320,6 +340,28 @@ class _QuickRegistrationScreenState extends State<QuickRegistrationScreen> {
                 ),
                 activeColor: AppTheme.primaryColor,
               ),
+              if (_failedAttempts >= 2) ...[
+                SizedBox(height: 2.h),
+                TextFormField(
+                  controller: _captchaTokenController,
+                  decoration: InputDecoration(
+                    labelText: 'hCaptcha Token',
+                    hintText: 'Paste token from captcha challenge',
+                    prefixIcon: Icon(Icons.verified_user_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[50],
+                  ),
+                  validator: (value) {
+                    if (_failedAttempts >= 2 && (value == null || value.trim().isEmpty)) {
+                      return 'Captcha token is required after repeated failed attempts';
+                    }
+                    return null;
+                  },
+                ),
+              ],
               SizedBox(height: 3.h),
 
               // Sign Up Button
@@ -379,24 +421,82 @@ class _QuickRegistrationScreenState extends State<QuickRegistrationScreen> {
                 height: 6.h,
                 child: OutlinedButton.icon(
                   onPressed: () async {
+                    final navigator = Navigator.of(context);
                     final success = await _authService.signInWithGoogle();
-                    if (success && mounted) {
+                    if (!mounted || !success) return;
                       if (widget.electionId != null) {
-                        Navigator.pushReplacementNamed(
-                          context,
-                          '/vote-casting',
+                        navigator.pushReplacementNamed(
+                          AppRoutes.voteCasting,
                           arguments: {'electionId': widget.electionId},
                         );
                       } else {
-                        Navigator.pushReplacementNamed(
-                          context,
-                          '/social-media-home-feed',
+                        navigator.pushReplacementNamed(
+                          AppRoutes.socialMediaHomeFeed,
                         );
                       }
-                    }
                   },
                   icon: Icon(Icons.g_mobiledata, size: 24.sp),
                   label: Text('Continue with Google'),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: Colors.grey[300]!),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 1.h),
+              SizedBox(
+                width: double.infinity,
+                height: 6.h,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    final success = await _authService.signInWithFacebook();
+                    if (!mounted || !success) return;
+                      if (widget.electionId != null) {
+                        navigator.pushReplacementNamed(
+                          AppRoutes.voteCasting,
+                          arguments: {'electionId': widget.electionId},
+                        );
+                      } else {
+                        navigator.pushReplacementNamed(
+                          AppRoutes.socialMediaHomeFeed,
+                        );
+                      }
+                  },
+                  icon: Icon(Icons.facebook, size: 18.sp),
+                  label: const Text('Continue with Facebook'),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: Colors.grey[300]!),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 1.h),
+              SizedBox(
+                width: double.infinity,
+                height: 6.h,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    final success = await _authService.signInWithApple();
+                    if (!mounted || !success) return;
+                      if (widget.electionId != null) {
+                        navigator.pushReplacementNamed(
+                          AppRoutes.voteCasting,
+                          arguments: {'electionId': widget.electionId},
+                        );
+                      } else {
+                        navigator.pushReplacementNamed(
+                          AppRoutes.socialMediaHomeFeed,
+                        );
+                      }
+                  },
+                  icon: Icon(Icons.apple, size: 18.sp),
+                  label: const Text('Continue with Apple'),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: Colors.grey[300]!),
                     shape: RoundedRectangleBorder(

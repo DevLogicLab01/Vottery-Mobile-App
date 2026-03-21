@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:crypto/crypto.dart';
 import 'package:uuid/uuid.dart';
-import './blockchain_verification_service.dart';
 import './blockchain_gamification_service.dart';
 
 /// Blockchain Voting Service
@@ -16,13 +15,10 @@ class BlockchainVotingService {
   BlockchainVotingService._();
 
   final SupabaseClient _supabase = Supabase.instance.client;
-  final BlockchainVerificationService _verification =
-      BlockchainVerificationService.instance;
   final BlockchainGamificationService _blockchain =
       BlockchainGamificationService.instance;
   final Uuid _uuid = const Uuid();
 
-  static const String _polygonRpcUrl = 'https://polygon-rpc.com';
   static const String _polygonscanBaseUrl = 'https://polygonscan.com';
 
   /// Generate vote hash (keccak256 equivalent using SHA-256)
@@ -59,7 +55,7 @@ class BlockchainVotingService {
       final blockNumber = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
       // Log to blockchain
-      final blockchainLog = await _blockchain.logVPTransaction(
+      await _blockchain.logVPTransaction(
         vpAmount: 0,
         transactionType: 'vote_submission',
         description: 'Vote submitted to blockchain',

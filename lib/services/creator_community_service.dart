@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import './supabase_service.dart';
 
@@ -22,19 +23,17 @@ class CreatorCommunityService {
           .from('creator_community_posts')
           .select('*')
           .eq('post_type', 'strategy')
-          .eq('is_active', true)
-          .order('created_at', ascending: false)
-          .limit(limit);
+          .eq('is_active', true);
 
       if (topic != null && topic.isNotEmpty) {
-        query = query.ilike('tags', '%$topic%');
+        query = query.contains('tags', [topic]);
       }
 
-      final res = await query;
-      return List<Map<String, dynamic>>.from(res ?? []);
+      final res = await query.order('created_at', ascending: false).limit(limit);
+      return List<Map<String, dynamic>>.from(res);
     } catch (e) {
       debugPrint('Get strategy posts error: $e');
-      return _getMockStrategyPosts();
+      return <Map<String, dynamic>>[];
     }
   }
 
@@ -50,10 +49,10 @@ class CreatorCommunityService {
           .eq('is_active', true)
           .order('created_at', ascending: false)
           .limit(limit);
-      return List<Map<String, dynamic>>.from(res ?? []);
+      return List<Map<String, dynamic>>.from(res);
     } catch (e) {
       debugPrint('Get partnership opportunities error: $e');
-      return _getMockPartnerships();
+      return <Map<String, dynamic>>[];
     }
   }
 
@@ -69,10 +68,10 @@ class CreatorCommunityService {
           .eq('is_active', true)
           .order('created_at', ascending: false)
           .limit(limit);
-      return List<Map<String, dynamic>>.from(res ?? []);
+      return List<Map<String, dynamic>>.from(res);
     } catch (e) {
       debugPrint('Get mentorship threads error: $e');
-      return _getMockMentorship();
+      return <Map<String, dynamic>>[];
     }
   }
 
@@ -85,7 +84,7 @@ class CreatorCommunityService {
           .eq('id', postId)
           .eq('is_active', true)
           .maybeSingle();
-      return res as Map<String, dynamic>?;
+      return res;
     } catch (e) {
       debugPrint('Get post by id error: $e');
       return null;
@@ -114,84 +113,11 @@ class CreatorCommunityService {
         'likes_count': 0,
       }).select().single();
 
-      return res as Map<String, dynamic>;
+      return Map<String, dynamic>.from(res);
     } catch (e) {
       debugPrint('Create post error: $e');
       return null;
     }
   }
 
-  List<Map<String, dynamic>> _getMockStrategyPosts() {
-    return [
-      {
-        'id': '1',
-        'title': 'Carousel best practices for higher engagement',
-        'body': 'Focus on first 3 seconds...',
-        'tags': ['carousel', 'engagement', 'tips'],
-        'likes_count': 42,
-        'author': {'username': 'CreatorPro'},
-        'created_at': DateTime.now().toIso8601String(),
-      },
-      {
-        'id': '2',
-        'title': 'How to structure a voting carousel',
-        'body': 'Clear options, strong visuals...',
-        'tags': ['voting', 'carousel', 'structure'],
-        'likes_count': 28,
-        'author': {'username': 'VoteMaster'},
-        'created_at': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
-      },
-      {
-        'id': '3',
-        'title': 'Timing your carousel drops',
-        'body': 'Peak hours matter...',
-        'tags': ['timing', 'strategy'],
-        'likes_count': 15,
-        'author': {'username': 'TimingGuru'},
-        'created_at': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
-      },
-    ];
-  }
-
-  List<Map<String, dynamic>> _getMockPartnerships() {
-    return [
-      {
-        'id': 'p1',
-        'title': 'Looking for brand collab - 50K followers',
-        'body': 'Fashion niche, open to product placement...',
-        'likes_count': 12,
-        'author': {'username': 'FashionCreator'},
-        'created_at': DateTime.now().toIso8601String(),
-      },
-      {
-        'id': 'p2',
-        'title': 'Tech brand partnership opportunity',
-        'body': 'Gadget reviews, 100K+ reach...',
-        'likes_count': 8,
-        'author': {'username': 'TechReviewer'},
-        'created_at': DateTime.now().subtract(const Duration(hours: 5)).toIso8601String(),
-      },
-    ];
-  }
-
-  List<Map<String, dynamic>> _getMockMentorship() {
-    return [
-      {
-        'id': 'm1',
-        'title': 'Mentoring new creators - DM me',
-        'body': '2 years experience, happy to help...',
-        'likes_count': 24,
-        'author': {'username': 'MentorMike'},
-        'created_at': DateTime.now().toIso8601String(),
-      },
-      {
-        'id': 'm2',
-        'title': 'Carousel monetization Q&A',
-        'body': 'Ask me anything about creator earnings...',
-        'likes_count': 18,
-        'author': {'username': 'EarningsExpert'},
-        'created_at': DateTime.now().subtract(const Duration(hours: 12)).toIso8601String(),
-      },
-    ];
-  }
 }

@@ -18,6 +18,84 @@ class TeamIncidentWarRoomService {
   AuthService get _auth => AuthService.instance;
   TwilioNotificationService get _twilio => TwilioNotificationService.instance;
 
+  List<String> getChannelPolicyForSeverity(String? severity) {
+    final normalized = _normalizeSeverity(severity);
+    switch (normalized) {
+      case 'critical':
+        return const ['email', 'sms', 'push', 'slack'];
+      case 'high':
+        return const ['email', 'sms', 'push'];
+      case 'medium':
+        return const ['email', 'push'];
+      case 'low':
+      default:
+        return const ['email'];
+    }
+  }
+
+  String _normalizeSeverity(String? severity) {
+    final raw = (severity ?? 'medium').toLowerCase();
+    if (raw == 'p0' || raw == 'critical') return 'critical';
+    if (raw == 'p1' || raw == 'high') return 'high';
+    if (raw == 'p2' || raw == 'medium') return 'medium';
+    if (raw == 'p3' || raw == 'low') return 'low';
+    return 'medium';
+  }
+
+  Future<Map<String, dynamic>> sendStakeholderIncidentCommunication({
+    required String incidentId,
+    required String severity,
+    required String title,
+    required String message,
+    required List<Map<String, dynamic>> recipients,
+  }) async {
+    try {
+      final channels = getChannelPolicyForSeverity(severity);
+      final nowIso = DateTime.now().toIso8601String();
+      final sent = <Map<String, dynamic>>[];
+
+      for (final recipient in recipients) {
+        final recipientId = recipient['user_id']?.toString();
+        if (recipientId == null || recipientId.isEmpty) {
+          continue;
+        }
+
+        await _client.from('incident_communications').insert({
+          'incident_id': incidentId,
+          'recipient_type': recipient['role'] ?? 'stakeholder',
+          'communication_type': channels.join(','),
+          'message_subject': title,
+          'message_content': message,
+          'recipients': [recipient],
+          'delivery_status': 'sent',
+          'sent_at': nowIso,
+          'metadata': {
+            'severity': _normalizeSeverity(severity),
+            'channels': channels,
+          },
+        });
+
+        if (channels.contains('sms')) {
+          final phone = recipient['phone']?.toString();
+          if (phone != null && phone.isNotEmpty) {
+            await _twilio.sendUserActivityNotification(
+              phoneNumber: phone,
+              activityType: 'Incident ${_normalizeSeverity(severity).toUpperCase()}',
+              details: message,
+            );
+          }
+        }
+
+        sent.add({'recipient_id': recipientId, 'channels': channels});
+      }
+
+      return {'success': true, 'sent': sent, 'channel_policy': channels};
+    } catch (e) {
+      debugPrint('❌ Send stakeholder incident communication error: $e');
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
   /// Create war room for incident
   Future<Map<String, dynamic>> createWarRoom({
     required String incidentId,

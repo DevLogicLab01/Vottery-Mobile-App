@@ -86,6 +86,18 @@ class SharedConstants {
   static const String predictionPoolWebhooks = 'prediction_pool_webhooks';
   static const String userActivityAnalyzer = 'user_activity_analyzer';
 
+  /// Per-creator churn scoring refresh (Edge); max 1×/UTC day per user (server-enforced).
+  /// Sync with Web: SHARED_CONSTANTS.js API_PATHS.CREATOR_CHURN_USER_REFRESH
+  static const String creatorChurnUserRefresh = 'creator-churn-user-refresh';
+
+  /// Geo snapshot after login (Edge). Sync with Web `API_PATHS.RECORD_LOGIN_GEO`.
+  static const String recordLoginGeo = 'record-login-geo';
+
+  /// Gemini recommendation worker / Shaped replacement (sync with Web geminiRecommendationService.js).
+  static const int geminiRecommendationSyncIntervalSeconds = 60;
+  static const double sponsoredElectionRankingWeightMultiplier = 2.0;
+  static const int recommendationLatencyBudgetMs = 100;
+
   // ─── Election Column Names ────────────────────────────────────────────────
   static const String allowComments = 'allow_comments';
   static const String isGamified = 'is_gamified';
@@ -131,4 +143,8 @@ class SharedConstants {
     paymentNotificationPaymentMethodFailed,
     paymentNotificationPayoutCompleted,
   ];
+
+  // ─── Moderation audit (sync with Web: MODERATION_AUDIT in SHARED_CONSTANTS.js) ─
+  static const String moderationOverrideAiPrefix = 'OVERRIDE_AI|';
+  static const int moderationMinOverrideReasonLength = 12;
 }

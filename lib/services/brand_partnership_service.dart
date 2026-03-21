@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import './supabase_service.dart';
-import './auth_service.dart';
 
 class BrandPartnershipService {
   static BrandPartnershipService? _instance;
@@ -11,7 +10,6 @@ class BrandPartnershipService {
   BrandPartnershipService._();
 
   SupabaseClient get _client => SupabaseService.instance.client;
-  AuthService get _auth => AuthService.instance;
 
   /// Get active brand campaigns
   Future<List<Map<String, dynamic>>> getActiveCampaigns({

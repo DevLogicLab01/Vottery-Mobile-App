@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 class AnonymityVerificationBadgeWidget extends StatelessWidget {
@@ -119,7 +120,14 @@ class AnonymityVerificationBadgeWidget extends StatelessWidget {
                             size: 18.sp,
                           ),
                           onPressed: () {
-                            // TODO: Copy to clipboard
+                            Clipboard.setData(
+                              ClipboardData(text: anonymousVoterCode!),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Anonymous voter code copied'),
+                              ),
+                            );
                           },
                         ),
                       ],

@@ -37,13 +37,16 @@ class _AudienceQuestionsHubState extends State<AudienceQuestionsHub>
   List<Map<String, dynamic>> _myQuestions = [];
   int _pendingCount = 0;
   int _totalQuestions = 0;
-  final bool _isCreator = false;
+  late bool _isCreator;
   RealtimeChannel? _questionsChannel;
 
   @override
   void initState() {
     super.initState();
     _selectedElectionId = widget.electionId;
+    final role = (_auth.currentUser?.userMetadata?['role'] as String? ?? '')
+        .toLowerCase();
+    _isCreator = role == 'creator' || role == 'admin';
     _tabController = TabController(length: _isCreator ? 5 : 4, vsync: this);
     _loadInitialData();
   }

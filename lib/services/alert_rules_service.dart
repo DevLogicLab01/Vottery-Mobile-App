@@ -4,6 +4,7 @@ import './supabase_service.dart';
 import './auth_service.dart';
 import './twilio_notification_service.dart';
 import './notification_service.dart';
+import './supabase_query_cache_service.dart';
 
 class AlertRulesService {
   static AlertRulesService? _instance;
@@ -121,17 +122,20 @@ class AlertRulesService {
     required String ruleId,
     String? ruleName,
     String? description,
+    String? metricType,
     double? thresholdValue,
     String? comparisonOperator,
     String? severity,
     List<String>? notificationChannels,
     String? status,
+    List<Map<String, dynamic>>? conditions,
   }) async {
     try {
       final updates = <String, dynamic>{};
 
       if (ruleName != null) updates['rule_name'] = ruleName;
       if (description != null) updates['description'] = description;
+      if (metricType != null) updates['metric_type'] = metricType;
       if (thresholdValue != null) updates['threshold_value'] = thresholdValue;
       if (comparisonOperator != null) {
         updates['comparison_operator'] = comparisonOperator;
@@ -142,9 +146,26 @@ class AlertRulesService {
       }
       if (status != null) updates['status'] = status;
 
-      if (updates.isEmpty) return false;
+      if (updates.isNotEmpty) {
+        await _client.from('alert_rules').update(updates).eq('id', ruleId);
+      }
 
-      await _client.from('alert_rules').update(updates).eq('id', ruleId);
+      if (conditions != null) {
+        await _client.from('alert_rule_conditions').delete().eq('rule_id', ruleId);
+        if (conditions.isNotEmpty) {
+          for (final condition in conditions) {
+            await _client.from('alert_rule_conditions').insert({
+              'rule_id': ruleId,
+              'condition_group': condition['condition_group'] ?? 1,
+              'logic_operator': condition['logic_operator'] ?? 'AND',
+              'metric_name': condition['metric_name'],
+              'comparison_operator': condition['comparison_operator'],
+              'threshold_value': condition['threshold_value'],
+              'time_window_minutes': condition['time_window_minutes'] ?? 5,
+            });
+          }
+        }
+      }
 
       return true;
     } catch (e) {
@@ -201,6 +222,8 @@ class AlertRulesService {
             'acknowledged_at': DateTime.now().toIso8601String(),
           })
           .eq('id', alertId);
+      SupabaseQueryCacheService.instance
+          .onAlertLifecycleChanged(alertId: alertId);
 
       return true;
     } catch (e) {
@@ -222,10 +245,95 @@ class AlertRulesService {
             'resolution_notes': resolutionNotes,
           })
           .eq('id', alertId);
+      SupabaseQueryCacheService.instance
+          .onAlertLifecycleChanged(alertId: alertId);
 
       return true;
     } catch (e) {
       debugPrint('Resolve alert error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> snoozeAlert({
+    required String alertId,
+    required DateTime snoozeUntil,
+    String? reason,
+  }) async {
+    try {
+      if (!_auth.isAuthenticated) return false;
+      final updates = <String, dynamic>{
+        'status': 'snoozed',
+        'snoozed_until': snoozeUntil.toIso8601String(),
+        'snoozed_by': _auth.currentUser!.id,
+        'snoozed_at': DateTime.now().toIso8601String(),
+      };
+      if (reason != null && reason.isNotEmpty) {
+        updates['snooze_reason'] = reason;
+      }
+      await _client.from('active_alerts').update(updates).eq('id', alertId);
+      SupabaseQueryCacheService.instance
+          .onAlertLifecycleChanged(alertId: alertId);
+      return true;
+    } catch (e) {
+      debugPrint('Snooze alert error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> assignAlertOwner({
+    required String alertId,
+    required String ownerUserId,
+    String? notes,
+  }) async {
+    try {
+      if (!_auth.isAuthenticated) return false;
+      final updates = <String, dynamic>{
+        'assigned_to': ownerUserId,
+        'assigned_by': _auth.currentUser!.id,
+        'assigned_at': DateTime.now().toIso8601String(),
+      };
+      if (notes != null && notes.isNotEmpty) {
+        updates['assignment_notes'] = notes;
+      }
+      await _client.from('active_alerts').update(updates).eq('id', alertId);
+      SupabaseQueryCacheService.instance
+          .onAlertLifecycleChanged(alertId: alertId);
+      return true;
+    } catch (e) {
+      debugPrint('Assign alert owner error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> escalateAlert({
+    required String alertId,
+    String escalationLevel = 'P0',
+    String? escalationNotes,
+  }) async {
+    try {
+      if (!_auth.isAuthenticated) return false;
+      final severity = escalationLevel == 'P0'
+          ? 'critical'
+          : escalationLevel == 'P1'
+          ? 'high'
+          : 'medium';
+      final updates = <String, dynamic>{
+        'status': 'escalated',
+        'severity': severity,
+        'escalation_level': escalationLevel,
+        'escalated_by': _auth.currentUser!.id,
+        'escalated_at': DateTime.now().toIso8601String(),
+      };
+      if (escalationNotes != null && escalationNotes.isNotEmpty) {
+        updates['escalation_notes'] = escalationNotes;
+      }
+      await _client.from('active_alerts').update(updates).eq('id', alertId);
+      SupabaseQueryCacheService.instance
+          .onAlertLifecycleChanged(alertId: alertId);
+      return true;
+    } catch (e) {
+      debugPrint('Escalate alert error: $e');
       return false;
     }
   }
@@ -296,7 +404,7 @@ class AlertRulesService {
     List<String>? notificationChannels,
   }) async {
     try {
-      final alertId = await _client
+      await _client
           .from('active_alerts')
           .insert({
             'rule_id': ruleId,

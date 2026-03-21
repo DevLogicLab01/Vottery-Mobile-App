@@ -34,20 +34,27 @@ class _BlockchainVoteReceiptCenterState
   Future<void> _loadReceipts() async {
     setState(() => _isLoading = true);
     final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId != null) {
-      final receipts = await _receiptService.getUserReceipts(userId);
+    if (userId == null) {
       setState(() {
-        _receipts = receipts;
+        _receipts = [];
         _isLoading = false;
       });
+      return;
     }
+
+    final receipts = await _receiptService.getUserReceipts(userId);
+    setState(() {
+      _receipts = receipts;
+      _isLoading = false;
+    });
   }
 
   Future<void> _verifyReceipt() async {
-    if (_verifyController.text.isEmpty) return;
+    final receiptPayload = _verifyController.text.trim();
+    if (receiptPayload.isEmpty) return;
 
     setState(() => _isVerifying = true);
-    final result = await _receiptService.verifyReceipt(_verifyController.text);
+    final result = await _receiptService.verifyReceipt(receiptPayload);
     setState(() {
       _verificationResult = result;
       _isVerifying = false;
@@ -288,7 +295,17 @@ class _BlockchainVoteReceiptCenterState
   }
 
   Widget _buildVerificationResult() {
+    final verificationState =
+        (_verificationResult!['state'] ?? BlockchainReceiptService.stateFailed)
+            .toString();
     final isValid = _verificationResult!['valid'] == true;
+    final stateText = {
+      BlockchainReceiptService.stateVerified: 'Verified',
+      BlockchainReceiptService.statePendingBackend: 'Pending Backend',
+      BlockchainReceiptService.stateUnavailable: 'Unavailable',
+      BlockchainReceiptService.stateUnsupported: 'Unsupported',
+      BlockchainReceiptService.stateFailed: 'Failed',
+    }[verificationState]!;
 
     return Card(
       color: isValid ? Colors.green.shade50 : Colors.red.shade50,
@@ -307,7 +324,7 @@ class _BlockchainVoteReceiptCenterState
                 SizedBox(width: 2.w),
                 Expanded(
                   child: Text(
-                    isValid ? 'Receipt Verified ✓' : 'Verification Failed',
+                    isValid ? 'Receipt Verified' : 'Verification ${stateText}',
                     style: TextStyle(
                       fontSize: 18.sp,
                       fontWeight: FontWeight.bold,

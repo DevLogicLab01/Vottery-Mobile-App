@@ -5,13 +5,10 @@ import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../services/creator_monetization_service.dart';
 import '../../services/gamification_service.dart';
-import '../../services/leaderboard_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_app_bar.dart';
 import './widgets/audience_insights_card_widget.dart';
 import './widgets/content_performance_card_widget.dart';
-import './widgets/creator_progression_widget.dart';
-import './widgets/engagement_heatmap_widget.dart';
 import './widgets/revenue_analytics_card_widget.dart';
 import './widgets/claude_coaching_hub_widget.dart';
 import '../../widgets/error_boundary_wrapper.dart';
@@ -45,6 +42,7 @@ class _CreatorAnalyticsDashboardState extends State<CreatorAnalyticsDashboard>
   List<Map<String, dynamic>> _badges = [];
   Map<String, dynamic> _leaderboardData = {};
   Map<String, dynamic> _streakData = {};
+  String? _error;
 
   @override
   void initState() {
@@ -63,12 +61,14 @@ class _CreatorAnalyticsDashboardState extends State<CreatorAnalyticsDashboard>
   }
 
   Future<void> _loadAnalyticsData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
 
     try {
       final monetizationService = CreatorMonetizationService.instance;
       final gamificationService = GamificationService.instance;
-      final leaderboardService = LeaderboardService.instance;
 
       final results = await Future.wait([
         monetizationService.getCreatorEarnings(),
@@ -95,7 +95,10 @@ class _CreatorAnalyticsDashboardState extends State<CreatorAnalyticsDashboard>
       });
     } catch (e) {
       debugPrint('Load analytics data error: $e');
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _error = 'Unable to load creator analytics data.';
+      });
     }
   }
 
@@ -205,6 +208,25 @@ class _CreatorAnalyticsDashboardState extends State<CreatorAnalyticsDashboard>
             ? _buildLoadingState()
             : Column(
                 children: [
+                  if (_error != null)
+                    Container(
+                      width: double.infinity,
+                      margin: EdgeInsets.fromLTRB(4.w, 1.h, 4.w, 0),
+                      padding: EdgeInsets.all(3.w),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(10.0),
+                        border: Border.all(color: const Color(0xFFF59E0B)),
+                      ),
+                      child: Text(
+                        _error!,
+                        style: GoogleFonts.inter(
+                          fontSize: 10.sp,
+                          color: const Color(0xFF92400E),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   TabBar(
                     controller: _tabController,
                     isScrollable: true,
@@ -527,30 +549,6 @@ class _CreatorAnalyticsDashboardState extends State<CreatorAnalyticsDashboard>
     );
   }
 
-  Widget _buildTabBar(ThemeData theme) {
-    return Container(
-      color: theme.colorScheme.surface,
-      child: TabBar(
-        controller: _tabController,
-        isScrollable: true,
-        indicatorColor: AppTheme.vibrantYellow,
-        labelColor: AppTheme.vibrantYellow,
-        unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
-        labelStyle: GoogleFonts.inter(
-          fontSize: 12.sp,
-          fontWeight: FontWeight.w600,
-        ),
-        tabs: const [
-          Tab(text: 'Revenue'),
-          Tab(text: 'Performance'),
-          Tab(text: 'Audience'),
-          Tab(text: 'Engagement'),
-          Tab(text: 'Progression'),
-        ],
-      ),
-    );
-  }
-
   Widget _buildRevenueAnalyticsTab() {
     return SingleChildScrollView(
       padding: EdgeInsets.all(4.w),
@@ -590,26 +588,6 @@ class _CreatorAnalyticsDashboardState extends State<CreatorAnalyticsDashboard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [AudienceInsightsCardWidget()],
-      ),
-    );
-  }
-
-  Widget _buildEngagementHeatmapTab() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(4.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [EngagementHeatmapWidget()],
-      ),
-    );
-  }
-
-  Widget _buildCreatorProgressionTab() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(4.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [CreatorProgressionWidget(creatorTier: _creatorTier)],
       ),
     );
   }

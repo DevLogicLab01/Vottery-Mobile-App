@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import '../../routes/app_routes.dart';
@@ -20,22 +22,40 @@ class _IncidentResponseAnalyticsScreenState
   List<Map<String, dynamic>> _incidents = [];
   bool _isLoading = true;
   String _filterSeverity = 'all';
+  String _timeRange = '7d';
+  bool _autoRefresh = true;
+  String _activeTab = 'correlation';
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadIncidents();
+    _configureAutoRefresh();
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadIncidents() async {
     setState(() => _isLoading = true);
     try {
+      final now = DateTime.now();
+      final startDate = _timeRange == '24h'
+          ? now.subtract(const Duration(hours: 24))
+          : _timeRange == '30d'
+              ? now.subtract(const Duration(days: 30))
+              : now.subtract(const Duration(days: 7));
+
       // Fetch recent system alerts
       var query = _client
           .from('system_alerts')
           .select()
           .or(
-            'resolved.eq.false,timestamp.gte.${DateTime.now().subtract(const Duration(days: 7)).toIso8601String()}',
+            'resolved.eq.false,timestamp.gte.${startDate.toIso8601String()}',
           )
           .order('timestamp', ascending: false)
           .limit(50);
@@ -46,7 +66,7 @@ class _IncidentResponseAnalyticsScreenState
             .select()
             .eq('severity', _filterSeverity)
             .or(
-              'resolved.eq.false,timestamp.gte.${DateTime.now().subtract(const Duration(days: 7)).toIso8601String()}',
+              'resolved.eq.false,timestamp.gte.${startDate.toIso8601String()}',
             )
             .order('timestamp', ascending: false)
             .limit(50);
@@ -61,7 +81,7 @@ class _IncidentResponseAnalyticsScreenState
           .select()
           .gte(
             'deployment_date',
-            DateTime.now().subtract(const Duration(days: 7)).toIso8601String(),
+            startDate.toIso8601String(),
           )
           .order('deployment_date', ascending: false)
           .limit(100);
@@ -152,6 +172,68 @@ class _IncidentResponseAnalyticsScreenState
     }
   }
 
+  void _configureAutoRefresh() {
+    _refreshTimer?.cancel();
+    if (!_autoRefresh) return;
+    _refreshTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (mounted) {
+        _loadIncidents();
+      }
+    });
+  }
+
+  Map<String, dynamic> _analyticsSummary() {
+    final total = _incidents.length;
+    final critical = _incidents
+        .where((incident) => incident['severity']?.toString() == 'critical')
+        .length;
+    final correlated = _incidents
+        .where((incident) =>
+            (incident['correlated_features'] as List?)?.isNotEmpty == true)
+        .length;
+    final deploymentLinked = _incidents
+        .where((incident) {
+          final correlatedFeatures =
+              List<Map<String, dynamic>>.from(incident['correlated_features'] ?? []);
+          if (correlatedFeatures.isEmpty) return false;
+          final bestScore = correlatedFeatures
+              .map((item) => (item['correlation_score'] as num?)?.toDouble() ?? 0.0)
+              .fold<double>(0.0, (prev, current) => current > prev ? current : prev);
+          return bestScore >= 0.7;
+        })
+        .length;
+
+    final confidence = correlated > 0
+        ? (_incidents
+                    .where((incident) =>
+                        (incident['correlated_features'] as List?)?.isNotEmpty == true)
+                    .map((incident) {
+                      final correlatedFeatures = List<Map<String, dynamic>>.from(
+                        incident['correlated_features'] ?? [],
+                      );
+                      if (correlatedFeatures.isEmpty) return 0.0;
+                      final topScore = correlatedFeatures
+                          .map((item) =>
+                              (item['correlation_score'] as num?)?.toDouble() ?? 0.0)
+                          .fold<double>(0.0, (prev, current) => current > prev ? current : prev);
+                      return topScore;
+                    })
+                    .fold<double>(0.0, (sum, score) => sum + score) /
+                correlated) *
+            100
+        : 0.0;
+
+    final systemHealth = (100 - (critical * 8)).clamp(0, 100).toDouble();
+
+    return {
+      'total': total,
+      'critical': critical,
+      'correlationConfidence': confidence,
+      'deploymentLinked': deploymentLinked,
+      'systemHealth': systemHealth,
+    };
+  }
+
   Future<void> _resolveIncident(String incidentId) async {
     try {
       await _client
@@ -171,6 +253,7 @@ class _IncidentResponseAnalyticsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final summary = _analyticsSummary();
     return ErrorBoundaryWrapper(
       screenName: 'IncidentResponseAnalytics',
       onRetry: _loadIncidents,
@@ -186,6 +269,14 @@ class _IncidentResponseAnalyticsScreenState
               onPressed: _loadIncidents,
             ),
             IconButton(
+              icon: Icon(_autoRefresh ? Icons.pause : Icons.play_arrow),
+              tooltip: _autoRefresh ? 'Pause auto-refresh' : 'Enable auto-refresh',
+              onPressed: () {
+                setState(() => _autoRefresh = !_autoRefresh);
+                _configureAutoRefresh();
+              },
+            ),
+            IconButton(
               icon: const Icon(Icons.assessment),
               tooltip: 'Feature Implementation Tracking',
               onPressed: () => Navigator.pushNamed(
@@ -197,6 +288,9 @@ class _IncidentResponseAnalyticsScreenState
         ),
         body: Column(
           children: [
+            _buildSummaryCards(summary),
+            _buildTimeRangeSelector(),
+            _buildTabSelector(),
             // Severity Filter
             _buildSeverityFilter(),
             // Incidents List
@@ -221,24 +315,36 @@ class _IncidentResponseAnalyticsScreenState
                         ],
                       ),
                     )
-                  : RefreshIndicator(
-                      onRefresh: _loadIncidents,
-                      child: ListView.builder(
-                        padding: EdgeInsets.all(4.w),
-                        itemCount: _incidents.length,
-                        itemBuilder: (context, index) {
-                          return IncidentCardWidget(
-                            incident: _incidents[index],
-                            onResolve: () => _resolveIncident(
-                              _incidents[index]['incident_id'] as String? ?? '',
-                            ),
-                          );
-                        },
-                      ),
-                    ),
+                  : _buildAnalyticsTabContent(),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAnalyticsTabContent() {
+    return RefreshIndicator(
+      onRefresh: _loadIncidents,
+      child: ListView(
+        padding: EdgeInsets.all(4.w),
+        children: [
+          if (_activeTab == 'correlation') ...[
+            ..._incidents.map((incident) {
+              return IncidentCardWidget(
+                incident: incident,
+                onResolve: () => _resolveIncident(
+                  incident['incident_id'] as String? ?? '',
+                ),
+              );
+            }),
+          ],
+          if (_activeTab == 'root_cause') ..._buildRootCauseSection(),
+          if (_activeTab == 'health_impact') ..._buildHealthImpactSection(),
+          if (_activeTab == 'deployment') ..._buildDeploymentSection(),
+          if (_activeTab == 'predictive') ..._buildPredictiveSection(),
+          if (_activeTab == 'intelligence') ..._buildIntelligenceSection(),
+        ],
       ),
     );
   }
@@ -263,6 +369,369 @@ class _IncidentResponseAnalyticsScreenState
                 setState(() => _filterSeverity = sev);
                 _loadIncidents();
               },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTimeRangeSelector() {
+    final ranges = <String, String>{
+      '24h': '24h',
+      '7d': '7d',
+      '30d': '30d',
+    };
+    return Container(
+      height: 5.h,
+      padding: EdgeInsets.symmetric(horizontal: 4.w),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: ranges.entries.map((entry) {
+          final selected = _timeRange == entry.key;
+          return Padding(
+            padding: EdgeInsets.only(right: 2.w),
+            child: ChoiceChip(
+              label: Text(entry.value),
+              selected: selected,
+              onSelected: (_) {
+                setState(() => _timeRange = entry.key);
+                _loadIncidents();
+              },
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildTabSelector() {
+    final tabs = <(String, String, IconData)>[
+      ('correlation', 'Correlation', Icons.hub),
+      ('root_cause', 'Root Cause', Icons.search),
+      ('health_impact', 'Health Impact', Icons.health_and_safety),
+      ('deployment', 'Deployment', Icons.deployed_code),
+      ('predictive', 'Predictive', Icons.trending_up),
+      ('intelligence', 'Intelligence', Icons.auto_awesome),
+    ];
+    return Container(
+      height: 5.2.h,
+      padding: EdgeInsets.symmetric(horizontal: 4.w),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: tabs.map((tab) {
+          final selected = _activeTab == tab.$1;
+          return Padding(
+            padding: EdgeInsets.only(right: 2.w),
+            child: ChoiceChip(
+              avatar: Icon(tab.$3, size: 16, color: selected ? Colors.white : null),
+              label: Text(tab.$2),
+              selected: selected,
+              onSelected: (_) => setState(() => _activeTab = tab.$1),
+              selectedColor: Theme.of(context).colorScheme.primary,
+              labelStyle: TextStyle(
+                color: selected ? Colors.white : null,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  List<Widget> _buildRootCauseSection() {
+    final causes = <String, int>{};
+    for (final incident in _incidents) {
+      final correlated = List<Map<String, dynamic>>.from(
+        incident['correlated_features'] ?? [],
+      );
+      final cause = correlated.isNotEmpty
+          ? (correlated.first['possible_cause']?.toString() ?? 'Unknown cause')
+          : 'Unknown cause';
+      causes[cause] = (causes[cause] ?? 0) + 1;
+    }
+    if (causes.isEmpty) {
+      return [const ListTile(title: Text('No root cause evidence available'))];
+    }
+    return causes.entries.map((entry) {
+      return Card(
+        child: ListTile(
+          leading: const Icon(Icons.lightbulb_outline),
+          title: Text(entry.key),
+          subtitle: Text('Incidents linked: ${entry.value}'),
+        ),
+      );
+    }).toList();
+  }
+
+  List<Widget> _buildPredictiveSection() {
+    final criticalCount = _incidents
+        .where((incident) => incident['severity']?.toString() == 'critical')
+        .length;
+    final highCount = _incidents
+        .where((incident) => incident['severity']?.toString() == 'high')
+        .length;
+    final predictedNext24h = (criticalCount * 1.2 + highCount * 0.8).round();
+    final riskLevel = predictedNext24h > 8
+        ? 'High'
+        : predictedNext24h > 4
+            ? 'Medium'
+            : 'Low';
+    return [
+      Card(
+        child: ListTile(
+          leading: const Icon(Icons.timelapse),
+          title: const Text('Predicted incidents (next 24h)'),
+          trailing: Text(
+            '$predictedNext24h',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      ),
+      Card(
+        child: ListTile(
+          leading: const Icon(Icons.warning_amber),
+          title: const Text('Projected risk level'),
+          trailing: Text(
+            riskLevel,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: riskLevel == 'High'
+                  ? Colors.red
+                  : riskLevel == 'Medium'
+                      ? Colors.orange
+                      : Colors.green,
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildHealthImpactSection() {
+    final summary = _analyticsSummary();
+    final critical = summary['critical'] as int? ?? 0;
+    final active = summary['total'] as int? ?? 0;
+    final health = summary['systemHealth'] as double? ?? 0.0;
+    final impactSeverity = critical >= 3
+        ? 'Severe'
+        : critical >= 1
+            ? 'Moderate'
+            : 'Low';
+
+    return [
+      Card(
+        child: ListTile(
+          leading: const Icon(Icons.health_and_safety),
+          title: const Text('System Health Score'),
+          trailing: Text(
+            '${health.toStringAsFixed(0)}%',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      ),
+      Card(
+        child: ListTile(
+          leading: const Icon(Icons.warning_amber),
+          title: const Text('Critical Impact Severity'),
+          subtitle: Text('Critical incidents: $critical • Active incidents: $active'),
+          trailing: Text(
+            impactSeverity,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: impactSeverity == 'Severe'
+                  ? Colors.red
+                  : impactSeverity == 'Moderate'
+                      ? Colors.orange
+                      : Colors.green,
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildDeploymentSection() {
+    final deploymentInsights = _incidents
+        .where((incident) =>
+            (incident['correlated_features'] as List?)?.isNotEmpty == true)
+        .map((incident) {
+          final correlated = List<Map<String, dynamic>>.from(
+            incident['correlated_features'] ?? [],
+          );
+          final top = correlated.isEmpty ? null : correlated.first;
+          return {
+            'incident': incident['alert_type']?.toString() ?? 'Unknown incident',
+            'feature': top?['feature_name']?.toString() ?? 'Unknown feature',
+            'score': (top?['correlation_score'] as num?)?.toDouble() ?? 0.0,
+            'cause': top?['possible_cause']?.toString() ?? 'Unknown cause',
+          };
+        })
+        .toList();
+
+    if (deploymentInsights.isEmpty) {
+      return [
+        const ListTile(
+          leading: Icon(Icons.deployed_code),
+          title: Text('No deployment correlations detected in selected range'),
+        ),
+      ];
+    }
+
+    return deploymentInsights.map((insight) {
+      final score = insight['score'] as double;
+      return Card(
+        child: ListTile(
+          leading: const Icon(Icons.link),
+          title: Text(insight['incident'] as String),
+          subtitle: Text(
+            '${insight['feature']} • ${insight['cause']}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: Text(
+            '${(score * 100).toStringAsFixed(0)}%',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: score >= 0.7
+                  ? Colors.red
+                  : score >= 0.4
+                      ? Colors.orange
+                      : Colors.green,
+            ),
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  List<Widget> _buildIntelligenceSection() {
+    final deploymentLinked = _incidents.where((incident) {
+      final correlatedFeatures =
+          List<Map<String, dynamic>>.from(incident['correlated_features'] ?? []);
+      return correlatedFeatures.any((f) {
+        final score = (f['correlation_score'] as num?)?.toDouble() ?? 0.0;
+        return score >= 0.7;
+      });
+    }).length;
+    final confidence = _analyticsSummary()['correlationConfidence'] as double;
+    final recommendation = deploymentLinked > 0
+        ? 'High deployment correlation detected. Prioritize rollback / feature-gating checks.'
+        : 'No strong deployment correlation. Prioritize infra and dependency diagnostics.';
+
+    return [
+      Card(
+        child: ListTile(
+          leading: const Icon(Icons.hub),
+          title: const Text('High-confidence deployment links'),
+          trailing: Text(
+            '$deploymentLinked',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      ),
+      Card(
+        child: ListTile(
+          leading: const Icon(Icons.track_changes),
+          title: const Text('Correlation confidence'),
+          trailing: Text(
+            '${confidence.toStringAsFixed(0)}%',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      ),
+      Card(
+        child: Padding(
+          padding: EdgeInsets.all(4.w),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Automated Correlation Intelligence',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 1.h),
+              Text(recommendation),
+            ],
+          ),
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildSummaryCards(Map<String, dynamic> summary) {
+    final cards = [
+      (
+        'Active',
+        '${summary['total'] ?? 0}',
+        Icons.warning_amber_rounded,
+        Colors.red
+      ),
+      (
+        'Corr. Confidence',
+        '${(summary['correlationConfidence'] as double).toStringAsFixed(0)}%',
+        Icons.track_changes,
+        Colors.blue
+      ),
+      (
+        'Deployment Linked',
+        '${summary['deploymentLinked'] ?? 0}',
+        Icons.deployed_code,
+        Colors.purple
+      ),
+      (
+        'System Health',
+        '${(summary['systemHealth'] as double).toStringAsFixed(0)}%',
+        Icons.health_and_safety,
+        Colors.green
+      ),
+    ];
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: cards.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 2.2,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+        ),
+        itemBuilder: (_, index) {
+          final card = cards[index];
+          return Container(
+            padding: EdgeInsets.all(2.6.w),
+            decoration: BoxDecoration(
+              color: card.$4.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: card.$4.withValues(alpha: 0.35)),
+            ),
+            child: Row(
+              children: [
+                Icon(card.$3, color: card.$4),
+                SizedBox(width: 2.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        card.$1,
+                        style: TextStyle(fontSize: 9.sp, color: Colors.grey[600]),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        card.$2,
+                        style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           );
         },

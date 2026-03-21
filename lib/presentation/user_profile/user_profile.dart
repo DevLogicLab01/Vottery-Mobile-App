@@ -311,30 +311,24 @@ class _UserProfileState extends State<UserProfile> {
   }
 
   void _navigateToEditProfile(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Edit Profile feature coming soon'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).pushNamed(AppRoutes.settingsAccountDashboardWebCanonical);
   }
 
   void _navigateToChangePassword(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Change Password feature coming soon'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).pushNamed(AppRoutes.userSecurityCenterWebCanonical);
   }
 
   void _navigateToSessionManagement(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Session Management feature coming soon'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).pushNamed(AppRoutes.userSecurityCenterWebCanonical);
   }
 
   Future<void> _handleSignOut() async {
@@ -344,7 +338,7 @@ class _UserProfileState extends State<UserProfile> {
         Navigator.of(
           context,
           rootNavigator: true,
-        ).pushReplacementNamed('/biometric-authentication');
+        ).pushReplacementNamed(AppRoutes.biometricAuthentication);
       }
     } catch (e) {
       if (mounted) {

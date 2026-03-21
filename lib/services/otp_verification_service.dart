@@ -273,6 +273,9 @@ class OTPVerificationService {
         'total_verified': totalVerified,
         'success_rate': successRate,
         'avg_time_to_verify_seconds': avgTimeSeconds.toInt(),
+        // CamelCase mirrors for UI consumers expecting JS-style keys.
+        'successRate': successRate,
+        'avgVerificationTimeSeconds': avgTimeSeconds.toInt(),
       };
     } catch (e) {
       debugPrint('Get OTP analytics error: $e');
@@ -281,6 +284,8 @@ class OTPVerificationService {
         'total_verified': 0,
         'success_rate': '0.0',
         'avg_time_to_verify_seconds': 0,
+        'successRate': '0.0',
+        'avgVerificationTimeSeconds': 0,
       };
     }
   }

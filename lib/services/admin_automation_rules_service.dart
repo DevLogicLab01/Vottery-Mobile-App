@@ -133,7 +133,7 @@ class AdminAutomationRulesService {
           )
           .toList();
     } catch (e) {
-      return _mockRules();
+      return [];
     }
   }
 
@@ -152,22 +152,23 @@ class AdminAutomationRulesService {
           )
           .toList();
     } catch (e) {
-      return _mockExecutionLogs();
+      return [];
     }
   }
 
-  static Future<void> toggleRule(String ruleId, bool enabled) async {
+  static Future<bool> toggleRule(String ruleId, bool enabled) async {
     try {
       await _supabase
           .from('automation_rules')
           .update({'is_enabled': enabled})
           .eq('rule_id', ruleId);
+      return true;
     } catch (e) {
-      // Silent fail for demo
+      return false;
     }
   }
 
-  static Future<void> executeRuleNow(AutomationRule rule) async {
+  static Future<bool> executeRuleNow(AutomationRule rule) async {
     try {
       await _supabase.from('automation_execution_log').insert({
         'rule_id': rule.ruleId,
@@ -181,31 +182,38 @@ class AdminAutomationRulesService {
         'affected_count': 0,
         'triggered_by': 'manual',
       });
+      await _supabase
+          .from('automation_rules')
+          .update({'last_executed_at': DateTime.now().toIso8601String()})
+          .eq('rule_id', rule.ruleId);
+      return true;
     } catch (e) {
-      // Silent fail
+      return false;
     }
   }
 
-  static Future<void> createRule(Map<String, dynamic> ruleData) async {
+  static Future<bool> createRule(Map<String, dynamic> ruleData) async {
     try {
       await _supabase.from('automation_rules').insert({
         ...ruleData,
         'created_at': DateTime.now().toIso8601String(),
       });
+      return true;
     } catch (e) {
-      // Silent fail
+      return false;
     }
   }
 
-  static Future<void> deleteRule(String ruleId) async {
+  static Future<bool> deleteRule(String ruleId) async {
     try {
       await _supabase.from('automation_rules').delete().eq('rule_id', ruleId);
+      return true;
     } catch (e) {
-      // Silent fail
+      return false;
     }
   }
 
-  static Future<void> setOverride(String ruleId, Duration duration) async {
+  static Future<bool> setOverride(String ruleId, Duration duration) async {
     final overrideUntil = DateTime.now().add(duration);
     try {
       await _supabase
@@ -215,12 +223,13 @@ class AdminAutomationRulesService {
             'is_enabled': false,
           })
           .eq('rule_id', ruleId);
+      return true;
     } catch (e) {
-      // Silent fail
+      return false;
     }
   }
 
-  static Future<void> emergencyStopAll() async {
+  static Future<bool> emergencyStopAll() async {
     try {
       await _supabase.from('automation_rules').update({'is_enabled': false});
       await _supabase.from('automation_execution_log').insert({
@@ -232,108 +241,10 @@ class AdminAutomationRulesService {
         'affected_count': 0,
         'triggered_by': 'admin_emergency',
       });
+      return true;
     } catch (e) {
-      // Silent fail
+      return false;
     }
   }
 
-  static List<AutomationRule> _mockRules() => [
-    AutomationRule(
-      ruleId: 'rule_001',
-      type: AutomationRuleType.festivalMode,
-      ruleName: 'Christmas Festival Mode',
-      conditions: {
-        'festival_type': 'christmas',
-        'start_date': '2026-12-24',
-        'end_date': '2026-12-26',
-      },
-      actions: [
-        {'action': 'increase_vp_multipliers', 'value': 2},
-        {'action': 'enable_special_badges'},
-        {'action': 'show_festival_banner'},
-        {'action': 'activate_bonus_quests'},
-      ],
-      schedule: '0 0 24 12 *',
-      isEnabled: false,
-      lastExecuted: DateTime.now().subtract(const Duration(days: 30)),
-    ),
-    AutomationRule(
-      ruleId: 'rule_002',
-      type: AutomationRuleType.fraudProneRegionPause,
-      ruleName: 'High Fraud Zone Pause',
-      conditions: {'fraud_rate_threshold': 0.10, 'chargeback_rate': 0.05},
-      actions: [
-        {
-          'action': 'pause_elections_in_zones',
-          'zones': [1, 3, 5],
-        },
-        {'action': 'increase_verification_requirements'},
-        {'action': 'send_admin_alert'},
-      ],
-      schedule: '*/30 * * * *',
-      isEnabled: true,
-      lastExecuted: DateTime.now().subtract(const Duration(hours: 2)),
-    ),
-    AutomationRule(
-      ruleId: 'rule_003',
-      type: AutomationRuleType.retentionCampaign,
-      ruleName: 'Inactive User Re-engagement',
-      conditions: {'user_inactive_days': 7, 'churned_probability': 0.60},
-      actions: [
-        {'action': 'send_push_notification', 'message': 'We miss you!'},
-        {'action': 'offer_vp_bonus', 'amount': 100},
-        {'action': 'show_personalized_content'},
-        {'action': 'enable_discount_code'},
-      ],
-      schedule: '0 9 * * *',
-      isEnabled: true,
-      lastExecuted: DateTime.now().subtract(const Duration(hours: 15)),
-    ),
-    AutomationRule(
-      ruleId: 'rule_004',
-      type: AutomationRuleType.dynamicPricing,
-      ruleName: 'Market-Responsive Pricing',
-      conditions: {'demand_threshold': 0.80, 'competitor_price_change': 0.05},
-      actions: [
-        {
-          'action': 'adjust_subscription_price',
-          'zones': [1, 2, 3],
-        },
-        {'action': 'update_cpe_rates'},
-      ],
-      schedule: '0 */6 * * *',
-      isEnabled: false,
-      lastExecuted: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-  ];
-
-  static List<AutomationExecutionLog> _mockExecutionLogs() => [
-    AutomationExecutionLog(
-      executionId: 'exec_001',
-      ruleName: 'High Fraud Zone Pause',
-      executedAt: DateTime.now().subtract(const Duration(hours: 2)),
-      status: 'success',
-      conditionsMet: true,
-      actionsTaken: ['pause_elections_in_zones', 'send_admin_alert'],
-      affectedCount: 3,
-    ),
-    AutomationExecutionLog(
-      executionId: 'exec_002',
-      ruleName: 'Inactive User Re-engagement',
-      executedAt: DateTime.now().subtract(const Duration(hours: 15)),
-      status: 'success',
-      conditionsMet: true,
-      actionsTaken: ['send_push_notification', 'offer_vp_bonus'],
-      affectedCount: 247,
-    ),
-    AutomationExecutionLog(
-      executionId: 'exec_003',
-      ruleName: 'High Fraud Zone Pause',
-      executedAt: DateTime.now().subtract(const Duration(hours: 32)),
-      status: 'skipped',
-      conditionsMet: false,
-      actionsTaken: [],
-      affectedCount: 0,
-    ),
-  ];
 }

@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import './supabase_service.dart';
 import './auth_service.dart';
-import './stripe_connect_service.dart';
 
 /// Service for managing carousel creator tier subscriptions, feature flags, and tier analytics
 class CarouselCreatorTiersService {
@@ -14,7 +13,6 @@ class CarouselCreatorTiersService {
 
   SupabaseClient get _client => SupabaseService.instance.client;
   AuthService get _auth => AuthService.instance;
-  StripeConnectService get _stripe => StripeConnectService.instance;
 
   /// Get all carousel creator tiers
   Future<List<Map<String, dynamic>>> getAllTiers() async {
@@ -232,7 +230,6 @@ class CarouselCreatorTiersService {
           .eq('subscription_status', 'active');
 
       final tierCounts = <String, int>{};
-      double totalRevenue = 0;
 
       for (final sub in subscriptions) {
         final tier = sub['carousel_creator_tiers'] as Map<String, dynamic>?;
@@ -243,7 +240,7 @@ class CarouselCreatorTiersService {
       return {
         'total_subscribers': subscriptions.length,
         'tier_breakdown': tierCounts,
-        'total_revenue': totalRevenue,
+        'total_revenue': 0,
       };
     } catch (e) {
       debugPrint('Get tier analytics error: $e');

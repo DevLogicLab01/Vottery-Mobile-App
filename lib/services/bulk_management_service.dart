@@ -51,16 +51,21 @@ class BulkManagementService {
     int limit = 50,
   }) async {
     try {
-      var q = _client
-          .from('bulk_operations')
-          .select('*')
+      final base = _client.from('bulk_operations').select('*');
+      final shouldFilterStatus = status != null && status != 'all';
+      final shouldFilterType = operationType != null && operationType != 'all';
+
+      final filtered = shouldFilterStatus && shouldFilterType
+          ? base.eq('status', status).eq('operation_type', operationType)
+          : shouldFilterStatus
+              ? base.eq('status', status)
+              : shouldFilterType
+                  ? base.eq('operation_type', operationType)
+                  : base;
+
+      final res = await filtered
           .order('created_at', ascending: false)
           .limit(limit);
-      if (status != null && status != 'all') q = q.eq('status', status);
-      if (operationType != null && operationType != 'all') {
-        q = q.eq('operation_type', operationType);
-      }
-      final res = await q;
       return List<Map<String, dynamic>>.from(res);
     } catch (e) {
       debugPrint('getBulkOperations error: $e');

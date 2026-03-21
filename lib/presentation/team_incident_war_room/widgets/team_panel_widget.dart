@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
+import '../../../core/app_export.dart';
 import '../../../theme/app_theme.dart';
 
 class TeamPanelWidget extends StatelessWidget {
@@ -77,14 +78,20 @@ class TeamPanelWidget extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.message),
                   onPressed: () {
-                    // TODO: Open direct message
+                    Navigator.of(
+                      context,
+                      rootNavigator: true,
+                    ).pushNamed(AppRoutes.directMessagingScreen);
                   },
                   tooltip: 'Message',
                 ),
                 IconButton(
                   icon: const Icon(Icons.phone),
                   onPressed: () {
-                    // TODO: Initiate call
+                    Navigator.of(
+                      context,
+                      rootNavigator: true,
+                    ).pushNamed(AppRoutes.teamIncidentWarRoom);
                   },
                   tooltip: 'Call',
                 ),

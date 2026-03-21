@@ -67,20 +67,13 @@ class GeminiCostAnalyzerService {
     } catch (e) {
       debugPrint('Generate cost report error: $e');
       return {
-        'success': true,
+        'success': false,
+        'error': e.toString(),
         'report': {
-          'potential_savings': '2840.00',
-          'savings_percent': '34.2',
-          'cost_breakdown': {
-            'openai': 4200.0,
-            'anthropic': 2800.0,
-            'perplexity': 1200.0,
-          },
-          'recommendations': [
-            'Switch content moderation tasks to Gemini (saves \$1,200/mo)',
-            'Route feed curation to Gemini Flash (saves \$980/mo)',
-            'Use Gemini for SMS optimization (saves \$660/mo)',
-          ],
+          'potential_savings': 0.0,
+          'savings_percent': '0.0',
+          'cost_breakdown': <String, double>{},
+          'recommendations': <String>[],
         },
       };
     }
@@ -185,17 +178,16 @@ class GeminiCostAnalyzerService {
       };
     } catch (e) {
       debugPrint('Generate case report error: $e');
-      // Return mock data if DB unavailable
       return {
-        'success': true,
-        'report_id': 'mock-${DateTime.now().millisecondsSinceEpoch}',
-        'executive_summary':
-            'Analysis shows 34.2% cost reduction potential by routing content moderation, feed curation, and SMS optimization tasks to Gemini Flash.',
-        'potential_savings': 2840.0,
-        'savings_percent': 34.2,
-        'approval_status': 'pending',
-        'task_count': 3,
-        'recommendations_count': 3,
+        'success': false,
+        'error': e.toString(),
+        'report_id': null,
+        'executive_summary': '',
+        'potential_savings': 0.0,
+        'savings_percent': 0.0,
+        'approval_status': 'failed',
+        'task_count': 0,
+        'recommendations_count': 0,
       };
     }
   }
@@ -219,7 +211,7 @@ class GeminiCostAnalyzerService {
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       debugPrint('Fetch case reports error: $e');
-      return _getMockCaseReports();
+      return [];
     }
   }
 
@@ -312,40 +304,6 @@ class GeminiCostAnalyzerService {
         'Rollback plan: revert routing config in admin panel within 5 minutes.';
   }
 
-  List<Map<String, dynamic>> _getMockCaseReports() {
-    return [
-      {
-        'report_id': 'mock-report-001',
-        'report_title': 'Gemini Takeover Case Report — Feb/2026',
-        'potential_savings': 2840.0,
-        'savings_percentage': 34.2,
-        'approval_status': 'pending',
-        'executive_summary':
-            'Analysis shows 34.2% cost reduction potential by routing 3 task categories to Gemini.',
-        'implementation_complexity': 'low',
-        'generated_at': DateTime.now()
-            .subtract(const Duration(hours: 2))
-            .toIso8601String(),
-      },
-      {
-        'report_id': 'mock-report-002',
-        'report_title': 'Gemini Takeover Case Report — Jan/2026',
-        'potential_savings': 1950.0,
-        'savings_percentage': 28.5,
-        'approval_status': 'approved',
-        'executive_summary':
-            'Approved routing of SMS optimization and feed curation to Gemini Flash.',
-        'implementation_complexity': 'low',
-        'generated_at': DateTime.now()
-            .subtract(const Duration(days: 30))
-            .toIso8601String(),
-        'approved_at': DateTime.now()
-            .subtract(const Duration(days: 28))
-            .toIso8601String(),
-      },
-    ];
-  }
-
   /// Collect cost data
   Future<Map<String, dynamic>> _collectCostData(
     DateTime startDate,
@@ -374,24 +332,6 @@ class GeminiCostAnalyzerService {
 
       final totalCost = byService.values.fold(0.0, (sum, cost) => sum + cost);
 
-      // Use mock data if no real data
-      if (totalCost == 0) {
-        return {
-          'total_cost': 8300.0,
-          'by_service': {
-            'openai': 4200.0,
-            'anthropic': 2800.0,
-            'perplexity': 1300.0,
-          },
-          'by_task': {
-            'moderation': 3500.0,
-            'curation': 2800.0,
-            'optimization': 2000.0,
-          },
-          'raw_costs': costs,
-        };
-      }
-
       return {
         'total_cost': totalCost,
         'by_service': byService,
@@ -400,20 +340,7 @@ class GeminiCostAnalyzerService {
       };
     } catch (e) {
       debugPrint('Collect cost data error: $e');
-      return {
-        'total_cost': 8300.0,
-        'by_service': {
-          'openai': 4200.0,
-          'anthropic': 2800.0,
-          'perplexity': 1300.0,
-        },
-        'by_task': {
-          'moderation': 3500.0,
-          'curation': 2800.0,
-          'optimization': 2000.0,
-        },
-        'raw_costs': [],
-      };
+      return _emptyCostData();
     }
   }
 
@@ -425,7 +352,12 @@ class GeminiCostAnalyzerService {
       final rawCosts = costs['raw_costs'] as List<Map<String, dynamic>>;
 
       if (rawCosts.isEmpty) {
-        return {};
+        return {
+          'cost_per_operation': 0.0,
+          'quality_per_dollar': 0.0,
+          'latency_per_dollar': 0.0,
+          'task_completion_per_dollar': 0.0,
+        };
       }
 
       final totalOperations = rawCosts.length;
@@ -455,7 +387,12 @@ class GeminiCostAnalyzerService {
       };
     } catch (e) {
       debugPrint('Calculate efficiency metrics error: $e');
-      return {};
+      return {
+        'cost_per_operation': 0.0,
+        'quality_per_dollar': 0.0,
+        'latency_per_dollar': 0.0,
+        'task_completion_per_dollar': 0.0,
+      };
     }
   }
 
@@ -505,7 +442,11 @@ class GeminiCostAnalyzerService {
       };
     } catch (e) {
       debugPrint('Analyze Gemini opportunities error: $e');
-      return {};
+      return {
+        'projected_cost': (costs['total_cost'] as double?) ?? 0.0,
+        'task_analysis': <Map<String, dynamic>>[],
+        'recommendations': <Map<String, dynamic>>[],
+      };
     }
   }
 
@@ -620,5 +561,14 @@ class GeminiCostAnalyzerService {
     int months = 3,
   }) async {
     return await _costTracker.getMonthlyCostTrends(months: months);
+  }
+
+  Map<String, dynamic> _emptyCostData() {
+    return {
+      'total_cost': 0.0,
+      'by_service': <String, double>{},
+      'by_task': <String, double>{},
+      'raw_costs': <Map<String, dynamic>>[],
+    };
   }
 }

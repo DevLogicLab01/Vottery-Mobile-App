@@ -87,8 +87,11 @@ class _RealTimeAdvertiserRoiDashboardState
         _analyticsService.getCampaignAnalytics(campaignId: campaignId),
         _analyticsService.getReachByZone(campaignId: campaignId),
         _analyticsService.getConversionsByZone(campaignId: campaignId),
-        Future.value(<String, dynamic>{}), // Placeholder for demographics
-        Future.value(<Map<String, dynamic>>[]), // Placeholder for timeline
+        _analyticsService.getReachByCountry(
+          advertiserId: AuthService.instance.currentUser?.id ?? '',
+          timeRange: '30d',
+        ),
+        _analyticsService.getPerformanceTrends(campaignId: campaignId),
       ]);
 
       setState(() {
@@ -97,8 +100,18 @@ class _RealTimeAdvertiserRoiDashboardState
         _zoneConversions = (results[2] as Map<String, dynamic>).map(
           (key, value) => MapEntry(key, value as int),
         );
-        _audienceDemographics = results[3] as Map<String, dynamic>;
-        _conversionTimeline = results[4] as List<Map<String, dynamic>>;
+        final countryReach = Map<String, int>.from(results[3] as Map<String, int>);
+        _audienceDemographics = {
+          'country_reach': countryReach,
+          'top_country': countryReach.entries.isNotEmpty
+              ? (countryReach.entries.toList()
+                    ..sort((a, b) => b.value.compareTo(a.value)))
+                  .first
+                  .key
+              : 'N/A',
+        };
+        _conversionTimeline =
+            List<Map<String, dynamic>>.from(results[4] as List<Map<String, dynamic>>);
         _isLoading = false;
       });
     } catch (e) {
@@ -174,8 +187,7 @@ class _RealTimeAdvertiserRoiDashboardState
       ),
     );
 
-    // Simulate action execution
-    await Future.delayed(const Duration(seconds: 1));
+    await _refreshData();
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

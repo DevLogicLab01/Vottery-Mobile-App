@@ -23,9 +23,17 @@ class VoteChangeRequestWidget extends StatefulWidget {
 class _VoteChangeRequestWidgetState extends State<VoteChangeRequestWidget> {
   final _voteChangeService = VoteChangeService();
   final _reasonController = TextEditingController();
+  final _newVoteController = TextEditingController();
 
   bool _isLoading = false;
   bool _changeAllowed = false;
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    _newVoteController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -140,6 +148,19 @@ class _VoteChangeRequestWidgetState extends State<VoteChangeRequestWidget> {
           ),
           SizedBox(height: 2.h),
           TextField(
+            controller: _newVoteController,
+            decoration: InputDecoration(
+              labelText: 'New vote option ID',
+              hintText: 'Enter the option ID you want to switch to',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              filled: true,
+              fillColor: Colors.white,
+            ),
+          ),
+          SizedBox(height: 1.h),
+          TextField(
             controller: _reasonController,
             decoration: InputDecoration(
               labelText: 'Reason for change (optional)',
@@ -159,13 +180,20 @@ class _VoteChangeRequestWidgetState extends State<VoteChangeRequestWidget> {
               onPressed: _isLoading
                   ? null
                   : () {
-                      // TODO: Show vote selection dialog
-                      // For now, just show a placeholder
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Select your new vote first'),
-                        ),
-                      );
+                      final newVoteOptionId = _newVoteController.text.trim();
+                      if (newVoteOptionId.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Enter your new vote option ID first'),
+                          ),
+                        );
+                        return;
+                      }
+                      _requestVoteChange({
+                        ...widget.currentVoteData,
+                        'selected_option_id': newVoteOptionId,
+                        'requested_at': DateTime.now().toIso8601String(),
+                      });
                     },
               icon: _isLoading
                   ? SizedBox(

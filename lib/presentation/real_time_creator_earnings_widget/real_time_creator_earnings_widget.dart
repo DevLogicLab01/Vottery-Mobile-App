@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../routes/app_routes.dart';
 import '../../services/creator_earnings_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/enhanced_empty_state_widget.dart';
@@ -176,7 +178,7 @@ class _RealTimeCreatorEarningsWidgetState
               ),
               TextButton(
                 onPressed: () {
-                  Navigator.pushNamed(context, '/earnings-analytics');
+                  Navigator.pushNamed(context, AppRoutes.creatorAnalyticsDashboard);
                 },
                 child: Text('View All'),
               ),
@@ -270,13 +272,54 @@ class _RealTimeCreatorEarningsWidgetState
     );
   }
 
-  void _exportEarningsReport() {
-    // TODO: Implement CSV/PDF export functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Export feature coming soon'),
-        backgroundColor: AppTheme.primaryLight,
-      ),
-    );
+  Future<void> _exportEarningsReport() async {
+    try {
+      final summary = await _earningsService.getEarningsSummary();
+      final byElection = await _earningsService.getEarningsByElection(limit: 10);
+
+      final totalUsd = ((summary['total_earned_usd'] ?? 0.0) as num)
+          .toDouble()
+          .toStringAsFixed(2);
+      final totalVp = ((summary['total_earned_vp'] ?? 0) as num).toString();
+      final availableUsd = ((summary['available_balance_usd'] ?? 0.0) as num)
+          .toDouble()
+          .toStringAsFixed(2);
+      final availableVp = ((summary['available_balance_vp'] ?? 0) as num).toString();
+
+      final topLines = byElection
+          .map((row) {
+            final title = row['election_title']?.toString() ?? 'Untitled Election';
+            final usd = ((row['total_usd_earned'] ?? 0.0) as num)
+                .toDouble()
+                .toStringAsFixed(2);
+            final vp = ((row['total_vp_earned'] ?? 0) as num).toString();
+            return '- $title: \$$usd | $vp VP';
+          })
+          .join('\n');
+
+      final report = StringBuffer()
+        ..writeln('Vottery Creator Earnings Report')
+        ..writeln('Generated: ${DateTime.now().toIso8601String()}')
+        ..writeln('')
+        ..writeln('Totals')
+        ..writeln('- Total earned: \$$totalUsd | $totalVp VP')
+        ..writeln('- Available balance: \$$availableUsd | $availableVp VP')
+        ..writeln('')
+        ..writeln('Top elections')
+        ..writeln(topLines.isEmpty ? '- No election earnings yet' : topLines);
+
+      await Share.share(
+        report.toString(),
+        subject: 'Vottery creator earnings report',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not export report: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
   }
 }

@@ -72,7 +72,7 @@ class AIServiceRouter {
   /// Process queued requests
   Future<void> _processQueue() async {
     while (_requestQueue.isNotEmpty) {
-      final request = _requestQueue.removeAt(0);
+      _requestQueue.removeAt(0);
       // Retry request on new handler
       // Implementation would invoke the new service
     }

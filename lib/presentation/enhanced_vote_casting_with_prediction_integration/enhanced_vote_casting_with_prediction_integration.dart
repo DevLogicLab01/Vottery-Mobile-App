@@ -3,6 +3,7 @@ import 'package:sizer/sizer.dart';
 
 import '../../services/prediction_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/voting_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/error_boundary_wrapper.dart';
 import '../enhanced_vote_casting/widgets/plurality_voting_widget.dart';
@@ -28,6 +29,7 @@ class _EnhancedVoteCastingWithPredictionIntegrationState
     with SingleTickerProviderStateMixin {
   final PredictionService _predictionService = PredictionService.instance;
   final AuthService _authService = AuthService.instance;
+  final VotingService _votingService = VotingService.instance;
 
   late TabController _tabController;
 
@@ -154,16 +156,47 @@ class _EnhancedVoteCastingWithPredictionIntegrationState
 
   Future<void> _submitVote() async {
     setState(() => _isSubmittingVote = true);
-    await Future.delayed(const Duration(milliseconds: 1500));
-    if (mounted) {
-      setState(() => _isSubmittingVote = false);
+    try {
+      final result = await _votingService.castVoteWithReceipt(
+        electionId: _electionId,
+        selectedOptionId: _electionType == 'plurality' ? _selectedOptionId : null,
+        rankedChoices: _electionType == 'ranked_choice' ? _rankedChoices : null,
+        selectedOptions:
+            _electionType == 'approval' ? _approvedOptions.toList() : null,
+        voteScores: _electionType == 'plus_minus' ? _plusMinusScores : null,
+      );
+
+      if (!mounted) return;
+      if (result.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Vote submitted successfully! +10 VP earned'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.errorMessage ?? 'Failed to submit vote'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Vote submitted successfully! +10 VP earned'),
-          backgroundColor: Theme.of(context).colorScheme.primary,
+          content: Text('Vote submission failed: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
           behavior: SnackBarBehavior.floating,
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmittingVote = false);
+      }
     }
   }
 

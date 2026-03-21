@@ -43,6 +43,7 @@ class _ElectionCreationStudioState extends State<ElectionCreationStudio> {
 
   int _currentStep = 0;
   bool _isSaving = false;
+  bool _showContextualHelp = false;
 
   // Basic Setup
   final TextEditingController _titleController = TextEditingController();
@@ -138,6 +139,23 @@ class _ElectionCreationStudioState extends State<ElectionCreationStudio> {
     _descriptionController.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  String _stepHelpText() {
+    switch (_currentStep) {
+      case 0:
+        return 'Basic Setup defines election title, description, category, and thumbnail metadata.';
+      case 1:
+        return 'Media Requirements configures MCQ and video-watch gates that voters must pass before voting.';
+      case 2:
+        return 'Voting Configuration sets voting method, deadline, participation controls, and ballot behavior.';
+      case 3:
+        return 'Monetization Setup defines free or paid participation and regional pricing behavior.';
+      case 4:
+        return 'Branding & Permissions controls identity, access scope, age checks, auth methods, and visibility.';
+      default:
+        return 'Use Next and Previous to complete election setup step-by-step.';
+    }
   }
 
   void _nextStep() {
@@ -348,6 +366,12 @@ class _ElectionCreationStudioState extends State<ElectionCreationStudio> {
           onBackPressed: () => Navigator.pop(context),
           actions: [
             const OfflineStatusBadge(),
+            IconButton(
+              icon: const Icon(Icons.help_outline),
+              onPressed: () {
+                setState(() => _showContextualHelp = !_showContextualHelp);
+              },
+            ),
             TextButton(
               onPressed: _isSaving ? null : _saveDraft,
               child: _isSaving
@@ -372,6 +396,29 @@ class _ElectionCreationStudioState extends State<ElectionCreationStudio> {
         ),
         body: Column(
           children: [
+            if (_showContextualHelp)
+              Container(
+                width: double.infinity,
+                margin: EdgeInsets.fromLTRB(4.w, 1.h, 4.w, 0),
+                padding: EdgeInsets.all(3.w),
+                decoration: BoxDecoration(
+                  color: Colors.blueGrey.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.help_outline, color: AppTheme.primaryLight),
+                    SizedBox(width: 2.w),
+                    Expanded(
+                      child: Text(
+                        _stepHelpText(),
+                        style: TextStyle(fontSize: 11.sp),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             _buildStepIndicator(),
             Expanded(
               child: PageView(

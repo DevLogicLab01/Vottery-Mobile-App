@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../routes/app_routes.dart';
 import '../../services/performance_optimization_service.dart';
 import '../../services/perplexity_service.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -1297,10 +1298,10 @@ For each recommendation, include:
             style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600),
           ),
           SizedBox(height: 2.h),
-          _buildLazyRouteRow('/admin-dashboard', '450 KB', 'Lazy'),
+          _buildLazyRouteRow(AppRoutes.adminDashboard, '450 KB', 'Lazy'),
           _buildLazyRouteRow('/advertiser-portal', '380 KB', 'Lazy'),
           _buildLazyRouteRow('/analytics-workspace', '520 KB', 'Lazy'),
-          _buildLazyRouteRow('/vote-dashboard', '180 KB', 'Eager'),
+          _buildLazyRouteRow(AppRoutes.voteDashboard, '180 KB', 'Eager'),
           SizedBox(height: 2.h),
           Text(
             'Lazy loading reduces initial load time by 2.3 seconds',

@@ -265,28 +265,28 @@ class _UnifiedAlertManagementCenterState
           if (metadata['election_id'] != null) {
             Navigator.pushNamed(
               context,
-              '/vote-results',
+              AppRoutes.voteResults,
               arguments: metadata['election_id'],
             );
           }
           break;
         case 'messages':
-          Navigator.pushNamed(context, '/direct-messaging');
+          Navigator.pushNamed(context, AppRoutes.directMessagingScreen);
           break;
         case 'achievements':
-          Navigator.pushNamed(context, '/gamification-hub');
+          Navigator.pushNamed(context, AppRoutes.gamificationHub);
           break;
         case 'elections':
-          Navigator.pushNamed(context, '/vote-discovery');
+          Navigator.pushNamed(context, AppRoutes.voteDiscovery);
           break;
         case 'campaigns':
-          Navigator.pushNamed(context, '/campaign-template-gallery');
+          Navigator.pushNamed(context, AppRoutes.campaignTemplateGallery);
           break;
         case 'security':
           Navigator.pushNamed(context, AppRoutes.userSecurityCenter);
           break;
         case 'payments':
-          Navigator.pushNamed(context, '/wallet-prize-distribution-center');
+          Navigator.pushNamed(context, AppRoutes.walletPrizeDistributionCenter);
           break;
         default:
           break;

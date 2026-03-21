@@ -23,7 +23,6 @@ class AccessibilityPreferencesService {
   /// Web uses 12-18px in user_profiles.preferences.fontSize; map to scale (12→0.8, 15→1.0, 18→1.2)
   static const int _webMinFontSize = 12;
   static const int _webMaxFontSize = 18;
-  static const int _webDefaultFontSize = 15;
 
   double _currentFontScale = _defaultScale;
   final ValueNotifier<double> fontScaleNotifier = ValueNotifier<double>(_defaultScale);

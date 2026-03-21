@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:dart_openai/dart_openai.dart';
+import 'dart:convert';
 import './supabase_service.dart';
 
 /// OpenAI Fraud Detection Service
@@ -212,15 +213,27 @@ Provide analysis in JSON format:
           .replaceAll('```json', '')
           .replaceAll('```', '')
           .trim();
-      // Simple parsing - in production, use proper JSON parsing
+      final parsed = jsonDecode(json) as Map<String, dynamic>;
+      final fraudScore = (parsed['fraud_score'] as num?)?.toInt() ?? 0;
+      final normalizedRisk = parsed['risk_level']?.toString() ?? getRiskLevel(fraudScore);
+      final normalizedAction =
+          parsed['recommended_action']?.toString() ?? getRecommendedAction(fraudScore);
       return {
-        'fraud_score': 25,
-        'risk_level': 'low',
-        'confidence': 0.85,
-        'suspicious_indicators': [],
-        'anomaly_types': [],
-        'recommended_action': 'monitor',
-        'reasoning': 'Normal voting pattern detected',
+        'fraud_score': fraudScore.clamp(0, 100),
+        'risk_level': normalizedRisk,
+        'confidence': ((parsed['confidence'] as num?)?.toDouble() ?? 0.5).clamp(
+          0.0,
+          1.0,
+        ),
+        'suspicious_indicators': List<Map<String, dynamic>>.from(
+          (parsed['suspicious_indicators'] as List? ?? []).map(
+            (e) => Map<String, dynamic>.from(e as Map),
+          ),
+        ),
+        'anomaly_types': List<dynamic>.from(parsed['anomaly_types'] as List? ?? []),
+        'recommended_action': normalizedAction,
+        'reasoning':
+            parsed['reasoning']?.toString() ?? 'Fraud analysis completed.',
       };
     } catch (e) {
       debugPrint('Parse fraud analysis error: $e');
@@ -246,22 +259,40 @@ Provide analysis in JSON format:
     Map<String, dynamic> analysis,
   ) async {
     try {
-      await SupabaseService.instance.client.from('fraud_alerts').insert({
+      final payload = {
         'vote_id': voteId,
         'user_id': userId,
         'fraud_score': analysis['fraud_score'],
         'risk_level': analysis['risk_level'],
         'confidence': analysis['confidence'],
         'suspicious_indicators': analysis['suspicious_indicators'],
+        'anomaly_types': analysis['anomaly_types'],
         'recommended_action': analysis['recommended_action'],
         'reasoning': analysis['reasoning'],
         'status': 'pending',
         'created_at': DateTime.now().toIso8601String(),
-      });
+      };
+
+      // Primary table
+      await SupabaseService.instance.client.from('fraud_alerts').insert(payload);
 
       debugPrint('Fraud alert created for vote: $voteId');
     } catch (e) {
-      debugPrint('Create fraud alert error: $e');
+      // Fallback table naming used elsewhere in the codebase.
+      try {
+        await SupabaseService.instance.client.from('fraud_detection_alerts').insert({
+          'vote_id': voteId,
+          'user_id': userId,
+          'fraud_indicators': analysis['anomaly_types'] ?? [],
+          'severity': analysis['risk_level'],
+          'status': 'open',
+          'metadata': analysis,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+        debugPrint('Fraud alert created in fallback table for vote: $voteId');
+      } catch (fallbackError) {
+        debugPrint('Create fraud alert error: $e | fallback error: $fallbackError');
+      }
     }
   }
 

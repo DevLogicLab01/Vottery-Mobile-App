@@ -17,6 +17,17 @@ class ParticipationFeeService {
   AuthService get _auth => AuthService.instance;
   PaymentService get _paymentService => PaymentService.instance;
 
+  static const Map<String, String> _zoneCurrencyMap = {
+    'region1': 'USD',
+    'region2': 'EUR',
+    'region3': 'USD',
+    'region4': 'USD',
+    'region5': 'USD',
+    'region6': 'USD',
+    'region7': 'AUD',
+    'region8': 'CNY',
+  };
+
   /// Check if participation fees are globally enabled
   Future<bool> isFeatureEnabled() async {
     try {
@@ -102,11 +113,12 @@ class ParticipationFeeService {
 
       // Insert new fees
       final feeRecords = regionalFees.entries.map((entry) {
+        final currencyCode = _zoneCurrencyMap[entry.key] ?? 'USD';
         return {
           'election_id': electionId,
           'zone': entry.key,
           'fee_amount': entry.value,
-          'currency_code': 'USD',
+          'currency_code': currencyCode,
           'is_active': true,
         };
       }).toList();

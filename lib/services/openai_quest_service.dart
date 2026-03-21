@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dart_openai/dart_openai.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import './ai_feature_adoption_analytics_service.dart';
@@ -19,6 +20,7 @@ class OpenAIQuestService {
 
   static const String apiKey = String.fromEnvironment('OPENAI_API_KEY');
   bool _initialized = false;
+  static const String _questTemplatesKey = 'ai_quest_templates_v1';
 
   AuthService get _auth => AuthService.instance;
   SupabaseClient get _client => SupabaseService.instance.client;
@@ -76,7 +78,7 @@ class OpenAIQuestService {
         return _getFallbackQuests(questType);
       }
 
-      await _saveQuestsToDatabase(quests);
+      final persisted = await _saveQuestsToDatabase(quests);
 
       // Fire GA4 ai_quest_generation event
       await AIFeatureAdoptionAnalyticsService.instance.logAIQuestGeneration(
@@ -90,7 +92,7 @@ class OpenAIQuestService {
         userId: userId,
       );
 
-      return quests;
+      return persisted;
     } catch (e) {
       debugPrint('OpenAI quest generation error: $e');
       return _getFallbackQuests(questType);
@@ -337,12 +339,65 @@ Respond with ONLY a JSON array of quests:
     }
   }
 
-  Future<void> _saveQuestsToDatabase(List<Map<String, dynamic>> quests) async {
+  Future<List<Map<String, dynamic>>> _saveQuestsToDatabase(
+    List<Map<String, dynamic>> quests,
+  ) async {
     try {
-      await _client.from('user_quests').insert(quests);
+      final inserted = await _client
+          .from('user_quests')
+          .insert(quests)
+          .select();
+      return List<Map<String, dynamic>>.from(inserted);
     } catch (e) {
       debugPrint('Save quests error: $e');
+      return quests;
     }
+  }
+
+  Future<bool> saveQuestTemplate({
+    required String userId,
+    required Map<String, dynamic> template,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final currentRaw = prefs.getString(_questTemplatesKey);
+      final current = currentRaw == null
+          ? <Map<String, dynamic>>[]
+          : List<Map<String, dynamic>>.from(jsonDecode(currentRaw) as List);
+      current.insert(0, {
+        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+        'user_id': userId,
+        ...template,
+      });
+      await prefs.setString(_questTemplatesKey, jsonEncode(current.take(20).toList()));
+      return true;
+    } catch (e) {
+      debugPrint('Save quest template error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateQuestById({
+    required String questId,
+    required Map<String, dynamic> updates,
+  }) async {
+    try {
+      await _client.from('user_quests').update(updates).eq('id', questId);
+      return true;
+    } catch (e) {
+      debugPrint('Update quest by id error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> publishQuestById(String questId) async {
+    return updateQuestById(
+      questId: questId,
+      updates: {
+        'status': 'active',
+        'published_at': DateTime.now().toIso8601String(),
+      },
+    );
   }
 
   List<Map<String, dynamic>> _getFallbackQuests(String questType) {

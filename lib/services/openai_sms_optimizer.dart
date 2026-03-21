@@ -2,8 +2,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import './supabase_service.dart';
-import './auth_service.dart';
-import './ai/ai_service_base.dart';
 import './ai/gemini_chat_service.dart';
 
 /// SMS Optimizer — uses Gemini via ai-proxy (same as Web). AI-powered SMS enhancement.
@@ -15,7 +13,6 @@ class OpenAISMSOptimizer {
   OpenAISMSOptimizer._();
 
   SupabaseClient get _client => SupabaseService.instance.client;
-  AuthService get _auth => AuthService.instance;
 
   // Character limit for single SMS
   static const int singleSMSLimit = 160;

@@ -3,7 +3,6 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../services/admin_management_service.dart';
-import '../../services/creator_monetization_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_icon_widget.dart';
 import '../../widgets/error_boundary_wrapper.dart';
@@ -21,12 +20,14 @@ class EnhancedAdminControlPanel extends StatefulWidget {
 class _EnhancedAdminControlPanelState extends State<EnhancedAdminControlPanel> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final AdminManagementService _adminService = AdminManagementService.instance;
-  final CreatorMonetizationService _monetizationService =
-      CreatorMonetizationService.instance;
 
   int _selectedDrawerIndex = 0;
   bool _isLoading = false;
   Map<String, dynamic> _systemStats = {};
+
+  Future<List<Map<String, dynamic>>>? _usersPanelFuture;
+  Future<List<Map<String, dynamic>>>? _auditPanelFuture;
+  Future<Map<String, dynamic>>? _compliancePanelFuture;
 
   final List<Map<String, dynamic>> _drawerSections = [
     {'title': 'Dashboard Overview', 'icon': 'dashboard', 'index': 0},
@@ -92,35 +93,23 @@ class _EnhancedAdminControlPanelState extends State<EnhancedAdminControlPanel> {
         body: _isLoading
             ? const SkeletonDashboard()
             : RefreshIndicator(
-                onRefresh: _loadSystemStats,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.all(4.w),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Platform Overview',
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                      SizedBox(height: 2.h),
-                      _buildMetricsGrid(context),
-                      SizedBox(height: 3.h),
-                      Text(
-                        'Prize Distribution',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(height: 1.h),
-                      _buildPlaceholderPanel(
-                        context,
-                        'Prize Distribution Panel',
-                      ),
-                    ],
-                  ),
-                ),
+                onRefresh: () async {
+                  await _loadSystemStats();
+                  if (_selectedDrawerIndex == 1) {
+                    _usersPanelFuture = _adminService.getUsers(limit: 50);
+                  }
+                  if (_selectedDrawerIndex == 3) {
+                    _auditPanelFuture = _adminService.getAuditLogs(limit: 40);
+                  }
+                  if (_selectedDrawerIndex == 4) {
+                    _compliancePanelFuture =
+                        _adminService.getComplianceMetrics();
+                  }
+                  if (mounted) setState(() {});
+                },
+                child: _selectedDrawerIndex == 0
+                    ? _buildDashboardScroll(context)
+                    : _buildSelectedPanel(context),
               ),
       ),
     );
@@ -216,7 +205,20 @@ class _EnhancedAdminControlPanelState extends State<EnhancedAdminControlPanel> {
                     selected: isSelected,
                     selectedTileColor: theme.colorScheme.primary.withAlpha(26),
                     onTap: () {
-                      setState(() => _selectedDrawerIndex = section['index']);
+                      final idx = section['index'] as int;
+                      setState(() {
+                        _selectedDrawerIndex = idx;
+                        if (idx == 1) {
+                          _usersPanelFuture = _adminService.getUsers(limit: 50);
+                        }
+                        if (idx == 3) {
+                          _auditPanelFuture = _adminService.getAuditLogs(limit: 40);
+                        }
+                        if (idx == 4) {
+                          _compliancePanelFuture =
+                              _adminService.getComplianceMetrics();
+                        }
+                      });
                       Navigator.pop(context);
                     },
                   );
@@ -245,83 +247,283 @@ class _EnhancedAdminControlPanelState extends State<EnhancedAdminControlPanel> {
     );
   }
 
-  Widget _buildSelectedPanel(BuildContext context) {
-    switch (_selectedDrawerIndex) {
-      case 0:
-        return _buildDashboardOverview(context);
-      case 1:
-        return _buildPlaceholderPanel(context, 'User Management Panel');
-      case 2:
-        return _buildPlaceholderPanel(context, 'Financial Management Panel');
-      case 3:
-        return _buildPlaceholderPanel(context, 'Analytics & Reports Panel');
-      default:
-        return _buildDashboardOverview(context);
-    }
-  }
-
-  Widget _buildPlaceholderPanel(BuildContext context, String title) {
+  Widget _buildDashboardScroll(BuildContext context) {
     final theme = Theme.of(context);
-    return Center(
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.all(4.w),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CustomIconWidget(
-            iconName: 'construction',
-            color: theme.colorScheme.primary,
-            size: 48,
-          ),
-          SizedBox(height: 2.h),
           Text(
-            title,
+            'Platform Overview',
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 1.h),
+          SizedBox(height: 2.h),
+          _buildMetricsGrid(context),
+          SizedBox(height: 3.h),
           Text(
-            'This panel is under construction',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.textTheme.bodySmall?.color?.withAlpha(179),
+            'Prize distribution & payouts',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
             ),
           ),
+          SizedBox(height: 1.h),
+          _buildPrizeDistributionLinks(context),
         ],
       ),
     );
   }
 
-  Widget _buildDashboardOverview(BuildContext context) {
+  Widget _buildPrizeDistributionLinks(BuildContext context) {
     final theme = Theme.of(context);
-
-    return RefreshIndicator(
-      onRefresh: _loadSystemStats,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.dividerColor),
+      ),
+      child: Padding(
         padding: EdgeInsets.all(4.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Platform Overview',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              'Open operational hubs for payouts, prizes, and settlements.',
+              style: theme.textTheme.bodyMedium,
             ),
             SizedBox(height: 2.h),
-            _buildMetricsGrid(context),
-            SizedBox(height: 3.h),
-            Text(
-              'Prize Distribution',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  onPressed: () => Navigator.of(context, rootNavigator: true)
+                      .pushNamed(AppRoutes.automatedPaymentProcessingHub),
+                  icon: const Icon(Icons.payments, size: 18),
+                  label: const Text('Payment hub'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context, rootNavigator: true)
+                      .pushNamed(AppRoutes.digitalWalletScreen),
+                  icon: const Icon(Icons.account_balance_wallet, size: 18),
+                  label: const Text('Digital wallet'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context, rootNavigator: true)
+                      .pushNamed(AppRoutes.walletPrizeDistributionCenter),
+                  icon: const Icon(Icons.card_giftcard, size: 18),
+                  label: const Text('Prize distribution'),
+                ),
+              ],
             ),
-            SizedBox(height: 1.h),
-            _buildPlaceholderPanel(context, 'Prize Distribution Panel'),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildSelectedPanel(BuildContext context) {
+    switch (_selectedDrawerIndex) {
+      case 1:
+        return _buildUserManagementBody(context);
+      case 2:
+        return _buildFinancialBody(context);
+      case 3:
+        return _buildAnalyticsBody(context);
+      case 4:
+        return _buildComplianceBody(context);
+      case 5:
+        return _buildFraudBody(context);
+      default:
+        return _buildDashboardScroll(context);
+    }
+  }
+
+  Widget _buildUserManagementBody(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _usersPanelFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        final users = snapshot.data ?? [];
+        if (users.isEmpty) {
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: const [
+              SizedBox(height: 48),
+              Center(child: Text('No user profiles returned')),
+            ],
+          );
+        }
+        return ListView.separated(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.all(4.w),
+          itemCount: users.length,
+          separatorBuilder: (_, __) => SizedBox(height: 1.h),
+          itemBuilder: (context, i) {
+            final u = users[i];
+            final email = u['email']?.toString() ?? '';
+            final username = u['username']?.toString() ?? '';
+            final role = u['role']?.toString() ?? '';
+            final status = u['status']?.toString() ?? '';
+            return ListTile(
+              tileColor: Theme.of(context).cardColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Theme.of(context).dividerColor),
+              ),
+              title: Text(username.isNotEmpty ? username : email),
+              subtitle: Text(
+                [email, role, status].where((s) => s.isNotEmpty).join(' · '),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildFinancialBody(BuildContext context) {
+    final theme = Theme.of(context);
+    final rev = _systemStats['total_revenue'];
+    final revStr = rev is num
+        ? rev.toStringAsFixed(2)
+        : (rev?.toString() ?? '0.00');
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.all(4.w),
+      children: [
+        Text('Financial snapshot', style: theme.textTheme.titleLarge),
+        SizedBox(height: 2.h),
+        Text('Total revenue (platform): \$$revStr'),
+        SizedBox(height: 1.h),
+        Text('Active elections: ${_systemStats['active_elections'] ?? 0}'),
+        SizedBox(height: 3.h),
+        FilledButton.icon(
+          onPressed: () => Navigator.of(context, rootNavigator: true)
+              .pushNamed(AppRoutes.unifiedRevenueIntelligenceDashboard),
+          icon: const Icon(Icons.insights, size: 18),
+          label: const Text('Revenue intelligence'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAnalyticsBody(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _auditPanelFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        final logs = snapshot.data ?? [];
+        if (logs.isEmpty) {
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: const [
+              SizedBox(height: 48),
+              Center(child: Text('No audit log entries')),
+            ],
+          );
+        }
+        return ListView.separated(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.all(4.w),
+          itemCount: logs.length,
+          separatorBuilder: (_, __) => SizedBox(height: 0.5.h),
+          itemBuilder: (context, i) {
+            final row = logs[i];
+            final action = row['action_type']?.toString() ?? '';
+            final at = row['created_at']?.toString() ?? '';
+            return ListTile(
+              dense: true,
+              title: Text(action),
+              subtitle: Text(at),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildComplianceBody(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _compliancePanelFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final m = snapshot.data ?? {};
+        if (m.isEmpty) {
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: const [
+              SizedBox(height: 48),
+              Center(child: Text('No compliance metrics')),
+            ],
+          );
+        }
+        return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.all(4.w),
+          children: m.entries
+              .map(
+                (e) => ListTile(
+                  title: Text(e.key),
+                  subtitle: Text(e.value?.toString() ?? ''),
+                ),
+              )
+              .toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildFraudBody(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.all(4.w),
+      children: [
+        Text('Fraud & risk', style: theme.textTheme.titleLarge),
+        SizedBox(height: 2.h),
+        Text(
+          'Open specialized fraud intelligence surfaces backed by your Supabase data and services.',
+          style: theme.textTheme.bodyMedium,
+        ),
+        SizedBox(height: 3.h),
+        FilledButton.icon(
+          onPressed: () => Navigator.of(context, rootNavigator: true)
+              .pushNamed(AppRoutes.advancedAiFraudPreventionCommandCenter),
+          icon: const Icon(Icons.shield, size: 18),
+          label: const Text('AI fraud prevention'),
+        ),
+        SizedBox(height: 1.h),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context, rootNavigator: true)
+              .pushNamed(AppRoutes.fraudMonitoringDashboard),
+          icon: const Icon(Icons.monitor_heart, size: 18),
+          label: const Text('Fraud monitoring'),
+        ),
+      ],
+    );
+  }
+
+  String _formatRevenueMetric(dynamic revenue) {
+    final s = revenue is num
+        ? revenue.toStringAsFixed(2)
+        : (revenue?.toString() ?? '0.00');
+    return '\$$s';
   }
 
   Widget _buildMetricsGrid(BuildContext context) {
@@ -342,8 +544,7 @@ class _EnhancedAdminControlPanelState extends State<EnhancedAdminControlPanel> {
       },
       {
         'title': 'Total Revenue',
-        'value':
-            '\$${_systemStats['total_revenue']?.toStringAsFixed(2) ?? '0.00'}',
+        'value': _formatRevenueMetric(_systemStats['total_revenue']),
         'icon': 'account_balance',
         'color': const Color(0xFFF59E0B),
       },

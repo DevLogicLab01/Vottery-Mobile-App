@@ -177,7 +177,7 @@ class BillingService {
       // Web: Trigger download
       final blob = universal_html.Blob([bytes]);
       final url = universal_html.Url.createObjectUrlFromBlob(blob);
-      final anchor = universal_html.AnchorElement(href: url)
+      universal_html.AnchorElement(href: url)
         ..setAttribute('download', 'invoice_${invoice['invoice_number']}.pdf')
         ..click();
       universal_html.Url.revokeObjectUrl(url);

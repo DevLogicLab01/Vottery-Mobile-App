@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../services/openai_quest_service.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -20,25 +21,41 @@ class _QuestManagementDashboardState extends State<QuestManagementDashboard>
     with SingleTickerProviderStateMixin {
   final OpenAIQuestService _questService = OpenAIQuestService.instance;
   late TabController _tabController;
-  final bool _isLoading = false;
+  bool _isLoading = false;
 
-  final List<Map<String, dynamic>> _activeQuests = [
-    {
-      'id': 'quest_1',
-      'title': 'Vote in 3 Elections',
-      'type': 'voting',
-      'difficulty': 'easy',
-      'vp_reward': 150,
-      'progress': 2,
-      'target': 3,
-      'assigned_users': 45,
-      'completion_rate': 68.5,
-    },
-  ];
+  List<Map<String, dynamic>> _activeQuests = [];
 
   Future<void> _loadQuests() async {
-    // TODO: Implement quest loading logic
-    setState(() {});
+    setState(() => _isLoading = true);
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        setState(() => _activeQuests = []);
+        return;
+      }
+
+      final quests = await Supabase.instance.client
+          .from('user_quests')
+          .select()
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .order('created_at', ascending: false);
+
+      setState(() {
+        _activeQuests = List<Map<String, dynamic>>.from(quests);
+      });
+    } catch (_) {
+      // Fallback to AI-generated quests so the dashboard is never empty.
+      final user = Supabase.instance.client.auth.currentUser;
+      final fallback = user == null
+          ? <Map<String, dynamic>>[]
+          : await _questService.generatePersonalizedQuests(userId: user.id);
+      setState(() => _activeQuests = fallback);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -84,7 +101,9 @@ class _QuestManagementDashboardState extends State<QuestManagementDashboard>
                   itemBuilder: (context, index) => Card(
                     child: ListTile(
                       title: Text(_activeQuests[index]['title']),
-                      subtitle: Text('${_activeQuests[index]['vp_reward']} VP'),
+                      subtitle: Text(
+                        '${_activeQuests[index]['vp_reward'] ?? 0} VP • ${_activeQuests[index]['difficulty'] ?? 'easy'}',
+                      ),
                     ),
                   ),
                 ),

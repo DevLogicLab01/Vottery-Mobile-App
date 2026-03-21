@@ -51,7 +51,9 @@ class PerplexityLogAnalysisService {
       );
 
       // Correlate threats
-      final correlatedThreats = await _correlateThreats(analysis['threats']);
+      final rawThreats = analysis['threats'];
+      final threatList = rawThreats is List ? rawThreats : <dynamic>[];
+      final correlatedThreats = await _correlateThreats(threatList);
 
       // Calculate overall threat score
       final overallScore = _calculateOverallThreatScore(correlatedThreats);
@@ -79,52 +81,153 @@ class PerplexityLogAnalysisService {
     }
   }
 
-  /// Aggregate logs from multiple sources
+  /// Aggregate logs from multiple sources (each source isolated — missing tables do not zero the whole window).
   Future<List<Map<String, dynamic>>> _aggregateLogs(Duration timeWindow) async {
-    try {
-      final startTime = DateTime.now().subtract(timeWindow);
+    final startIso = DateTime.now().subtract(timeWindow).toIso8601String();
+    final out = <Map<String, dynamic>>[];
 
-      // Supabase postgres logs (simulated)
-      final authLogs = await _supabase
+    Future<void> addFrom(
+      String sourceLabel,
+      Future<dynamic> Function() fetch,
+    ) async {
+      try {
+        final raw = await fetch();
+        if (raw is! List) return;
+        for (final row in raw) {
+          if (row is Map<String, dynamic>) {
+            out.add({...row, '_log_source': sourceLabel});
+          } else if (row is Map) {
+            out.add({
+              ...Map<String, dynamic>.from(row),
+              '_log_source': sourceLabel,
+            });
+          }
+        }
+      } catch (e) {
+        debugPrint('Aggregate logs skip $sourceLabel: $e');
+      }
+    }
+
+    await addFrom('user_activity_log', () async {
+      return _supabase
           .from('user_activity_log')
           .select()
-          .gte('timestamp', startTime.toIso8601String())
+          .gte('timestamp', startIso)
           .order('timestamp', ascending: false)
           .limit(500);
+    });
 
-      // Fraud detection logs
-      final fraudLogs = await _supabase
+    await addFrom('fraud_alerts', () async {
+      return _supabase
+          .from('fraud_alerts')
+          .select(
+            'id, alert_type, severity, user_id, description, metadata, status, created_at',
+          )
+          .gte('created_at', startIso)
+          .order('created_at', ascending: false)
+          .limit(200);
+    });
+
+    await addFrom('fraud_detection_events', () async {
+      return _supabase
           .from('fraud_detection_events')
           .select()
-          .gte('detected_at', startTime.toIso8601String())
+          .gte('detected_at', startIso)
           .order('detected_at', ascending: false)
           .limit(200);
+    });
 
-      // Voting logs
-      final votingLogs = await _supabase
+    await addFrom('votes', () async {
+      return _supabase
           .from('votes')
           .select('id, user_id, election_id, created_at')
-          .gte('created_at', startTime.toIso8601String())
+          .gte('created_at', startIso)
           .order('created_at', ascending: false)
           .limit(1000);
+    });
 
-      // Moderation logs
-      final moderationLogs = await _supabase
+    await addFrom('content_moderation_results', () async {
+      return _supabase
           .from('content_moderation_results')
           .select()
-          .gte('created_at', startTime.toIso8601String())
+          .gte('created_at', startIso)
           .order('created_at', ascending: false)
           .limit(300);
+    });
 
-      return [
-        ...List<Map<String, dynamic>>.from(authLogs),
-        ...List<Map<String, dynamic>>.from(fraudLogs),
-        ...List<Map<String, dynamic>>.from(votingLogs),
-        ...List<Map<String, dynamic>>.from(moderationLogs),
-      ];
-    } catch (e) {
-      debugPrint('Aggregate logs error: $e');
-      return [];
+    await addFrom('system_failures', () async {
+      return _supabase
+          .from('system_failures')
+          .select()
+          .gte('created_at', startIso)
+          .order('created_at', ascending: false)
+          .limit(100);
+    });
+
+    await addFrom('payment_transactions', () async {
+      return _supabase
+          .from('payment_transactions')
+          .select('id, user_id, amount, currency, status, transaction_type, created_at')
+          .gte('created_at', startIso)
+          .order('created_at', ascending: false)
+          .limit(500);
+    });
+
+    return _normalizeAggregatedRows(out);
+  }
+
+  /// Normalize rows so preprocess heuristics match real column names across tables.
+  List<Map<String, dynamic>> _normalizeAggregatedRows(
+    List<Map<String, dynamic>> rows,
+  ) {
+    return rows.map((row) {
+      final copy = Map<String, dynamic>.from(row);
+      final source = copy['_log_source']?.toString() ?? '';
+
+      if (source == 'fraud_alerts') {
+        final meta = copy['metadata'];
+        int score = 0;
+        if (meta is Map && meta['fraud_score'] != null) {
+          score = (meta['fraud_score'] as num?)?.toInt() ?? 0;
+        } else {
+          score = _severityToFraudScore(copy['severity']?.toString());
+        }
+        copy['fraud_score'] = score;
+      }
+
+      if (source == 'content_moderation_results') {
+        final removed = copy['auto_removed'] == true;
+        copy['moderation_result'] = removed ? 'removed' : 'reviewed';
+      }
+
+      if (source == 'system_failures') {
+        copy['action'] = 'system_failure';
+        copy['is_suspicious'] = true;
+      }
+
+      if (source == 'payment_transactions') {
+        final st = copy['status']?.toString().toLowerCase() ?? '';
+        if (st == 'failed') {
+          copy['action'] = 'payment_failed';
+        }
+      }
+
+      return copy;
+    }).toList();
+  }
+
+  int _severityToFraudScore(String? severity) {
+    switch ((severity ?? '').toLowerCase()) {
+      case 'critical':
+        return 95;
+      case 'high':
+        return 82;
+      case 'medium':
+        return 55;
+      case 'low':
+        return 30;
+      default:
+        return 45;
     }
   }
 
@@ -134,7 +237,14 @@ class PerplexityLogAnalysisService {
     final fraudLogs = logs.where((l) => l.containsKey('fraud_score')).toList();
     final votingLogs = logs.where((l) => l.containsKey('election_id')).toList();
     final moderationLogs = logs
-        .where((l) => l.containsKey('moderation_result'))
+        .where(
+          (l) =>
+              l.containsKey('moderation_result') ||
+              l.containsKey('auto_removed'),
+        )
+        .toList();
+    final paymentLogs = logs
+        .where((l) => l['_log_source'] == 'payment_transactions')
         .toList();
 
     final failedLogins = authLogs
@@ -145,7 +255,7 @@ class PerplexityLogAnalysisService {
         .length;
 
     final highFraudScores = fraudLogs
-        .where((l) => (l['fraud_score'] as int? ?? 0) > 70)
+        .where((l) => ((l['fraud_score'] as num?)?.toInt() ?? 0) > 70)
         .length;
 
     final voteVelocity = votingLogs.length;
@@ -153,19 +263,41 @@ class PerplexityLogAnalysisService {
 
     final contentFlags = moderationLogs.length;
     final autoRemovals = moderationLogs
-        .where((l) => l['moderation_result'] == 'removed')
+        .where(
+          (l) =>
+              l['moderation_result'] == 'removed' || l['auto_removed'] == true,
+        )
         .length;
+
+    final txnVolume = paymentLogs.length;
+    final failedPayments = paymentLogs
+        .where(
+          (l) =>
+              (l['status']?.toString().toLowerCase() == 'failed') ||
+              l['action'] == 'payment_failed',
+        )
+        .length;
+    var highValueCount = 0;
+    for (final p in paymentLogs) {
+      final amt = double.tryParse((p['amount'] ?? '0').toString()) ?? 0;
+      if (amt >= 500) highValueCount += 1;
+    }
+    final refundRate = txnVolume > 0 ? failedPayments / txnVolume : 0.0;
 
     return {
       'log_count': logs.length,
+      'fraud_pipeline': {
+        'high_severity_rows': highFraudScores,
+        'fraud_rows': fraudLogs.length,
+      },
       'authentication': {
         'failed_login_count': failedLogins,
         'suspicious_patterns': suspiciousPatterns,
       },
       'transactions': {
-        'transaction_volume': 0,
-        'high_value_txns': 0,
-        'refund_rate': 0.0,
+        'transaction_volume': txnVolume,
+        'high_value_txns': highValueCount,
+        'refund_rate': double.parse(refundRate.toStringAsFixed(4)),
       },
       'voting': {
         'vote_velocity': voteVelocity,
@@ -208,6 +340,10 @@ Log summary: ${processedLogs['log_count']} events from ${timeWindow.inHours} hou
 
 Authentication: ${processedLogs['authentication']['failed_login_count']} failures, ${processedLogs['authentication']['suspicious_patterns']} suspicious patterns.
 
+Fraud pipeline: ${processedLogs['fraud_pipeline']['fraud_rows']} fraud-tagged rows, ${processedLogs['fraud_pipeline']['high_severity_rows']} with score > 70.
+
+Payments: ${processedLogs['transactions']['transaction_volume']} transactions, ${processedLogs['transactions']['high_value_txns']} high-value (>=500), failed/refund-rate ${processedLogs['transactions']['refund_rate']}.
+
 Voting: ${processedLogs['voting']['vote_velocity']} votes, ${processedLogs['voting']['coordination_indicators']} coordination indicators.
 
 Moderation: ${processedLogs['moderation']['content_flags']} flags, ${processedLogs['moderation']['auto_removals']} auto-removals.
@@ -248,7 +384,15 @@ Return detailed JSON:
   /// Parse threats from response
   Map<String, dynamic> _parseThreats(String response) {
     try {
-      return jsonDecode(response) as Map<String, dynamic>;
+      final cleaned = response
+          .replaceAll('```json', '')
+          .replaceAll('```', '')
+          .trim();
+      final match = RegExp(r'\{[\s\S]*\}').firstMatch(cleaned);
+      if (match == null) return {'threats': []};
+      final decoded = jsonDecode(match.group(0)!);
+      if (decoded is Map<String, dynamic>) return decoded;
+      return {'threats': []};
     } catch (e) {
       debugPrint('Parse threats error: $e');
       return {'threats': []};
@@ -262,7 +406,8 @@ Return detailed JSON:
     final correlated = <Map<String, dynamic>>[];
 
     for (final threat in threats) {
-      final threatMap = threat as Map<String, dynamic>;
+      if (threat is! Map) continue;
+      final threatMap = Map<String, dynamic>.from(threat);
 
       // Cross-reference with existing incidents
       final relatedIncidents = await _findRelatedIncidents(threatMap);
@@ -306,13 +451,13 @@ Return detailed JSON:
 
   /// Calculate threat score
   int _calculateThreatScore(Map<String, dynamic> threat) {
-    final severity = threat['severity'] as String;
-    final confidence = threat['confidence'] as double;
+    final severity = threat['severity']?.toString() ?? 'low';
+    final confidence = (threat['confidence'] as num?)?.toDouble() ?? 0.5;
 
     final severityScore =
-        {'critical': 100, 'high': 75, 'medium': 50, 'low': 25}[severity] ?? 0;
+        {'critical': 100, 'high': 75, 'medium': 50, 'low': 25}[severity] ?? 25;
 
-    return (severityScore * confidence).round();
+    return (severityScore * confidence.clamp(0.0, 1.0)).round();
   }
 
   /// Calculate overall threat score
@@ -328,8 +473,9 @@ Return detailed JSON:
     List<Map<String, dynamic>> threats,
   ) async {
     for (final threat in threats) {
-      final severity = threat['severity'] as String;
-      final confidence = threat['confidence'] as double;
+      final severity = threat['severity']?.toString() ?? 'low';
+      final confidence =
+          (threat['confidence'] as num?)?.toDouble() ?? 0.0;
 
       if (severity == 'critical' && confidence > 0.9) {
         // High-severity auto-actions

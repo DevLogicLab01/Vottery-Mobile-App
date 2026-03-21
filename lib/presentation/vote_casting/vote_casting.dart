@@ -111,6 +111,7 @@ class _VoteCastingState extends State<VoteCasting>
   String _authMethodMessage = '';
   bool _abstained = false;
   bool _electionLoaded = false;
+  bool _showContextualHelp = false;
   final AuthService _authService = AuthService.instance;
   final AbstentionService _abstentionService = AbstentionService.instance;
 
@@ -161,7 +162,8 @@ class _VoteCastingState extends State<VoteCasting>
     super.dispose();
   }
 
-  bool get canSubmit => selectedOptions.isNotEmpty && !isSubmitting;
+  bool get canSubmit =>
+      _currentGate == 'vote' && selectedOptions.isNotEmpty && !isSubmitting;
 
   void _handleOptionSelection(String optionId) {
     setState(() {
@@ -325,6 +327,9 @@ class _VoteCastingState extends State<VoteCasting>
     voteData['description'] = election['description'] ?? voteData['description'];
     voteData['allowed_auth_methods'] = election['allowed_auth_methods'];
     voteData['allowedAuthMethods'] = election['allowed_auth_methods'];
+    voteData['require_mcq'] = election['require_mcq'] ?? election['mcq_required'];
+    voteData['require_video_watch'] =
+        election['require_video_watch'] ?? election['video_watch_required'];
     if (election['end_date'] != null && election['end_time'] != null) {
       try {
         voteData['deadline'] = DateTime.parse(
@@ -370,9 +375,9 @@ class _VoteCastingState extends State<VoteCasting>
         _hasPermission = permissionResult['allowed'] as bool;
         _permissionDeniedReason = permissionResult['reason'] as String?;
         _biometricRequired = biometricRequired;
-        _requireMCQ = true; // TODO: Get from election data
+        _requireMCQ = (voteData['require_mcq'] ?? false) == true;
         _mcqCompleted = mcqPassed;
-        _requireVideoWatch = true; // TODO: Get from election data
+        _requireVideoWatch = (voteData['require_video_watch'] ?? false) == true;
         _videoWatchCompleted = videoCompleted;
 
         // Determine current gate
@@ -586,6 +591,21 @@ class _VoteCastingState extends State<VoteCasting>
     }
   }
 
+  String _gateHelpText() {
+    switch (_currentGate) {
+      case 'permission':
+        return 'Permission gate verifies eligibility, region/group access, and election participation policy.';
+      case 'mcq':
+        return 'MCQ gate requires a pre-vote quiz pass before ballots become selectable.';
+      case 'video':
+        return 'Video gate requires watch completion thresholds before vote submission is enabled.';
+      case 'vote':
+        return 'Vote gate allows option selection, secure biometric confirmation, and receipt-backed submission.';
+      default:
+        return 'This screen guides secure voting with policy and security checks before submission.';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -598,6 +618,12 @@ class _VoteCastingState extends State<VoteCasting>
           title: 'Vote Casting',
           variant: CustomAppBarVariant.withBack,
           onBackPressed: () => Navigator.pop(context),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.help_outline),
+              onPressed: () => setState(() => _showContextualHelp = !_showContextualHelp),
+            ),
+          ],
         ),
         body: Center(
           child: Column(
@@ -623,6 +649,12 @@ class _VoteCastingState extends State<VoteCasting>
           title: 'Vote Casting',
           variant: CustomAppBarVariant.withBack,
           onBackPressed: () => Navigator.pop(context),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.help_outline),
+              onPressed: () => setState(() => _showContextualHelp = !_showContextualHelp),
+            ),
+          ],
         ),
         body: Center(
           child: Padding(
@@ -671,6 +703,12 @@ class _VoteCastingState extends State<VoteCasting>
           title: 'Vote Casting',
           variant: CustomAppBarVariant.withBack,
           onBackPressed: () => Navigator.pop(context),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.help_outline),
+              onPressed: () => setState(() => _showContextualHelp = !_showContextualHelp),
+            ),
+          ],
         ),
         body: Center(
           child: Padding(
@@ -754,6 +792,65 @@ class _VoteCastingState extends State<VoteCasting>
       );
     }
 
+    if (_currentGate == 'mcq' || _currentGate == 'video') {
+      final isMcqGate = _currentGate == 'mcq';
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        appBar: CustomAppBar(
+          title: 'Vote Casting',
+          variant: CustomAppBarVariant.withBack,
+          onBackPressed: () => Navigator.pop(context),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.help_outline),
+              onPressed: () => setState(() => _showContextualHelp = !_showContextualHelp),
+            ),
+          ],
+        ),
+        body: Center(
+          child: Padding(
+            padding: EdgeInsets.all(6.w),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  isMcqGate ? Icons.quiz_outlined : Icons.ondemand_video_outlined,
+                  size: 20.w,
+                  color: theme.colorScheme.primary,
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  isMcqGate
+                      ? 'Complete pre-vote quiz first'
+                      : 'Complete required video watch first',
+                  style: TextStyle(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 1.5.h),
+                Text(
+                  'This election requires ${isMcqGate ? 'MCQ completion' : 'video completion'} before vote submission is enabled.',
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 3.h),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Go Back'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
         appBar: CustomAppBar(
@@ -763,11 +860,40 @@ class _VoteCastingState extends State<VoteCasting>
             await _recordAbstentionOnLeaveIfNeeded();
             if (mounted) Navigator.of(context).pop();
           },
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.help_outline),
+              onPressed: () => setState(() => _showContextualHelp = !_showContextualHelp),
+            ),
+          ],
         ),
       body: Stack(
         children: [
           Column(
             children: [
+              if (_showContextualHelp)
+                Container(
+                  width: double.infinity,
+                  margin: EdgeInsets.fromLTRB(4.w, 1.h, 4.w, 0),
+                  padding: EdgeInsets.all(3.w),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.help_outline, color: theme.colorScheme.primary),
+                      SizedBox(width: 2.w),
+                      Expanded(
+                        child: Text(
+                          _gateHelpText(),
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               Expanded(
                 child: SingleChildScrollView(
                   padding: EdgeInsets.only(bottom: 20.h),

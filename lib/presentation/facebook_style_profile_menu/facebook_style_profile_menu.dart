@@ -331,21 +331,21 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     icon: 'settings',
                     title: 'Settings',
                     onTap: () {
-                      Navigator.pushNamed(context, '/comprehensiveSettingsHub');
+                      Navigator.pushNamed(context, AppRoutes.comprehensiveSettingsHub);
                     },
                   ),
                   MenuItemWidget(
                     icon: 'lock',
                     title: 'Privacy Shortcuts',
                     onTap: () {
-                      Navigator.pushNamed(context, '/comprehensiveSettingsHub');
+                      Navigator.pushNamed(context, AppRoutes.comprehensiveSettingsHub);
                     },
                   ),
                   MenuItemWidget(
                     icon: 'history',
                     title: 'Activity Log',
                     onTap: () {
-                      Navigator.pushNamed(context, '/voteHistory');
+                      Navigator.pushNamed(context, AppRoutes.voteHistory);
                     },
                   ),
                   MenuItemWidget(
@@ -353,7 +353,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     title: 'Log Notification Center',
                     subtitle: 'Critical alerts & security',
                     onTap: () {
-                      Navigator.pushNamed(context, '/logNotificationCenter');
+                      Navigator.pushNamed(context, AppRoutes.logNotificationCenter);
                     },
                   ),
                   MenuItemWidget(
@@ -369,7 +369,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     title: 'Accessibility',
                     onTap: () => Navigator.pushNamed(
                       context,
-                      '/accessibilitySettingsHub',
+                      AppRoutes.accessibilitySettingsHub,
                     ),
                   ),
                   MenuItemWidget(
@@ -377,7 +377,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     title: 'Language',
                     onTap: () => Navigator.pushNamed(
                       context,
-                      '/globalLanguageSettingsHub',
+                      AppRoutes.globalLanguageSettingsHub,
                     ),
                   ),
                   MenuItemWidget(
@@ -385,7 +385,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     title: 'Passkey Authentication',
                     onTap: () => Navigator.pushNamed(
                       context,
-                      '/passkeyAuthenticationCenter',
+                      AppRoutes.passkeyAuthenticationCenter,
                     ),
                   ),
                   MenuItemWidget(
@@ -394,7 +394,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     subtitle: 'Stress testing & benchmarks',
                     onTap: () => Navigator.pushNamed(
                       context,
-                      '/incidentTestingSuiteDashboard',
+                      AppRoutes.incidentTestingSuiteDashboard,
                     ),
                   ),
                   MenuItemWidget(
@@ -403,7 +403,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     subtitle: 'Unified AI threat analysis',
                     onTap: () => Navigator.pushNamed(
                       context,
-                      '/multi-ai-threat-orchestration-hub',
+                      AppRoutes.multiAiThreatOrchestrationHub,
                     ),
                   ),
                   // TIER 3 Features
@@ -412,7 +412,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     title: 'Team Incident War Room',
                     subtitle: 'Collaborative incident response',
                     onTap: () {
-                      Navigator.pushNamed(context, '/team-incident-war-room');
+                      Navigator.pushNamed(context, AppRoutes.teamIncidentWarRoom);
                     },
                   ),
                   Container(
@@ -500,7 +500,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     icon: 'help_center',
                     title: 'Help Center',
                     onTap: () {
-                      Navigator.pushNamed(context, '/helpSupportCenter');
+                      Navigator.pushNamed(context, AppRoutes.creatorSupportHub);
                     },
                   ),
                   MenuItemWidget(
@@ -508,7 +508,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     title: 'Creator Support Hub',
                     subtitle: 'Tickets, Guides, AI FAQ',
                     onTap: () {
-                      Navigator.pushNamed(context, '/creatorSupportHub');
+                      Navigator.pushNamed(context, AppRoutes.creatorSupportHub);
                     },
                   ),
                   ListTile(
@@ -521,7 +521,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                       Navigator.pop(context);
                       Navigator.pushNamed(
                         context,
-                        '/aiServiceFailoverControlCenter',
+                        AppRoutes.aiServiceFailoverControlCenter,
                       );
                     },
                   ),
@@ -530,14 +530,14 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     title: 'Support Inbox',
                     badge: '2',
                     onTap: () {
-                      Navigator.pushNamed(context, '/directMessagingScreen');
+                      Navigator.pushNamed(context, AppRoutes.directMessagingScreen);
                     },
                   ),
                   MenuItemWidget(
                     icon: 'report',
                     title: 'Report a Problem',
                     onTap: () {
-                      Navigator.pushNamed(context, '/userFeedbackPortal');
+                      Navigator.pushNamed(context, AppRoutes.userFeedbackPortal);
                     },
                   ),
                   MenuItemWidget(
@@ -565,7 +565,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     onTap: () {
                       Navigator.pushNamed(
                         context,
-                        '/advancedFraudDetectionCenter',
+                        AppRoutes.advancedFraudDetectionCenter,
                       );
                     },
                   ),
@@ -575,7 +575,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     onTap: () {
                       Navigator.pushNamed(
                         context,
-                        '/perplexityFraudDashboardScreen',
+                        AppRoutes.perplexityFraudDashboardScreen,
                       );
                     },
                   ),
@@ -584,7 +584,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     title: 'Fraud Investigation',
                     onTap: () => Navigator.pushNamed(
                       context,
-                      '/enhancedFraudInvestigationWorkflowsHub',
+                      AppRoutes.enhancedFraudInvestigationWorkflowsHub,
                     ),
                   ),
                   MenuItemWidget(
@@ -592,7 +592,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     title: 'SMS Emergency Alerts',
                     onTap: () => Navigator.pushNamed(
                       context,
-                      '/twilioSmsEmergencyAlertManagementCenter',
+                      AppRoutes.twilioSmsEmergencyAlertManagementCenter,
                     ),
                   ),
                   MenuItemWidget(
@@ -601,7 +601,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     onTap: () {
                       Navigator.pushNamed(
                         context,
-                        '/unifiedIncidentManagementDashboard',
+                        AppRoutes.unifiedIncidentManagementDashboard,
                       );
                     },
                   ),
@@ -609,7 +609,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     icon: 'shield',
                     title: 'User Security Center',
                     onTap: () {
-                      Navigator.pushNamed(context, '/userSecurityCenter');
+                      Navigator.pushNamed(context, AppRoutes.userSecurityCenter);
                     },
                   ),
                 ],
@@ -627,14 +627,14 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     icon: 'person',
                     title: 'Profile',
                     onTap: () {
-                      Navigator.pushNamed(context, '/userProfile');
+                      Navigator.pushNamed(context, AppRoutes.userProfile);
                     },
                   ),
                   MenuItemWidget(
                     icon: 'notifications',
                     title: 'Notifications',
                     onTap: () {
-                      Navigator.pushNamed(context, '/aiNotificationCenter');
+                      Navigator.pushNamed(context, AppRoutes.aiNotificationCenter);
                     },
                   ),
                   MenuItemWidget(
@@ -655,7 +655,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                       Navigator.pop(context);
                       Navigator.pushNamed(
                         context,
-                        '/multiCurrencySettlementDashboard',
+                        AppRoutes.multiCurrencySettlementDashboard,
                       );
                     },
                   ),
@@ -666,7 +666,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                       Navigator.pop(context);
                       Navigator.pushNamed(
                         context,
-                        '/stripeConnectPayoutManagementHub',
+                        AppRoutes.stripeConnectPayoutManagementHub,
                       );
                     },
                   ),
@@ -677,7 +677,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                       Navigator.pop(context);
                       Navigator.pushNamed(
                         context,
-                        '/creatorAnalyticsDashboard',
+                        AppRoutes.creatorAnalyticsDashboard,
                       );
                     },
                   ),
@@ -686,7 +686,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     title: 'Cross-Domain Intelligence',
                     onTap: () => Navigator.pushNamed(
                       context,
-                      '/crossDomainIntelligenceHub',
+                      AppRoutes.crossDomainIntelligenceHub,
                     ),
                   ),
                   MenuItemWidget(
@@ -694,7 +694,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     title: 'Claude Autonomous Actions',
                     onTap: () => Navigator.pushNamed(
                       context,
-                      '/claudeAutonomousActionsHub',
+                      AppRoutes.claudeAutonomousActionsHub,
                     ),
                   ),
                   MenuItemWidget(
@@ -720,7 +720,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     subtitle: 'System overview and management',
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, '/adminDashboard');
+                      Navigator.pushNamed(context, AppRoutes.adminDashboard);
                     },
                   ),
                   MenuItemWidget(
@@ -729,7 +729,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     subtitle: 'Enable/disable platform features',
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, '/adminFeatureTogglePanel');
+                      Navigator.pushNamed(context, AppRoutes.adminFeatureTogglePanel);
                     },
                   ),
                   MenuItemWidget(
@@ -752,7 +752,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                       Navigator.pop(context);
                       Navigator.pushNamed(
                         context,
-                        '/multiRoleAdminControlCenter',
+                        AppRoutes.multiRoleAdminControlCenter,
                       );
                     },
                   ),
@@ -761,7 +761,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     title: 'Country Biometric Compliance',
                     onTap: () => Navigator.pushNamed(
                       context,
-                      '/countryBiometricComplianceDashboard',
+                      AppRoutes.countryBiometricComplianceDashboard,
                     ),
                   ),
                 ],
@@ -892,7 +892,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     onTap: () {
                       Navigator.pushNamed(
                         context,
-                        '/campaignManagementDashboard',
+                        AppRoutes.campaignManagementDashboard,
                       );
                     },
                   ),
@@ -901,7 +901,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     title: 'Ads Studio',
                     subtitle: 'Create participatory ads',
                     onTap: () {
-                      Navigator.pushNamed(context, '/participatoryAdsStudio');
+                      Navigator.pushNamed(context, AppRoutes.participatoryAdsStudio);
                     },
                   ),
                   MenuItemWidget(
@@ -911,7 +911,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     onTap: () {
                       Navigator.pushNamed(
                         context,
-                        '/campaignManagementDashboard',
+                        AppRoutes.campaignManagementDashboard,
                       );
                     },
                   ),
@@ -931,7 +931,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     onTap: () {
                       Navigator.pushNamed(
                         context,
-                        '/unifiedPaymentOrchestrationHub',
+                        AppRoutes.unifiedPaymentOrchestrationHub,
                       );
                     },
                   ),
@@ -942,7 +942,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                       Navigator.pop(context);
                       Navigator.pushNamed(
                         context,
-                        '/multiCurrencySettlementDashboard',
+                        AppRoutes.multiCurrencySettlementDashboard,
                       );
                     },
                   ),
@@ -953,7 +953,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                       Navigator.pop(context);
                       Navigator.pushNamed(
                         context,
-                        '/stripeConnectPayoutManagementHub',
+                        AppRoutes.stripeConnectPayoutManagementHub,
                       );
                     },
                   ),

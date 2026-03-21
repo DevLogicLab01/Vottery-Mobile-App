@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import './supabase_service.dart';
-import './auth_service.dart';
+import './resend_email_service.dart';
+import './supabase_query_cache_service.dart';
 
 class BusinessIntelligenceService {
   static BusinessIntelligenceService? _instance;
@@ -11,7 +12,7 @@ class BusinessIntelligenceService {
   BusinessIntelligenceService._();
 
   SupabaseClient get _client => SupabaseService.instance.client;
-  AuthService get _auth => AuthService.instance;
+  ResendEmailService get _resendEmailService => ResendEmailService.instance;
 
   /// Get executive dashboard metrics
   Future<Map<String, dynamic>> getExecutiveDashboard() async {
@@ -140,6 +141,213 @@ class BusinessIntelligenceService {
     }
   }
 
+  /// Get active stakeholder groups used for report delivery
+  Future<List<Map<String, dynamic>>> getStakeholderGroups() async {
+    try {
+      final response = await _client
+          .from('stakeholder_groups')
+          .select()
+          .eq('is_active', true)
+          .order('group_name', ascending: true);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('Get stakeholder groups error: $e');
+      return [];
+    }
+  }
+
+  /// Generate + deliver executive report through edge function
+  Future<Map<String, dynamic>> sendExecutiveReport({
+    required String reportType,
+    required String stakeholderGroupId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      final generated = await generateExecutiveReport(
+        reportType: reportType,
+        startDate: startDate,
+        endDate: endDate,
+      );
+
+      // Persist report record first for delivery/audit parity with Web.
+      final inserted = await _client
+          .from('executive_reports')
+          .insert({
+            'report_type': reportType,
+            'title': '$reportType executive report',
+            'report_data': generated,
+            'status': 'pending',
+          })
+          .select()
+          .single();
+      final reportId = inserted['id'];
+
+      final stakeholderGroup = await _client
+          .from('stakeholder_groups')
+          .select()
+          .eq('id', stakeholderGroupId)
+          .single();
+
+      final edgeResponse = await _client.functions.invoke(
+        'send-executive-report',
+        body: {
+          'reportId': reportId,
+          'reportType': reportType,
+          'title': inserted['title'],
+          'reportData': generated,
+          'recipients': stakeholderGroup['recipients'],
+          'stakeholderGroupId': stakeholderGroupId,
+        },
+      );
+
+      final recipientEmails = _extractEmails(stakeholderGroup['recipients']);
+
+      if (edgeResponse.status < 200 || edgeResponse.status >= 300) {
+        // Fallback to direct email delivery to keep mobile parity with web delivery workflows.
+        int deliveredCount = 0;
+        for (final email in recipientEmails) {
+          final emailResponse = await _resendEmailService.sendEmail(
+            to: email,
+            subject: '[Vottery] ${inserted['title']}',
+            html: _buildExecutiveReportHtml(
+              reportType: reportType,
+              reportData: generated,
+            ),
+          );
+          final delivered = emailResponse['success'] == true;
+          if (delivered) deliveredCount++;
+          await _logReportDelivery(
+            reportId: reportId.toString(),
+            recipientEmail: email,
+            deliveryStatus: delivered ? 'delivered' : 'failed',
+            errorMessage: delivered ? null : (emailResponse['error']?.toString()),
+          );
+        }
+
+        final fallbackSuccess = deliveredCount > 0;
+        await _client
+            .from('executive_reports')
+            .update({
+              'status': fallbackSuccess ? 'sent' : 'failed',
+              if (fallbackSuccess)
+                'sent_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', reportId);
+        if (fallbackSuccess) {
+          SupabaseQueryCacheService.instance
+              .onExecutiveReportSent(reportType: reportType);
+        }
+
+        return {
+          'success': fallbackSuccess,
+          'report_id': reportId,
+          'fallback_delivery': true,
+          'delivered_count': deliveredCount,
+          'total_recipients': recipientEmails.length,
+          if (!fallbackSuccess) 'error': 'Failed to deliver report',
+        };
+      }
+
+      await _client
+          .from('executive_reports')
+          .update({
+            'status': 'sent',
+            'sent_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', reportId);
+      SupabaseQueryCacheService.instance
+          .onExecutiveReportSent(reportType: reportType);
+
+      for (final email in recipientEmails) {
+        await _logReportDelivery(
+          reportId: reportId.toString(),
+          recipientEmail: email,
+          deliveryStatus: 'delivered',
+        );
+      }
+
+      return {
+        'success': true,
+        'report_id': reportId,
+        'delivery': edgeResponse.data,
+        'delivered_count': recipientEmails.length,
+      };
+    } catch (e) {
+      debugPrint('Send executive report error: $e');
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  /// Delivery logs for report-level QA checks
+  Future<List<Map<String, dynamic>>> getReportDeliveryLogs(String reportId) async {
+    try {
+      final response = await _client
+          .from('report_delivery_logs')
+          .select()
+          .eq('report_id', reportId)
+          .order('created_at', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('Get report delivery logs error: $e');
+      return [];
+    }
+  }
+
+  /// Delivery statistics parity with Web executiveReportingService.getDeliveryStatistics
+  Future<Map<String, dynamic>> getDeliveryStatistics({String timeRange = '30d'}) async {
+    try {
+      final now = DateTime.now();
+      DateTime startDate;
+      switch (timeRange) {
+        case '7d':
+          startDate = now.subtract(const Duration(days: 7));
+          break;
+        case '30d':
+        default:
+          startDate = now.subtract(const Duration(days: 30));
+      }
+
+      final response = await _client
+          .from('report_delivery_logs')
+          .select('delivery_status, created_at')
+          .gte('created_at', startDate.toIso8601String());
+      final logs = List<Map<String, dynamic>>.from(response);
+
+      final totalDeliveries = logs.length;
+      final successfulDeliveries = logs
+          .where((d) => d['delivery_status'] == 'delivered')
+          .length;
+      final failedDeliveries = logs
+          .where((d) => d['delivery_status'] == 'failed')
+          .length;
+      final pendingDeliveries = logs
+          .where((d) => d['delivery_status'] == 'pending')
+          .length;
+
+      final deliveryRate = totalDeliveries > 0
+          ? ((successfulDeliveries / totalDeliveries) * 100)
+          : 0.0;
+
+      return {
+        'totalDeliveries': totalDeliveries,
+        'successfulDeliveries': successfulDeliveries,
+        'failedDeliveries': failedDeliveries,
+        'pendingDeliveries': pendingDeliveries,
+        'deliveryRate': deliveryRate.toStringAsFixed(2),
+      };
+    } catch (e) {
+      debugPrint('Get delivery statistics error: $e');
+      return {
+        'totalDeliveries': 0,
+        'successfulDeliveries': 0,
+        'failedDeliveries': 0,
+        'pendingDeliveries': 0,
+        'deliveryRate': '0.00',
+      };
+    }
+  }
+
   /// Get KPI tracking
   Future<List<Map<String, dynamic>>> getKPITracking() async {
     try {
@@ -233,5 +441,55 @@ class BusinessIntelligenceService {
       'summary': 'No data available',
       'metrics': {},
     };
+  }
+
+  List<String> _extractEmails(dynamic recipients) {
+    if (recipients is! List) return const [];
+    final emails = <String>[];
+    for (final recipient in recipients) {
+      if (recipient is String && recipient.contains('@')) {
+        emails.add(recipient);
+      } else if (recipient is Map && recipient['email'] != null) {
+        emails.add(recipient['email'].toString());
+      }
+    }
+    return emails.toSet().toList();
+  }
+
+  Future<void> _logReportDelivery({
+    required String reportId,
+    required String recipientEmail,
+    required String deliveryStatus,
+    String? errorMessage,
+  }) async {
+    try {
+      await _client.from('report_delivery_logs').insert({
+        'report_id': reportId,
+        'recipient_email': recipientEmail,
+        'delivery_status': deliveryStatus,
+        if (errorMessage != null) 'error_message': errorMessage,
+      });
+    } catch (e) {
+      debugPrint('Log report delivery error: $e');
+    }
+  }
+
+  String _buildExecutiveReportHtml({
+    required String reportType,
+    required Map<String, dynamic> reportData,
+  }) {
+    final generatedAt = reportData['generated_at']?.toString() ??
+        DateTime.now().toIso8601String();
+    return '''
+<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; max-width: 720px; margin: 0 auto; padding: 20px;">
+  <h2 style="color: #4F46E5;">Executive Report: $reportType</h2>
+  <p><strong>Generated:</strong> $generatedAt</p>
+  <hr />
+  <pre style="white-space: pre-wrap; background: #F8FAFC; padding: 12px; border-radius: 8px;">${reportData.toString()}</pre>
+  <p style="color:#6B7280; font-size:12px;">Automated delivery from Vottery Mobile BI suite.</p>
+</body>
+</html>''';
   }
 }

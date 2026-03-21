@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../routes/app_routes.dart';
 
 class SmsFailoverConfigurationCenter extends StatefulWidget {
   const SmsFailoverConfigurationCenter({super.key});
@@ -38,7 +39,7 @@ class _SmsFailoverConfigurationCenterState
             SizedBox(height: 3.h),
             ElevatedButton(
               onPressed: () {
-                Navigator.pushNamed(context, '/smsProviderDashboard');
+                Navigator.pushNamed(context, AppRoutes.smsProviderDashboard);
               },
               child: const Text('Go to SMS Provider Dashboard'),
             ),

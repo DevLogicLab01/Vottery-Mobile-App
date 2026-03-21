@@ -99,27 +99,24 @@ class _ExecutiveBusinessIntelligenceSuiteState
         ),
         body: _isLoading
             ? const SkeletonDashboard()
-            : SingleChildScrollView(
-                padding: EdgeInsets.all(4.w),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildKPIHeader(),
-                    _buildTabBar(),
-                    Expanded(
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildRevenueAnalyticsTab(),
-                          _buildUserIntelligenceTab(),
-                          _buildContentPerformanceTab(),
-                          _buildPredictiveInsightsTab(),
-                          _buildExecutiveReportsTab(),
-                        ],
-                      ),
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildKPIHeader(),
+                  _buildTabBar(),
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildRevenueAnalyticsTab(),
+                        _buildUserIntelligenceTab(),
+                        _buildContentPerformanceTab(),
+                        _buildPredictiveInsightsTab(),
+                        _buildExecutiveReportsTab(),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
       ),
     );
@@ -593,8 +590,43 @@ class _ExecutiveBusinessIntelligenceSuiteState
   }
 
   Future<void> _generateReport(String reportType) async {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Generating $reportType report...')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Generating and delivering $reportType report...')),
+    );
+
+    try {
+      final groups = await BusinessIntelligenceService.instance
+          .getStakeholderGroups();
+      if (groups.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No active stakeholder groups found')),
+        );
+        return;
+      }
+
+      final result = await BusinessIntelligenceService.instance
+          .sendExecutiveReport(
+            reportType: reportType,
+            stakeholderGroupId: groups.first['id'].toString(),
+          );
+
+      if (result['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Report delivered successfully (ID: ${result['report_id']})',
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Report delivery failed: ${result['error']}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Report delivery failed: $e')),
+      );
+    }
   }
 }

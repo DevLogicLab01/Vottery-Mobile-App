@@ -279,6 +279,125 @@ class UserSecurityService {
   }
 
   // =====================================================
+  // TWO-FACTOR CHALLENGE FLOW (EMAIL / SMS)
+  // =====================================================
+
+  Future<bool> sendTwoFactorCode({
+    required String method,
+    required String recipient,
+  }) async {
+    try {
+      if (!_auth.isAuthenticated) return false;
+      final normalizedMethod = method.toLowerCase();
+      if (recipient.trim().isEmpty) return false;
+
+      if (normalizedMethod == 'email') {
+        await _client.auth.signInWithOtp(
+          email: recipient.trim(),
+          shouldCreateUser: false,
+        );
+        return true;
+      }
+
+      if (normalizedMethod == 'sms') {
+        await _client.auth.signInWithOtp(
+          phone: recipient.trim(),
+          shouldCreateUser: false,
+        );
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      debugPrint('sendTwoFactorCode error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> verifyTwoFactorCode({
+    required String method,
+    required String recipient,
+    required String code,
+  }) async {
+    try {
+      if (!_auth.isAuthenticated) return false;
+      final normalizedMethod = method.toLowerCase();
+      if (recipient.trim().isEmpty || code.trim().isEmpty) return false;
+
+      if (normalizedMethod == 'email') {
+        final response = await _client.auth.verifyOTP(
+          email: recipient.trim(),
+          token: code.trim(),
+          type: OtpType.email,
+        );
+        return response.user != null;
+      }
+
+      if (normalizedMethod == 'sms') {
+        final response = await _client.auth.verifyOTP(
+          phone: recipient.trim(),
+          token: code.trim(),
+          type: OtpType.sms,
+        );
+        return response.user != null;
+      }
+
+      return false;
+    } catch (e) {
+      debugPrint('verifyTwoFactorCode error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> verifyAuthenticatorCode({
+    required String code,
+  }) async {
+    try {
+      if (!_auth.isAuthenticated) return false;
+      final token = code.trim();
+      if (token.isEmpty) return false;
+
+      final result = await _client.functions.invoke(
+        'mfa-verify',
+        body: {
+          'userId': _auth.currentUser!.id,
+          'token': token,
+        },
+      );
+
+      if (result.status >= 400) return false;
+      final data = result.data;
+      if (data is Map<String, dynamic>) {
+        return data['valid'] == true || data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('verifyAuthenticatorCode error: $e');
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> setupAuthenticator() async {
+    try {
+      if (!_auth.isAuthenticated) return null;
+
+      final result = await _client.functions.invoke(
+        'mfa-setup',
+        body: {'userId': _auth.currentUser!.id},
+      );
+
+      if (result.status >= 400) return null;
+      if (result.data is Map<String, dynamic>) {
+        return Map<String, dynamic>.from(result.data as Map<String, dynamic>);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('setupAuthenticator error: $e');
+      return null;
+    }
+  }
+
+  // =====================================================
   // ACTIVE SESSIONS
   // =====================================================
 
@@ -355,6 +474,79 @@ class UserSecurityService {
     } catch (e) {
       debugPrint('Export security audit trail error: $e');
       return null;
+    }
+  }
+
+  // =====================================================
+  // GDPR RIGHTS
+  // =====================================================
+
+  Future<bool> requestGdprExport({Map<String, dynamic>? details}) async {
+    try {
+      if (!_auth.isAuthenticated) return false;
+      await _client.from('gdpr_requests').insert({
+        'user_id': _auth.currentUser!.id,
+        'request_type': 'export',
+        'details': details ?? <String, dynamic>{},
+      });
+      return true;
+    } catch (e) {
+      debugPrint('requestGdprExport error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> requestGdprDeletion({Map<String, dynamic>? details}) async {
+    try {
+      if (!_auth.isAuthenticated) return false;
+      await _client.from('gdpr_requests').insert({
+        'user_id': _auth.currentUser!.id,
+        'request_type': 'deletion',
+        'details': details ?? <String, dynamic>{},
+      });
+      return true;
+    } catch (e) {
+      debugPrint('requestGdprDeletion error: $e');
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getConsentPreferences() async {
+    try {
+      if (!_auth.isAuthenticated) return null;
+      final data = await _client
+          .from('user_consent_preferences')
+          .select()
+          .eq('user_id', _auth.currentUser!.id)
+          .maybeSingle();
+      return data;
+    } catch (e) {
+      debugPrint('getConsentPreferences error: $e');
+      return null;
+    }
+  }
+
+  Future<bool> updateConsentPreferences({
+    bool? analyticsConsent,
+    bool? marketingConsent,
+    bool? personalizationConsent,
+    bool? aiDecisioningConsent,
+  }) async {
+    try {
+      if (!_auth.isAuthenticated) return false;
+      final payload = <String, dynamic>{
+        'user_id': _auth.currentUser!.id,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      if (analyticsConsent != null) payload['analytics_consent'] = analyticsConsent;
+      if (marketingConsent != null) payload['marketing_consent'] = marketingConsent;
+      if (personalizationConsent != null) payload['personalization_consent'] = personalizationConsent;
+      if (aiDecisioningConsent != null) payload['ai_decisioning_consent'] = aiDecisioningConsent;
+      await _client.from('user_consent_preferences').upsert(payload);
+      return true;
+    } catch (e) {
+      debugPrint('updateConsentPreferences error: $e');
+      return false;
     }
   }
 }

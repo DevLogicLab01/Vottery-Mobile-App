@@ -68,13 +68,24 @@ class SubscriptionService {
       if (!_auth.isAuthenticated) return null;
 
       final response = await _client
+          .from('user_subscriptions')
+          .select('*, plan:plan_id(*)')
+          .eq('user_id', _auth.currentUser!.id)
+          .eq('is_active', true)
+          .maybeSingle();
+
+      if (response != null) {
+        return response;
+      }
+
+      final legacy = await _client
           .from('subscriptions')
           .select()
           .eq('user_id', _auth.currentUser!.id)
           .eq('status', 'active')
           .maybeSingle();
 
-      return response;
+      return legacy;
     } catch (e) {
       debugPrint('Get current subscription error: $e');
       return null;
@@ -114,6 +125,17 @@ class SubscriptionService {
         'payment_intent_id': paymentResult.paymentIntentId,
       });
 
+      // Keep parity with web billing source-of-truth.
+      await _client.from('user_subscriptions').upsert({
+        'user_id': _auth.currentUser!.id,
+        'subscriber_type': 'individual',
+        'is_active': true,
+        'auto_renew': true,
+        'start_date': DateTime.now().toIso8601String(),
+        'end_date': _calculateNextBillingDate(billingPeriod),
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+
       await _applyVPMultiplier(tierData['vp_multiplier']);
 
       await _analytics.trackUserEngagement(
@@ -143,6 +165,17 @@ class SubscriptionService {
           .eq('user_id', _auth.currentUser!.id)
           .eq('status', 'active');
 
+      await _client
+          .from('user_subscriptions')
+          .update({
+            'is_active': false,
+            'auto_renew': false,
+            'end_date': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('user_id', _auth.currentUser!.id)
+          .eq('is_active', true);
+
       await _applyVPMultiplier(1.0);
 
       return true;
@@ -170,6 +203,13 @@ class SubscriptionService {
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', currentSub['id']);
+
+      final userSubscriptionId = currentSub['id']?.toString();
+      if (userSubscriptionId != null) {
+        await _client.from('user_subscriptions').update({
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', userSubscriptionId);
+      }
 
       await _applyVPMultiplier(newTierData['vp_multiplier']);
 
@@ -201,7 +241,11 @@ class SubscriptionService {
   /// Check if user has active subscription
   Future<bool> hasActiveSubscription() async {
     final sub = await getCurrentSubscription();
-    return sub != null && sub['status'] == 'active';
+    if (sub == null) return false;
+    if (sub.containsKey('is_active')) {
+      return sub['is_active'] == true;
+    }
+    return sub['status'] == 'active';
   }
 
   /// Get subscription benefits

@@ -320,17 +320,10 @@ class NFTAchievementService {
   /// Mint NFT on Ethereum blockchain
   Future<Map<String, dynamic>?> _mintOnEthereum(String metadataUri) async {
     try {
-      // Ethereum RPC endpoint
-      const rpcUrl = String.fromEnvironment(
-        'ETHEREUM_RPC_URL',
-        defaultValue: 'https://mainnet.infura.io/v3/YOUR_INFURA_KEY',
-      );
       const contractAddress = String.fromEnvironment(
         'NFT_CONTRACT_ADDRESS',
         defaultValue: '0x0000000000000000000000000000000000000000',
       );
-
-      final client = Web3Client(rpcUrl, http.Client());
 
       // For demo purposes, return mock data
       // In production, implement actual smart contract interaction

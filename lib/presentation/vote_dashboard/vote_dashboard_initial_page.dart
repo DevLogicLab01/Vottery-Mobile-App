@@ -19,6 +19,8 @@ class _VoteDashboardInitialPageState extends State<VoteDashboardInitialPage> {
   bool isOnline = true;
   bool isRefreshing = false;
   int queuedVotes = 0;
+  bool _showContextualHelp = false;
+  String _helpTarget = 'default';
 
   // Mock data for active votes
   final List<Map<String, dynamic>> activeVotes = [
@@ -113,7 +115,7 @@ class _VoteDashboardInitialPageState extends State<VoteDashboardInitialPage> {
   }
 
   void _handleVoteNow(Map<String, dynamic> vote) {
-    Navigator.of(context, rootNavigator: true).pushNamed('/vote-casting');
+    Navigator.of(context, rootNavigator: true).pushNamed(AppRoutes.voteCasting);
   }
 
   void _handleBookmark(Map<String, dynamic> vote) {
@@ -135,11 +137,11 @@ class _VoteDashboardInitialPageState extends State<VoteDashboardInitialPage> {
   }
 
   void _handleDetails(Map<String, dynamic> vote) {
-    Navigator.of(context, rootNavigator: true).pushNamed('/vote-results');
+    Navigator.of(context, rootNavigator: true).pushNamed(AppRoutes.voteResults);
   }
 
   void _handleCreateVote() {
-    Navigator.of(context, rootNavigator: true).pushNamed('/create-vote');
+    Navigator.of(context, rootNavigator: true).pushNamed(AppRoutes.createVote);
   }
 
   String _getGreeting() {
@@ -147,6 +149,24 @@ class _VoteDashboardInitialPageState extends State<VoteDashboardInitialPage> {
     if (hour < 12) return 'Good Morning';
     if (hour < 17) return 'Good Afternoon';
     return 'Good Evening';
+  }
+
+  String _helpText() {
+    const help = {
+      'default':
+          'Use this dashboard to track active elections, open vote details, and submit secure ballots.',
+      'analytics':
+          'AI Analytics Hub gives trend insights, participation behavior, and voting performance signals.',
+      'discovery':
+          'Search/Discover helps you find elections by category, relevance, and participation status.',
+      'notifications':
+          'Notifications show new elections, deadline reminders, and voting-related alerts.',
+      'card':
+          'Each active vote card provides quick actions: Vote Now, Bookmark, Share, and Details.',
+      'create':
+          'Create Vote launches the election creation flow with configuration and publishing steps.',
+    };
+    return help[_helpTarget] ?? help['default']!;
   }
 
   @override
@@ -163,7 +183,8 @@ class _VoteDashboardInitialPageState extends State<VoteDashboardInitialPage> {
           IconButton(
             icon: Icon(Icons.analytics, size: 24.w),
             onPressed: () {
-              Navigator.pushNamed(context, '/ai-analytics-hub');
+              setState(() => _helpTarget = 'analytics');
+              Navigator.pushNamed(context, AppRoutes.aiAnalyticsHub);
             },
             tooltip: 'AI Analytics Hub',
           ),
@@ -176,7 +197,8 @@ class _VoteDashboardInitialPageState extends State<VoteDashboardInitialPage> {
               size: 24,
             ),
             onPressed: () {
-              Navigator.pushNamed(context, '/vote-discovery');
+              setState(() => _helpTarget = 'discovery');
+              Navigator.pushNamed(context, AppRoutes.voteDiscovery);
             },
             tooltip: 'Search',
           ),
@@ -189,6 +211,7 @@ class _VoteDashboardInitialPageState extends State<VoteDashboardInitialPage> {
               size: 24,
             ),
             onPressed: () {
+              setState(() => _helpTarget = 'notifications');
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('No new notifications'),
@@ -198,6 +221,13 @@ class _VoteDashboardInitialPageState extends State<VoteDashboardInitialPage> {
             },
             tooltip: 'Notifications',
           ),
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            onPressed: () {
+              setState(() => _showContextualHelp = !_showContextualHelp);
+            },
+            tooltip: 'What is this?',
+          ),
         ],
       ),
       body: RefreshIndicator(
@@ -205,12 +235,7 @@ class _VoteDashboardInitialPageState extends State<VoteDashboardInitialPage> {
         child: activeVotes.isEmpty
             ? EmptyStateWidget(
                 onBrowseAll: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Browse all votes feature coming soon'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
+                  Navigator.pushNamed(context, AppRoutes.voteDiscovery);
                 },
               )
             : CustomScrollView(
@@ -306,10 +331,22 @@ class _VoteDashboardInitialPageState extends State<VoteDashboardInitialPage> {
                           padding: EdgeInsets.only(bottom: 2.h),
                           child: ActiveVoteCardWidget(
                             vote: vote,
-                            onVoteNow: () => _handleVoteNow(vote),
-                            onBookmark: () => _handleBookmark(vote),
-                            onShare: () => _handleShare(vote),
-                            onDetails: () => _handleDetails(vote),
+                            onVoteNow: () {
+                              setState(() => _helpTarget = 'card');
+                              _handleVoteNow(vote);
+                            },
+                            onBookmark: () {
+                              setState(() => _helpTarget = 'card');
+                              _handleBookmark(vote);
+                            },
+                            onShare: () {
+                              setState(() => _helpTarget = 'card');
+                              _handleShare(vote);
+                            },
+                            onDetails: () {
+                              setState(() => _helpTarget = 'card');
+                              _handleDetails(vote);
+                            },
                           ),
                         );
                       }, childCount: activeVotes.length),
@@ -319,7 +356,10 @@ class _VoteDashboardInitialPageState extends State<VoteDashboardInitialPage> {
               ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _handleCreateVote,
+        onPressed: () {
+          setState(() => _helpTarget = 'create');
+          _handleCreateVote();
+        },
         icon: CustomIconWidget(
           iconName: 'add',
           color:
@@ -336,6 +376,33 @@ class _VoteDashboardInitialPageState extends State<VoteDashboardInitialPage> {
           ),
         ),
       ),
+      bottomSheet: _showContextualHelp
+          ? Container(
+              width: double.infinity,
+              padding: EdgeInsets.fromLTRB(4.w, 1.2.h, 4.w, 1.2.h),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                border: Border(
+                  top: BorderSide(
+                    color: theme.colorScheme.outline.withValues(alpha: 0.25),
+                  ),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.help_outline, color: theme.colorScheme.primary),
+                  SizedBox(width: 2.w),
+                  Expanded(
+                    child: Text(
+                      _helpText(),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : null,
     );
   }
 }

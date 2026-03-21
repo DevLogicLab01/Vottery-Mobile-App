@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import './supabase_service.dart';
 import './auth_service.dart';
-import './stripe_connect_service.dart';
 
 class BrandOnboardingService {
   static BrandOnboardingService? _instance;
@@ -13,7 +12,6 @@ class BrandOnboardingService {
 
   SupabaseClient get _client => SupabaseService.instance.client;
   AuthService get _auth => AuthService.instance;
-  StripeConnectService get _stripe => StripeConnectService.instance;
 
   /// Get current onboarding progress
   Future<Map<String, dynamic>?> getOnboardingProgress() async {

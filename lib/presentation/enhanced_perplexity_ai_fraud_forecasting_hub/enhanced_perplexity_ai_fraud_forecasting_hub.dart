@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../services/advanced_perplexity_fraud_service.dart';
 import '../../services/enhanced_analytics_service.dart';
 import '../../services/perplexity_service.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -63,9 +64,11 @@ class _EnhancedPerplexityAiFraudForecastingHubState
       );
       setState(() {
         _forecastData = forecast;
-        _confidenceScore = (forecast['confidence_score'] ?? 0.85) as double;
-        _threatLevel = forecast['threat_level'] ?? 'low';
-        _modelAccuracy = (forecast['model_accuracy'] ?? 0.92) as double;
+        _confidenceScore =
+            (forecast['confidence_score'] as num?)?.toDouble() ?? 0.85;
+        _threatLevel = forecast['threat_level']?.toString() ?? 'low';
+        _modelAccuracy =
+            (forecast['model_accuracy'] as num?)?.toDouble() ?? 0.92;
       });
     } catch (e) {
       debugPrint('Load forecast data error: $e');

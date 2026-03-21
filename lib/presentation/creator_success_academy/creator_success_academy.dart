@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../core/app_export.dart';
 import '../../services/creator_academy_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import './widgets/achievement_badge_widget.dart';
@@ -664,11 +665,9 @@ class _ModuleDetailScreenState extends State<ModuleDetailScreen> {
   }
 
   void _startQuiz() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Quiz feature coming soon'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).pushNamed(AppRoutes.mcqABTestingAnalyticsDashboard);
   }
 }

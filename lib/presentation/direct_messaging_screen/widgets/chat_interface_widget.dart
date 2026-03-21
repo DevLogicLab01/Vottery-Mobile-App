@@ -199,11 +199,7 @@ class _ChatInterfaceWidgetState extends State<ChatInterfaceWidget> {
       );
 
       if (image != null) {
-        // Upload image and send message with media_url
-        // For now, show placeholder
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Image sharing coming soon')),
-        );
+        await _sendPickedMedia(filePath: image.path, messageType: 'image');
       }
     } catch (e) {
       debugPrint('Pick image error: $e');
@@ -218,10 +214,7 @@ class _ChatInterfaceWidgetState extends State<ChatInterfaceWidget> {
       );
 
       if (video != null) {
-        // Upload video and send message with media_url
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Video sharing coming soon')),
-        );
+        await _sendPickedMedia(filePath: video.path, messageType: 'video');
       }
     } catch (e) {
       debugPrint('Pick video error: $e');
@@ -276,12 +269,59 @@ class _ChatInterfaceWidgetState extends State<ChatInterfaceWidget> {
       );
 
       if (photo != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Photo capture coming soon')),
-        );
+        await _sendPickedMedia(filePath: photo.path, messageType: 'image');
       }
     } catch (e) {
       debugPrint('Take photo error: $e');
+    }
+  }
+
+  Future<void> _sendPickedMedia({
+    required String filePath,
+    required String messageType,
+  }) async {
+    if (!mounted) return;
+    setState(() => _isSending = true);
+    try {
+      final mediaUrl = await _messagingService.uploadConversationMedia(
+        conversationId: widget.conversationId,
+        filePath: filePath,
+        mediaType: messageType,
+      );
+      if (mediaUrl == null || mediaUrl.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Upload failed. Please try again.')),
+          );
+        }
+        return;
+      }
+
+      final success = await _messagingService.sendMessage(
+        conversationId: widget.conversationId,
+        content: messageType == 'video' ? 'Video attachment' : 'Image attachment',
+        messageType: messageType,
+        mediaUrl: mediaUrl,
+      );
+
+      if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Message queued for sending when online'),
+            backgroundColor: AppTheme.warningLight,
+          ),
+        );
+      }
+      await _loadMessages();
+    } catch (e) {
+      debugPrint('Send picked media error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not send media: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSending = false);
     }
   }
 

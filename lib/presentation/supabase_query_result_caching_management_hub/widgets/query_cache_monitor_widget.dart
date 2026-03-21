@@ -14,48 +14,11 @@ class QueryCacheMonitorWidget extends StatefulWidget {
 class _QueryCacheMonitorWidgetState extends State<QueryCacheMonitorWidget> {
   final _cacheService = SupabaseQueryCacheService.instance;
 
-  final List<Map<String, dynamic>> _mockEntries = [
-    {
-      'key': 'user_profile:abc123',
-      'ttl': 287,
-      'hits': 42,
-      'pattern': 'user_profile',
-    },
-    {
-      'key': 'election_feed:1234567',
-      'ttl': 198,
-      'hits': 156,
-      'pattern': 'election_feed',
-    },
-    {
-      'key': 'creator_analytics:xyz789',
-      'ttl': 241,
-      'hits': 28,
-      'pattern': 'creator_analytics',
-    },
-    {
-      'key': 'leaderboard:global',
-      'ttl': 142,
-      'hits': 89,
-      'pattern': 'leaderboard',
-    },
-    {
-      'key': 'election_stats:456',
-      'ttl': 78,
-      'hits': 34,
-      'pattern': 'election_stats',
-    },
-    {
-      'key': 'user_dashboard:user1',
-      'ttl': 312,
-      'hits': 67,
-      'pattern': 'user_dashboard',
-    },
-  ];
-
   @override
   Widget build(BuildContext context) {
     final stats = _cacheService.getStats();
+    final config = _cacheService.getConfig();
+    final entries = _cacheService.getCacheEntries();
     final hitRate = (stats['hitRate'] as double? ?? 0.87) * 100;
 
     return Container(
@@ -102,7 +65,7 @@ class _QueryCacheMonitorWidgetState extends State<QueryCacheMonitorWidget> {
             children: [
               _statChip(
                 'Entries',
-                '${_mockEntries.length}',
+                '${entries.length}',
                 const Color(0xFF6366F1),
               ),
               SizedBox(width: 2.w),
@@ -112,7 +75,50 @@ class _QueryCacheMonitorWidgetState extends State<QueryCacheMonitorWidget> {
                 const Color(0xFFF59E0B),
               ),
               SizedBox(width: 2.w),
-              _statChip('TTL', '5 min', const Color(0xFF3B82F6)),
+              _statChip(
+                'BG Refresh',
+                (config['backgroundRefreshEnabled'] == true) ? 'ON' : 'OFF',
+                const Color(0xFF3B82F6),
+              ),
+            ],
+          ),
+          SizedBox(height: 1.h),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final enabled =
+                        config['backgroundRefreshEnabled'] == true;
+                    _cacheService.configureBackgroundRefresh(enabled: !enabled);
+                    setState(() {});
+                  },
+                  icon: Icon(
+                    (config['backgroundRefreshEnabled'] == true)
+                        ? Icons.pause_circle
+                        : Icons.play_circle,
+                    size: 16,
+                  ),
+                  label: Text(
+                    (config['backgroundRefreshEnabled'] == true)
+                        ? 'Disable SWR'
+                        : 'Enable SWR',
+                  ),
+                ),
+              ),
+              SizedBox(width: 2.w),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    _cacheService.configureBackgroundRefresh(
+                      interval: const Duration(seconds: 30),
+                    );
+                    setState(() {});
+                  },
+                  icon: const Icon(Icons.schedule, size: 16),
+                  label: const Text('30s Sweep'),
+                ),
+              ),
             ],
           ),
           SizedBox(height: 2.h),
@@ -162,7 +168,18 @@ class _QueryCacheMonitorWidgetState extends State<QueryCacheMonitorWidget> {
             ],
           ),
           Divider(color: const Color(0xFF334155), height: 1.h),
-          ..._mockEntries.map((entry) => _cacheRow(entry)),
+          if (entries.isEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: 2.h),
+              child: Text(
+                'No live cache entries yet',
+                style: GoogleFonts.inter(
+                  color: const Color(0xFF94A3B8),
+                  fontSize: 10.sp,
+                ),
+              ),
+            ),
+          ...entries.map((entry) => _cacheRow(entry)),
         ],
       ),
     );
@@ -200,7 +217,7 @@ class _QueryCacheMonitorWidgetState extends State<QueryCacheMonitorWidget> {
   }
 
   Widget _cacheRow(Map<String, dynamic> entry) {
-    final ttl = entry['ttl'] as int;
+    final ttl = entry['ttlRemaining'] as int? ?? 0;
     final ttlColor = ttl < 60
         ? const Color(0xFFEF4444)
         : ttl < 120
@@ -221,7 +238,7 @@ class _QueryCacheMonitorWidgetState extends State<QueryCacheMonitorWidget> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  entry['pattern'] as String,
+                  (entry['key'] as String).split(':').first,
                   style: GoogleFonts.inter(
                     color: const Color(0xFF6366F1),
                     fontSize: 8.sp,
@@ -241,7 +258,7 @@ class _QueryCacheMonitorWidgetState extends State<QueryCacheMonitorWidget> {
           SizedBox(
             width: 8.w,
             child: Text(
-              '${entry['hits']}',
+              '${entry['hitCount'] ?? 0}',
               textAlign: TextAlign.right,
               style: GoogleFonts.inter(
                 color: const Color(0xFF94A3B8),

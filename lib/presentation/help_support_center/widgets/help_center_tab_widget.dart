@@ -17,6 +17,8 @@ class _HelpCenterTabWidgetState extends State<HelpCenterTabWidget> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String? _selectedCategory;
+  bool _showContextualHelp = false;
+  String? _activeHelpTarget;
 
   final List<Map<String, dynamic>> _categories = [
     {'id': 'account', 'name': 'Account', 'icon': 'person', 'count': 12},
@@ -111,6 +113,21 @@ class _HelpCenterTabWidgetState extends State<HelpCenterTabWidget> {
     },
   ];
 
+  static const Map<String, String> _helpContent = {
+    'search': 'Search by keywords to quickly find articles about voting, account access, privacy, and technical troubleshooting.',
+    'categories': 'Category filters narrow help content to Account, Voting, Technical, or Privacy topics.',
+    'article_card': 'Open an article to view guided steps and mark whether the content was helpful.',
+    'article_feedback_yes': 'Use this action when an article solved your issue. It improves ranking for useful help content.',
+    'article_feedback_no': 'Use this action if guidance was unclear. This signals the team to improve the article.',
+    'default': 'Tap any help center element to see contextual guidance for that specific action.',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _showContextualHelp = true;
+  }
+
   List<Map<String, dynamic>> get _filteredArticles {
     var articles = _articles;
 
@@ -146,6 +163,8 @@ class _HelpCenterTabWidgetState extends State<HelpCenterTabWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final currentHelpText =
+        _helpContent[_activeHelpTarget] ?? _helpContent['default']!;
 
     return Column(
       children: [
@@ -158,6 +177,7 @@ class _HelpCenterTabWidgetState extends State<HelpCenterTabWidget> {
             onChanged: (value) {
               setState(() {
                 _searchQuery = value;
+                _activeHelpTarget = 'search';
               });
             },
             decoration: InputDecoration(
@@ -205,6 +225,7 @@ class _HelpCenterTabWidgetState extends State<HelpCenterTabWidget> {
                     _selectedCategory = isSelected
                         ? null
                         : category['id'] as String?;
+                    _activeHelpTarget = 'categories';
                   });
                 },
                 child: Container(
@@ -328,6 +349,7 @@ class _HelpCenterTabWidgetState extends State<HelpCenterTabWidget> {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
                           onTap: () {
+                            setState(() => _activeHelpTarget = 'article_card');
                             _showArticleDetail(context, article);
                           },
                           child: Padding(
@@ -406,6 +428,34 @@ class _HelpCenterTabWidgetState extends State<HelpCenterTabWidget> {
                   },
                 ),
         ),
+        if (_showContextualHelp)
+          Container(
+            width: double.infinity,
+            margin: EdgeInsets.fromLTRB(4.w, 0, 4.w, 2.h),
+            padding: EdgeInsets.all(3.w),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.25),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.help_outline, color: theme.colorScheme.primary),
+                SizedBox(width: 2.w),
+                Expanded(
+                  child: Text(
+                    currentHelpText,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -503,6 +553,9 @@ class _HelpCenterTabWidgetState extends State<HelpCenterTabWidget> {
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () {
+                              if (mounted) {
+                                setState(() => _activeHelpTarget = 'article_feedback_yes');
+                              }
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -523,6 +576,9 @@ class _HelpCenterTabWidgetState extends State<HelpCenterTabWidget> {
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () {
+                              if (mounted) {
+                                setState(() => _activeHelpTarget = 'article_feedback_no');
+                              }
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -587,4 +643,5 @@ class _HelpCenterTabWidgetState extends State<HelpCenterTabWidget> {
       ),
     );
   }
+
 }

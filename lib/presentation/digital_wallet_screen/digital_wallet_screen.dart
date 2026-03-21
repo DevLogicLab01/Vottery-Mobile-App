@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../routes/app_routes.dart';
 import '../../services/wallet_service.dart';
 import '../../services/vp_service.dart';
 import '../../services/currency_exchange_service.dart';
@@ -121,7 +122,7 @@ class _DigitalWalletScreenState extends State<DigitalWalletScreen> {
       fallbackIcon: Icons.account_balance_wallet_outlined,
       primaryActionLabel: 'Start Earning VP',
       onPrimaryAction: () {
-        Navigator.pushNamed(context, '/feed-quest-dashboard');
+        Navigator.pushNamed(context, AppRoutes.feedQuestDashboard);
       },
       secondaryActionLabel: 'Learn More',
       onSecondaryAction: () {

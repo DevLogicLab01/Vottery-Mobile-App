@@ -1,11 +1,15 @@
 // ignore_for_file: avoid_redundant_argument_values
 import 'package:flutter/material.dart';
 
+import '../constants/app_urls.dart';
 import '../routes/app_routes.dart';
+import '../presentation/web_admin_launcher_screen/web_admin_launcher_screen.dart';
 import '../presentation/route_placeholder_screen/route_placeholder_screen.dart';
 import '../presentation/splash_screen/splash_screen.dart';
 import '../presentation/social_media_home_feed/social_media_home_feed.dart';
 import '../presentation/social_home_feed/social_home_feed.dart';
+import '../presentation/feature_implementation_tracking/feature_implementation_tracking_screen.dart';
+import '../presentation/user_feedback_portal/user_feedback_portal.dart';
 import '../presentation/vote_dashboard/vote_dashboard.dart';
 import '../presentation/vote_dashboard/vote_dashboard_initial_page.dart';
 import '../presentation/vote_casting/vote_casting.dart';
@@ -21,6 +25,7 @@ import '../presentation/facebook_style_profile_menu/facebook_style_profile_menu.
 import '../presentation/gamification_hub/gamification_hub.dart';
 import '../presentation/unified_gamification_dashboard/unified_gamification_dashboard.dart';
 import '../presentation/quest_management_dashboard/quest_management_dashboard.dart';
+import '../presentation/seasonal_challenges_hub/seasonal_challenges_hub.dart';
 import '../presentation/ai_quest_generation/ai_quest_generation.dart';
 import '../presentation/feed_quest_dashboard/feed_quest_dashboard.dart';
 import '../presentation/adventure_paths/adventure_paths_view.dart';
@@ -41,6 +46,8 @@ import '../presentation/digital_wallet_screen/digital_wallet_screen.dart';
 import '../presentation/wallet_dashboard/wallet_dashboard.dart';
 import '../presentation/wallet_prize_distribution_center/wallet_prize_distribution_center.dart';
 import '../presentation/digital_wallet_prize_redemption_system/digital_wallet_prize_redemption_system.dart';
+import '../presentation/vp_charity_hub/vp_charity_hub.dart';
+import '../presentation/vp_crypto_conversion/vp_crypto_conversion.dart';
 import '../presentation/unified_payment_orchestration_hub/unified_payment_orchestration_hub.dart';
 import '../presentation/automated_payment_processing_hub/automated_payment_processing_hub.dart';
 import '../presentation/multi_currency_settlement_dashboard/multi_currency_settlement_dashboard.dart';
@@ -77,6 +84,11 @@ import '../presentation/creator_revenue_transparency_hub/creator_revenue_transpa
 import '../presentation/creator_monetization_analytics_dashboard/creator_monetization_analytics_dashboard.dart';
 import '../presentation/creator_optimization_studio/creator_optimization_studio.dart';
 import '../presentation/creator_predictive_insights_hub/creator_predictive_insights_hub.dart';
+import '../presentation/creator_revenue_forecasting_dashboard/creator_revenue_forecasting_dashboard.dart';
+import '../presentation/mcq_analytics_intelligence_dashboard/mcq_analytics_intelligence_dashboard.dart';
+import '../presentation/mcq_ab_testing_analytics_dashboard/mcq_ab_testing_analytics_dashboard.dart';
+import '../presentation/claude_creator_success_agent/claude_creator_success_agent.dart';
+import '../presentation/content_quality_scoring_claude/content_quality_scoring_claude.dart';
 import '../presentation/creator_settlement_reconciliation_center/creator_settlement_reconciliation_center.dart';
 import '../presentation/enhanced_creator_analytics_dashboard_with_gamification_metrics/enhanced_creator_analytics_dashboard_with_gamification_metrics.dart';
 import '../presentation/enhanced_creator_earnings_dashboard/enhanced_creator_earnings_dashboard.dart';
@@ -92,6 +104,7 @@ import '../presentation/participatory_ads_gamification_center/participatory_ads_
 import '../presentation/advertiser_analytics_dashboard/advertiser_analytics_dashboard.dart';
 import '../presentation/advertiser_portal_screen/advertiser_portal_screen.dart';
 import '../presentation/real_time_advertiser_roi_dashboard/real_time_advertiser_roi_dashboard.dart';
+import '../presentation/real_time_analytics_dashboard/real_time_analytics_dashboard_screen.dart';
 import '../presentation/brand_advertiser_registration_portal/brand_advertiser_registration_portal.dart';
 import '../presentation/brand_partnership_hub/brand_partnership_hub.dart';
 import '../presentation/brand_onboarding_wizard/brand_onboarding_wizard.dart';
@@ -106,6 +119,9 @@ import '../presentation/admin_country_access_control_panel/admin_country_access_
 import '../presentation/enhanced_admin_control_panel/enhanced_admin_control_panel.dart';
 import '../presentation/enhanced_mobile_admin_dashboard/enhanced_mobile_admin_dashboard.dart';
 import '../presentation/multi_role_admin_control_center/multi_role_admin_control_center.dart';
+import '../presentation/bulk_management_screen/bulk_management_screen.dart';
+import '../presentation/analytics_export_reporting_hub/analytics_export_reporting_hub_screen.dart';
+import '../presentation/enterprise_operations_center/enterprise_operations_center.dart';
 import '../presentation/comprehensive_settings_hub/comprehensive_settings_hub.dart';
 import '../presentation/enhanced_settings_account_dashboard/enhanced_settings_account_dashboard.dart';
 import '../presentation/enhanced_privacy_settings_hub/enhanced_privacy_settings_hub.dart';
@@ -131,6 +147,7 @@ import '../presentation/push_notification_dashboard/push_notification_dashboard.
 import '../presentation/push_notification_intelligence_hub/push_notification_intelligence_hub.dart';
 import '../presentation/log_notification_center/log_notification_center.dart';
 import '../presentation/social_connections_manager/social_connections_manager.dart';
+import '../presentation/social_activity_timeline/social_activity_timeline_screen.dart';
 import '../presentation/friend_requests_hub/friend_requests_hub.dart';
 import '../presentation/direct_messaging_screen/direct_messaging_screen.dart';
 import '../presentation/direct_messaging_system/direct_messaging_system.dart';
@@ -141,11 +158,14 @@ import '../presentation/moments_stories_hub/moments_stories_hub.dart';
 import '../presentation/social_post_composer/social_post_composer.dart';
 import '../presentation/enhanced_posts_feeds_composer/enhanced_posts_feeds_composer.dart';
 import '../presentation/social_media_navigation_hub/social_media_navigation_hub.dart';
+import '../presentation/live_platform_monitoring_dashboard/live_platform_monitoring_dashboard_screen.dart';
+import '../presentation/unified_production_monitoring_hub/unified_production_monitoring_hub.dart';
 import '../presentation/jolts_video_feed/jolts_video_feed.dart';
 import '../presentation/jolts_video_studio/jolts_video_studio.dart';
 import '../presentation/jolts_analytics_dashboard/jolts_analytics_dashboard.dart';
 import '../presentation/jolts_creator_gamification_hub/jolts_creator_gamification_hub.dart';
 import '../presentation/enhanced_social_media_home_feed_with_claude_confidence_sidebar/enhanced_social_media_home_feed_with_claude_confidence_sidebar.dart';
+import '../presentation/voter_education_hub/voter_education_hub.dart';
 import '../presentation/blockchain_vote_verification_hub/blockchain_vote_verification_hub.dart';
 import '../presentation/enhanced_blockchain_vote_verification_hub/enhanced_blockchain_vote_verification_hub.dart';
 import '../presentation/blockchain_vote_receipt_center/blockchain_vote_receipt_center.dart';
@@ -166,10 +186,17 @@ import '../presentation/open_ended_answer_questions_builder/open_ended_answer_qu
 import '../presentation/audience_questions_hub/audience_questions_hub.dart';
 import '../presentation/presentation_slides_viewer/presentation_slides_viewer.dart';
 import '../presentation/social_proof_indicators_dashboard/social_proof_indicators_dashboard.dart';
+import '../presentation/personal_analytics_dashboard/personal_analytics_dashboard_screen.dart';
 import '../presentation/personalization_dashboard/personalization_dashboard.dart';
+import '../presentation/advanced_unified_search_screen/advanced_unified_search_screen.dart';
 import '../presentation/unified_search_system_hub/unified_search_system_hub.dart';
+import '../presentation/community_elections_hub/community_elections_hub.dart';
+import '../presentation/community_engagement_dashboard/community_engagement_dashboard_screen.dart';
 import '../presentation/content_moderation_tools/content_moderation_tools.dart';
+import '../presentation/content_moderation_control_center/content_moderation_control_center_screen.dart';
 import '../presentation/ai_content_moderation_dashboard/ai_content_moderation_dashboard.dart';
+import '../presentation/admin_automation_control_panel/admin_automation_control_panel.dart';
+import '../presentation/content_distribution_control_center/content_distribution_control_center.dart';
 import '../presentation/age_verification_control_center/age_verification_control_center.dart';
 import '../presentation/country_restriction_controls/country_restriction_controls.dart';
 import '../presentation/country_biometric_compliance_dashboard/country_biometric_compliance_dashboard.dart';
@@ -200,6 +227,8 @@ import '../presentation/unified_incident_management_dashboard/unified_incident_m
 import '../presentation/team_incident_war_room/team_incident_war_room.dart';
 import '../presentation/incident_testing_suite_dashboard/incident_testing_suite_dashboard.dart';
 import '../presentation/enhanced_incident_correlation_engine/enhanced_incident_correlation_engine.dart';
+import '../presentation/incident_response_analytics/incident_response_analytics_screen.dart';
+import '../presentation/stakeholder_incident_communication_hub/stakeholder_incident_communication_hub.dart';
 import '../presentation/security_monitoring_dashboard/security_monitoring_dashboard.dart';
 import '../presentation/ai_security_dashboard/ai_security_dashboard.dart';
 import '../presentation/owasp_security_testing_dashboard/owasp_security_testing_dashboard.dart';
@@ -233,6 +262,7 @@ import '../presentation/app_performance_dashboard/app_performance_dashboard.dart
 import '../presentation/production_performance_monitoring_dashboard/production_performance_monitoring_dashboard.dart';
 import '../presentation/production_sla_monitoring_dashboard/production_sla_monitoring_dashboard.dart';
 import '../presentation/production_load_testing_suite_dashboard/production_load_testing_suite_dashboard.dart';
+import '../presentation/performance_optimization_recommendations_engine_dashboard/performance_optimization_recommendations_engine_dashboard.dart';
 import '../presentation/production_load_test_auto_response_hub/production_load_test_auto_response_hub.dart';
 import '../presentation/production_deployment_hub/production_deployment_hub.dart';
 import '../presentation/git_hub_actions_ci_cd_pipeline_dashboard/git_hub_actions_ci_cd_pipeline_dashboard.dart';
@@ -242,8 +272,10 @@ import '../presentation/e2e_testing_coverage_dashboard/e2e_testing_coverage_dash
 import '../presentation/mobile_launch_readiness_checklist/mobile_launch_readiness_checklist.dart';
 import '../presentation/api_gateway_optimization_dashboard/api_gateway_optimization_dashboard.dart';
 import '../presentation/api_performance_optimization_dashboard/api_performance_optimization_dashboard.dart';
+import '../presentation/api_documentation_portal/api_documentation_portal.dart';
 import '../presentation/res_tful_api_management_hub/res_tful_api_management_hub.dart';
 import '../presentation/webhook_integration_management_hub/webhook_integration_management_hub.dart';
+import '../presentation/advanced_webhook_orchestration_hub/advanced_webhook_orchestration_hub.dart';
 import '../presentation/code_splitting_performance_optimization_hub/code_splitting_performance_optimization_hub.dart';
 import '../presentation/hive_offline_storage_management_hub/hive_offline_storage_management_hub.dart';
 import '../presentation/enhanced_hive_offline_first_architecture_hub/enhanced_hive_offline_first_architecture_hub.dart';
@@ -269,6 +301,7 @@ import '../presentation/claude_autonomous_actions_hub/claude_autonomous_actions_
 import '../presentation/real_time_claude_coaching_api_hub/real_time_claude_coaching_api_hub.dart';
 import '../presentation/gemini_cost_efficiency_analyzer/gemini_cost_efficiency_analyzer.dart';
 import '../presentation/anthropic_content_intelligence_hub/anthropic_content_intelligence_hub.dart';
+import '../presentation/anthropic_advanced_content_analysis_center/anthropic_advanced_content_analysis_center.dart';
 import '../presentation/ai_recommendations_center/ai_recommendations_center.dart';
 import '../presentation/ai_powered_predictive_analytics_engine/ai_powered_predictive_analytics_engine.dart';
 import '../presentation/ai_predictive_modeling_screen/ai_predictive_modeling_screen.dart';
@@ -280,6 +313,7 @@ import '../presentation/gemini_recommendation_sync_hub/gemini_recommendation_syn
 import '../presentation/unified_analytics_dashboard/unified_analytics_dashboard.dart';
 import '../presentation/unified_business_intelligence_hub/unified_business_intelligence_hub.dart';
 import '../presentation/executive_business_intelligence_suite/executive_business_intelligence_suite.dart';
+import '../presentation/automated_executive_reporting_claude_intelligence_hub/automated_executive_reporting_claude_intelligence_hub.dart';
 import '../presentation/revenue_analytics/revenue_analytics.dart';
 import '../presentation/revenue_split_analytics_dashboard/revenue_split_analytics_dashboard.dart';
 import '../presentation/revenue_split_admin_control_center/revenue_split_admin_control_center.dart';
@@ -346,17 +380,21 @@ Widget? screenForRoute(String? name) {
   if (name == null || name.isEmpty) return null;
   switch (name) {
     case AppRoutes.splash:
-    case AppRoutes.initial:
       return const SplashScreen();
     case AppRoutes.socialMediaHomeFeed:
       return const SocialMediaHomeFeed();
     case AppRoutes.socialHomeFeed:
       return const SocialHomeFeed();
     case AppRoutes.voteDashboard:
+    case AppRoutes.voteInElectionsHubWebCanonical:
+      return const VoteDashboard();
+    case AppRoutes.electionsDashboard:
+    case AppRoutes.electionsDashboardWebCanonical:
       return const VoteDashboard();
     case AppRoutes.voteDashboardInitialPage:
       return const VoteDashboardInitialPage();
     case AppRoutes.voteCasting:
+    case AppRoutes.secureVotingInterfaceWebCanonical:
       return const VoteCasting();
     case AppRoutes.voteResults:
       return const VoteResults();
@@ -365,12 +403,15 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.voteAnalytics:
       return const VoteAnalytics();
     case AppRoutes.voteDiscovery:
+    case AppRoutes.votingCategoriesWebCanonical:
       return const VoteDiscovery();
     case AppRoutes.createVote:
       return const CreateVote();
     case AppRoutes.electionCreationStudio:
+    case AppRoutes.electionCreationStudioWebCanonical:
       return const ElectionCreationStudio();
     case AppRoutes.userProfile:
+    case AppRoutes.userProfileWebCanonical:
       return const UserProfile();
     case AppRoutes.adminDashboard:
       return const AdminDashboard();
@@ -379,29 +420,35 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.gamificationHub:
       return const GamificationHub();
     case AppRoutes.unifiedGamificationDashboard:
+    case AppRoutes.unifiedGamificationDashboardWebCanonical:
       return const UnifiedGamificationDashboard();
     case AppRoutes.questManagementDashboard:
+    case AppRoutes.questManagementDashboardWebCanonical:
       return const QuestManagementDashboard();
+    case AppRoutes.seasonalChallengesHub:
+    case AppRoutes.seasonalChallengesHubWebCanonical:
+      return const SeasonalChallengesHub();
     case AppRoutes.aiQuestGeneration:
-      return const AiQuestGeneration();
+      return const AIQuestGeneration();
     case AppRoutes.feedQuestDashboard:
       return const FeedQuestDashboard();
     case AppRoutes.adventurePaths:
       return const AdventurePathsView();
     case AppRoutes.vpEconomyDashboard:
-      return const VpEconomyDashboard();
+    case AppRoutes.vpUniversalCurrencyCenterWebCanonical:
+      return const VPEconomyDashboard();
     case AppRoutes.vpEconomyHealthMonitor:
       return const VpEconomyHealthMonitor();
     case AppRoutes.vpEconomyManagementDashboard:
-      return const VpEconomyManagementDashboard();
+      return const VPEconomyManagementDashboard();
     case AppRoutes.completeGamifiedLotteryDrawingSystem:
       return const CompleteGamifiedLotteryDrawingSystem();
     case AppRoutes.gamifiedPrizeConfigurationStudio:
       return const GamifiedPrizeConfigurationStudio();
     case AppRoutes.winnerRevealCeremony:
-      return const WinnerRevealCeremony();
+      return const WinnerRevealCeremony(electionId: 'demo_election');
     case AppRoutes.nftAchievementSystemHub:
-      return const NftAchievementSystemHub();
+      return const NFTAchievementSystemHub();
     case AppRoutes.rewardsShopHub:
       return const RewardsShopHub();
     case AppRoutes.realTimeGamificationNotificationCenter:
@@ -415,18 +462,27 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.adminGamificationTogglePanel:
       return const AdminGamificationTogglePanel();
     case AppRoutes.digitalWalletScreen:
+    case AppRoutes.digitalWalletScreenWebCanonical:
       return const DigitalWalletScreen();
     case AppRoutes.walletDashboard:
       return const WalletDashboard();
     case AppRoutes.walletPrizeDistributionCenter:
+    case AppRoutes.walletPrizeDistributionCenterWebCanonical:
       return const WalletPrizeDistributionCenter();
     case AppRoutes.digitalWalletPrizeRedemptionSystem:
       return const DigitalWalletPrizeRedemptionSystem();
+    case AppRoutes.vpCharityHub:
+    case AppRoutes.vpRedemptionMarketplaceCharityHubWebCanonical:
+      return const VPCharityHub();
+    case AppRoutes.vpCryptoConversion:
+      return const VPCryptoConversion();
     case AppRoutes.unifiedPaymentOrchestrationHub:
+    case AppRoutes.unifiedPaymentOrchestrationHubWebCanonical:
       return const UnifiedPaymentOrchestrationHub();
     case AppRoutes.automatedPaymentProcessingHub:
       return const AutomatedPaymentProcessingHub();
     case AppRoutes.multiCurrencySettlementDashboard:
+    case AppRoutes.multiCurrencySettlementDashboardWebCanonical:
       return const MultiCurrencySettlementDashboard();
     case AppRoutes.enhancedMultiCurrencySettlementDashboard:
       return const EnhancedMultiCurrencySettlementDashboard();
@@ -445,8 +501,13 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.taxComplianceDashboard:
       return const TaxComplianceDashboard();
     case AppRoutes.participationFeePayment:
-      return const ParticipationFeePaymentScreen();
+      return const ParticipationFeePaymentScreen(
+        electionId: 'demo_election',
+        electionTitle: 'Demo Election',
+        feeType: 'general',
+      );
     case AppRoutes.premiumSubscriptionCenter:
+    case AppRoutes.premiumSubscriptionCenterWebCanonical:
       return const PremiumSubscriptionCenter();
     case AppRoutes.walletAuthenticationScreen:
       return const WalletAuthenticationScreen();
@@ -455,6 +516,7 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.creatorMonetizationHub:
       return const CreatorMonetizationHub();
     case AppRoutes.creatorMonetizationStudio:
+    case AppRoutes.creatorMonetizationStudioWebCanonical:
       return const CreatorMonetizationStudio();
     case AppRoutes.creatorPayoutDashboard:
       return const CreatorPayoutDashboard();
@@ -467,6 +529,7 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.creatorBrandPartnershipHub:
       return const CreatorBrandPartnershipHub();
     case AppRoutes.creatorSuccessAcademy:
+    case AppRoutes.creatorSuccessAcademyWebCanonical:
       return const CreatorSuccessAcademy();
     case AppRoutes.creatorStudioDashboard:
       return const CreatorStudioDashboard();
@@ -477,7 +540,7 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.creatorSupportHub:
       return const CreatorSupportHubScreen();
     case AppRoutes.creatorQaManagementCenter:
-      return const CreatorQaManagementCenter();
+      return const CreatorQAManagementCenter();
     case AppRoutes.creatorFeedbackLoop:
       return const CreatorFeedbackLoop();
     case AppRoutes.creatorGrowthAnalyticsDashboard:
@@ -494,6 +557,20 @@ Widget? screenForRoute(String? name) {
       return const CreatorOptimizationStudio();
     case AppRoutes.creatorPredictiveInsightsHub:
       return const CreatorPredictiveInsightsHub();
+    case AppRoutes.creatorRevenueForecastingDashboard:
+    case AppRoutes.creatorRevenueForecastingDashboardWebCanonical:
+      return const CreatorRevenueForecastingDashboard();
+    case AppRoutes.mcqAnalyticsIntelligenceDashboard:
+      return const McqAnalyticsIntelligenceDashboard();
+    case AppRoutes.mcqAbTestingAnalyticsDashboard:
+    case AppRoutes.mcqAbTestingAnalyticsDashboardWeb:
+      return const McqABTestingAnalyticsDashboard();
+    case AppRoutes.claudeCreatorSuccessAgent:
+    case AppRoutes.claudeCreatorSuccessAgentWeb:
+      return const ClaudeCreatorSuccessAgent();
+    case AppRoutes.contentQualityScoringClaude:
+    case AppRoutes.contentQualityScoringClaudeWeb:
+      return const ContentQualityScoringClaude();
     case AppRoutes.creatorSettlementReconciliationCenter:
       return const CreatorSettlementReconciliationCenter();
     case AppRoutes.enhancedCreatorAnalyticsDashboard:
@@ -501,7 +578,7 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.enhancedCreatorEarningsDashboard:
       return const EnhancedCreatorEarningsDashboard();
     case AppRoutes.enhancedCreatorRevenueAnalytics:
-      return const EnhancedCreatorRevenueAnalytics();
+      return const EnhancedCreatorRevenueAnalyticsScreen();
     case AppRoutes.advancedCreatorPayoutManagementHub:
       return const AdvancedCreatorPayoutManagementHub();
     case AppRoutes.realTimeCreatorMetricsMonitor:
@@ -515,6 +592,8 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.campaignTemplateGallery:
       return const CampaignTemplateGallery();
     case AppRoutes.participatoryAdsStudio:
+    case AppRoutes.participatoryAdsStudioWebCanonical:
+    case AppRoutes.votteryAdsStudioWebCanonical:
       return const ParticipatoryAdsStudio();
     case AppRoutes.participatoryAdsGamificationCenter:
       return const ParticipatoryAdsGamificationCenter();
@@ -525,6 +604,7 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.realTimeAdvertiserRoiDashboard:
       return const RealTimeAdvertiserRoiDashboard();
     case AppRoutes.brandAdvertiserRegistrationPortal:
+    case AppRoutes.brandAdvertiserRegistrationPortalWebCanonical:
       return const BrandAdvertiserRegistrationPortal();
     case AppRoutes.brandPartnershipHub:
       return const BrandPartnershipHub();
@@ -537,6 +617,7 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.googleAdSenseMonetizationHub:
       return const GoogleAdSenseMonetizationHub();
     case AppRoutes.realTimeBrandAlertSalesOutreachHub:
+    case AppRoutes.realTimeBrandAlertBudgetMonitoringCenterWebCanonical:
       return const RealTimeBrandAlertSalesOutreachHub();
     case AppRoutes.adminFeatureTogglePanel:
       return const AdminFeatureTogglePanel();
@@ -552,9 +633,12 @@ Widget? screenForRoute(String? name) {
       return const EnhancedMobileAdminDashboard();
     case AppRoutes.multiRoleAdminControlCenter:
       return const MultiRoleAdminControlCenter();
+    case AppRoutes.adminAutomationControlPanel:
+      return const AdminAutomationControlPanel();
     case AppRoutes.comprehensiveSettingsHub:
       return const ComprehensiveSettingsHub();
     case AppRoutes.enhancedSettingsAccountDashboard:
+    case AppRoutes.settingsAccountDashboardWebCanonical:
       return const EnhancedSettingsAccountDashboard();
     case AppRoutes.enhancedPrivacySettingsHub:
       return const EnhancedPrivacySettingsHub();
@@ -569,13 +653,14 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.familySharingManagementHub:
       return const FamilySharingManagementHub();
     case AppRoutes.userSecurityCenter:
+    case AppRoutes.userSecurityCenterWebCanonical:
       return const UserSecurityCenter();
     case AppRoutes.passkeyAuthenticationCenter:
       return const PasskeyAuthenticationCenter();
     case AppRoutes.biometricAuthentication:
       return const BiometricAuthentication();
     case AppRoutes.otpEmailVerificationHub:
-      return const OtpEmailVerificationHub();
+      return const OTPEmailVerificationHub();
     case AppRoutes.quickRegistrationScreen:
       return const QuickRegistrationScreen();
     case AppRoutes.comprehensiveOnboardingFlow:
@@ -585,14 +670,17 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.interactiveOnboardingToursHub:
       return const InteractiveOnboardingToursHub();
     case AppRoutes.topicPreferenceCollectionHub:
+    case AppRoutes.topicPreferenceCollectionHubWebCanonical:
       return const TopicPreferenceCollectionHub();
     case AppRoutes.roleUpgrade:
       return const RoleUpgradeScreen();
     case AppRoutes.notificationCenterHub:
+    case AppRoutes.notificationCenterHubWebCanonical:
       return const NotificationCenterHub();
     case AppRoutes.aiNotificationCenter:
-      return const AiNotificationCenter();
+      return const AINotificationCenter();
     case AppRoutes.pushNotificationManagementCenter:
+    case AppRoutes.pushNotificationManagementCenterWebCanonical:
       return const PushNotificationManagementCenter();
     case AppRoutes.pushNotificationDashboard:
       return const PushNotificationDashboard();
@@ -601,19 +689,26 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.logNotificationCenter:
       return const LogNotificationCenter();
     case AppRoutes.socialConnectionsManager:
+    case AppRoutes.friendsManagementHub:
+    case AppRoutes.friendsManagementHubWebCanonical:
       return const SocialConnectionsManager();
     case AppRoutes.friendRequestsHub:
       return const FriendRequestsHub();
     case AppRoutes.directMessagingScreen:
+    case AppRoutes.directMessagingScreenWebCanonical:
       return const DirectMessagingScreen();
     case AppRoutes.directMessagingSystem:
-      return const DirectMessagingSystem();
+      return const DirectMessagingSystemScreen();
     case AppRoutes.enhancedDirectMessagingScreen:
       return const EnhancedDirectMessagingScreen();
     case AppRoutes.groupsHub:
       return const GroupsHub();
     case AppRoutes.enhancedGroupsHub:
+    case AppRoutes.enhancedGroupsHubWebCanonical:
       return const EnhancedGroupsHub();
+    case AppRoutes.socialActivityTimeline:
+    case AppRoutes.socialActivityTimelineWebCanonical:
+      return const SocialActivityTimelineScreen();
     case AppRoutes.momentsStoriesHub:
       return const MomentsStoriesHub();
     case AppRoutes.socialPostComposer:
@@ -632,6 +727,22 @@ Widget? screenForRoute(String? name) {
       return const JoltsCreatorGamificationHub();
     case AppRoutes.enhancedSocialMediaHomeFeed:
       return const EnhancedSocialMediaHomeFeedWithClaudeConfidenceSidebar();
+    case AppRoutes.communityElectionsHub:
+    case AppRoutes.communityElectionsHubWebCanonical:
+      return const CommunityElectionsHubScreen();
+    case AppRoutes.communityEngagementDashboard:
+    case AppRoutes.communityEngagementDashboardWebCanonical:
+      return const CommunityEngagementDashboardScreen();
+    case AppRoutes.voterEducationHub:
+    case AppRoutes.voterEducationHubWebCanonical:
+      return const VoterEducationHub();
+    case AppRoutes.userFeedbackPortal:
+      return const UserFeedbackPortal();
+    case AppRoutes.featureImplementationTracking:
+      return const FeatureImplementationTrackingScreen();
+    case AppRoutes.analyticsExportReportingHub:
+    case AppRoutes.analyticsExportReportingHubWebCanonical:
+      return const AnalyticsExportReportingHubScreen();
     case AppRoutes.blockchainVoteVerificationHub:
       return const BlockchainVoteVerificationHub();
     case AppRoutes.enhancedBlockchainVoteVerificationHub:
@@ -653,12 +764,15 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.anonymousVotingConfigurationHub:
       return const AnonymousVotingConfigurationHub();
     case AppRoutes.collaborativeVotingRoom:
+    case AppRoutes.collaborativeVotingRoomWebCanonical:
       return const CollaborativeVotingRoom();
     case AppRoutes.locationVoting:
+    case AppRoutes.locationVotingWebCanonical:
       return const LocationVoting();
     case AppRoutes.enhancedVoteCasting:
       return const EnhancedVoteCasting();
     case AppRoutes.enhancedVoteCastingWithPredictionIntegration:
+    case AppRoutes.electionPredictionPoolsInterfaceWebCanonical:
       return const EnhancedVoteCastingWithPredictionIntegration();
     case AppRoutes.liveQuestionInjectionControlCenter:
       return const LiveQuestionInjectionControlCenter();
@@ -668,19 +782,54 @@ Widget? screenForRoute(String? name) {
       return const OpenEndedAnswerQuestionsBuilder();
     case AppRoutes.audienceQuestionsHub:
       return const AudienceQuestionsHub();
+    case AppRoutes.presentationBuilderAudienceQaHub:
+      return const AudienceQuestionsHub();
     case AppRoutes.presentationSlidesViewer:
       return const PresentationSlidesViewer();
     case AppRoutes.socialProofIndicatorsDashboard:
       return const SocialProofIndicatorsDashboard();
     case AppRoutes.personalizationDashboard:
-      return const PersonalizationDashboard();
+      return const PersonalizationDashboardScreen();
+    case AppRoutes.advancedUnifiedSearchScreen:
+    case AppRoutes.advancedUnifiedSearchScreenWebCanonical:
+      return const AdvancedUnifiedSearchScreen();
     case AppRoutes.unifiedSearchSystemHub:
       return const UnifiedSearchSystemHub();
     case AppRoutes.contentModerationTools:
       return const ContentModerationTools();
+    case AppRoutes.contentModerationControlCenter:
+    case AppRoutes.contentModerationControlCenterWebCanonical:
+      return const ContentModerationControlCenterScreen();
+    case AppRoutes.bulkManagementScreen:
+      return const BulkManagementScreen();
+    case AppRoutes.unifiedAdminActivityLogWebCanonical:
+      return WebAdminLauncherScreen(
+        title: 'Unified Admin Activity Log',
+        url: AppUrls.unifiedAdminActivityLog,
+      );
+    case AppRoutes.adminPlatformLogsCenterWebCanonical:
+      return WebAdminLauncherScreen(
+        title: 'Admin Platform Logs Center',
+        url: AppUrls.adminPlatformLogsCenter,
+      );
+    case AppRoutes.enterpriseOperationsCenter:
+    case AppRoutes.whiteLabelElectionPlatformWebCanonical:
+    case AppRoutes.enterpriseSsoIntegrationWebCanonical:
+    case AppRoutes.bulkElectionCreationHubWebCanonical:
+    case AppRoutes.enterpriseAnalyticsHubWebCanonical:
+    case AppRoutes.enterpriseApiAccessCenterWebCanonical:
+    case AppRoutes.customBrandingOptionsCenterWebCanonical:
+    case AppRoutes.slaBackedInfrastructureCenterWebCanonical:
+    case AppRoutes.enterpriseComplianceReportsCenterWebCanonical:
+    case AppRoutes.volumePricingLicensingCenterWebCanonical:
+    case AppRoutes.dedicatedAccountManagerCenterWebCanonical:
+    case AppRoutes.whatsappNotificationsCenterWebCanonical:
+      return const EnterpriseOperationsCenter();
     case AppRoutes.aiContentModerationDashboard:
-      return const AiContentModerationDashboard();
+      return const AIContentModerationDashboard();
     case AppRoutes.ageVerificationControlCenter:
+      return const AgeVerificationControlCenter();
+    case AppRoutes.ageVerificationDigitalIdentityCenter:
       return const AgeVerificationControlCenter();
     case AppRoutes.countryRestrictionControls:
       return const CountryRestrictionControls();
@@ -693,6 +842,7 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.complianceReportsGeneratorDashboard:
       return const ComplianceReportsGeneratorDashboard();
     case AppRoutes.fraudMonitoringDashboard:
+    case AppRoutes.fraudDetectionAlertManagementCenterWebCanonical:
       return const FraudMonitoringDashboard();
     case AppRoutes.advancedFraudDetectionCenter:
       return const AdvancedFraudDetectionCenter();
@@ -712,40 +862,112 @@ Widget? screenForRoute(String? name) {
       return const BehavioralBiometricFraudPreventionCenter();
     case AppRoutes.revenueFraudDetectionEngine:
       return const RevenueFraudDetectionEngine();
+    case AppRoutes.advancedAiFraudPreventionCommandCenter:
+      return const AiAnomalyDetectionFraudPreventionHub();
+    case AppRoutes.advancedPerplexityFraudIntelligenceCenter:
+      return const PerplexityFraudDashboardScreen();
+    case AppRoutes.advancedPerplexityFraudForecastingCenter:
+      return const EnhancedPerplexityAiFraudForecastingHub();
+    case AppRoutes.advancedPerplexity6090DayThreatForecastingCenter:
+      return const EnhancedPerplexity90DayThreatForecastingHub();
+    case AppRoutes.advancedMlThreatDetectionCenterWebCanonical:
+      return const AdvancedThreatPredictionDashboard();
+    case AppRoutes.continuousMlFeedbackOutcomeLearningCenterWebCanonical:
+      return const PredictiveIncidentPreventionEngine();
+    case AppRoutes.perplexityMarketResearchIntelligenceCenterWebCanonical:
+    case AppRoutes.perplexityCarouselIntelligenceDashboardWebCanonical:
+      return const DedicatedMarketResearchDashboard();
+    case AppRoutes.perplexityStrategicPlanningCenterWebCanonical:
+      return const PredictionAnalyticsDashboard();
+    case AppRoutes.anthropicClaudeRevenueRiskIntelligenceCenterWebCanonical:
+      return const CreatorRevenueForecastingDashboard();
+    case AppRoutes.claudeAnalyticsDashboardForCampaignIntelligenceWebCanonical:
+    case AppRoutes.claudePredictiveAnalyticsDashboardWebCanonical:
+      return const AiPoweredPredictiveAnalyticsEngine();
+    case AppRoutes.claudeAiContentCurationIntelligenceCenterWebCanonical:
+      return const AnthropicContentIntelligenceHub();
+    case AppRoutes.claudeModelComparisonCenterWebCanonical:
+      return const ClaudeModelComparisonCenter();
+    case AppRoutes.claudeContentOptimizationEngineWebCanonical:
+      return const ContentQualityScoringClaude();
+    case AppRoutes.automaticAiFailoverEngineControlCenterWebCanonical:
+      return const AutomaticAIFailoverEngineControlCenter();
+    case AppRoutes.aiPerformanceOrchestrationDashboardWebCanonical:
+      return const UnifiedAIPerformanceDashboard();
+    case AppRoutes.aiPoweredPerformanceAdvisorHubWebCanonical:
+      return const FeaturePerformanceDashboard();
+    case AppRoutes.openAiCarouselContentIntelligenceCenterWebCanonical:
+      return const ContentDistributionControlCenter();
+    case AppRoutes.autonomousClaudeAgentOrchestrationHubWebCanonical:
+      return const ClaudeAutonomousActionsHub();
+    case AppRoutes.enhancedRealTimeBehavioralHeatmapsCenterWebCanonical:
+      return const ZoneSpecificThreatHeatmapsDashboard();
+    case AppRoutes.geminiCostEfficiencyAnalyzerCaseReportGeneratorWebCanonical:
+      return const GeminiCostEfficiencyAnalyzer();
+    case AppRoutes.autoImprovingFraudDetectionIntelligenceCenter:
+      return WebAdminLauncherScreen(
+        title: 'Auto-improving fraud detection',
+        url: AppUrls.autoImprovingFraudDetectionIntelligenceCenter,
+      );
     case AppRoutes.aiAnomalyDetectionFraudPreventionHub:
+    case AppRoutes.predictiveAnomalyAlertingDeviationMonitoringHubWebCanonical:
       return const AiAnomalyDetectionFraudPreventionHub();
     case AppRoutes.advancedThreatPredictionDashboard:
       return const AdvancedThreatPredictionDashboard();
     case AppRoutes.zoneSpecificThreatHeatmapsDashboard:
       return const ZoneSpecificThreatHeatmapsDashboard();
+    case AppRoutes.realTimeThreatCorrelationIntelligenceHub:
+      return const RealTimeThreatCorrelationDashboard();
     case AppRoutes.realTimeThreatCorrelationDashboard:
       return const RealTimeThreatCorrelationDashboard();
+    case AppRoutes.enhancedPredictiveThreatIntelligenceCenter:
+      return const AdvancedThreatPredictionDashboard();
     case AppRoutes.automatedThreatResponseExecution:
       return const AutomatedThreatResponseExecution();
     case AppRoutes.multiAiThreatOrchestrationHub:
       return const MultiAiThreatOrchestrationHub();
     case AppRoutes.predictiveIncidentPreventionEngine:
+    case AppRoutes.predictiveIncidentPreventionEngineWebCanonical:
       return const PredictiveIncidentPreventionEngine();
     case AppRoutes.automatedIncidentPreventionHub:
       return const AutomatedIncidentPreventionHub();
     case AppRoutes.automatedIncidentResponseCenter:
+    case AppRoutes.automatedIncidentResponsePortalWebCanonical:
       return const AutomatedIncidentResponseCenter();
     case AppRoutes.unifiedIncidentOrchestrationCenter:
+    case AppRoutes.unifiedIncidentResponseOrchestrationCenterWebCanonical:
       return const UnifiedIncidentOrchestrationCenter();
     case AppRoutes.unifiedIncidentManagementDashboard:
+    case AppRoutes.unifiedIncidentResponseCommandCenterWebCanonical:
+    case AppRoutes.advancedMonitoringWithAutomatedIncidentResponseWebCanonical:
       return const UnifiedIncidentManagementDashboard();
+    case AppRoutes.stakeholderIncidentCommunicationHubWebCanonical:
+      return const StakeholderIncidentCommunicationHub();
     case AppRoutes.teamIncidentWarRoom:
       return const TeamIncidentWarRoom();
     case AppRoutes.incidentTestingSuiteDashboard:
       return const IncidentTestingSuiteDashboard();
     case AppRoutes.enhancedIncidentCorrelationEngine:
       return const EnhancedIncidentCorrelationEngine();
+    case AppRoutes.incidentResponseAnalytics:
+    case AppRoutes.enhancedIncidentResponseAnalyticsWebCanonical:
+      return const IncidentResponseAnalyticsScreen();
     case AppRoutes.securityMonitoringDashboard:
       return const SecurityMonitoringDashboard();
+    case AppRoutes.securityMonitoringDashboardWebCanonical:
+      return const SecurityMonitoringDashboard();
+    case AppRoutes.securityVulnerabilityRemediationControlCenter:
+      return const OWASPSecurityTestingDashboard();
+    case AppRoutes.automatedSecurityTestingFramework:
+      return const OWASPSecurityTestingDashboard();
     case AppRoutes.aiSecurityDashboard:
-      return const AiSecurityDashboard();
+      return const AISecurityDashboard();
     case AppRoutes.owaspSecurityTestingDashboard:
-      return const OwaspSecurityTestingDashboard();
+      return const OWASPSecurityTestingDashboard();
+    case AppRoutes.cryptographicSecurityManagementCenter:
+      return const VerifyAuditElectionsHub();
+    case AppRoutes.anthropicSecurityReasoningIntegrationHub:
+      return const AnthropicAdvancedContentAnalysisCenter();
     case AppRoutes.productionSecurityHardeningSprintDashboard:
       return const ProductionSecurityHardeningSprintDashboard();
     case AppRoutes.securityFeatureAdoptionAnalytics:
@@ -783,7 +1005,7 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.supabaseQueryResultCachingManagementHub:
       return const SupabaseQueryResultCachingManagementHub();
     case AppRoutes.aiCacheManagementDashboard:
-      return const AiCacheManagementDashboard();
+      return const AICacheManagementDashboard();
     case AppRoutes.mobileAppPerformanceOptimizationHub:
       return const MobileAppPerformanceOptimizationHub();
     case AppRoutes.mobilePerformanceOptimizationDashboard:
@@ -817,16 +1039,21 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.automatedTestingSuiteRunner:
       return const AutomatedTestingSuiteRunner();
     case AppRoutes.e2eTestingCoverageDashboard:
-      return const E2eTestingCoverageDashboard();
+      return const E2ETestingCoverageDashboard();
     case AppRoutes.mobileLaunchReadinessChecklist:
       return const MobileLaunchReadinessChecklist();
     case AppRoutes.apiGatewayOptimizationDashboard:
       return const ApiGatewayOptimizationDashboard();
+    case AppRoutes.apiDocumentationPortal:
+    case AppRoutes.apiDocumentationPortalWebCanonical:
+      return const APIDocumentationPortal();
     case AppRoutes.apiPerformanceOptimizationDashboard:
       return const ApiPerformanceOptimizationDashboard();
     case AppRoutes.resTfulApiManagementHub:
-      return const ResTfulApiManagementHub();
+    case AppRoutes.resTfulApiManagementHubWebCanonical:
+      return const RestfulApiManagementHub();
     case AppRoutes.webhookIntegrationManagementHub:
+    case AppRoutes.webhookIntegrationHubWebCanonical:
       return const WebhookIntegrationManagementHub();
     case AppRoutes.codeSplittingPerformanceOptimizationHub:
       return const CodeSplittingPerformanceOptimizationHub();
@@ -839,12 +1066,16 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.crossDomainDataSyncHub:
       return const CrossDomainDataSyncHub();
     case AppRoutes.pwaOfflineVotingHub:
-      return const PwaOfflineVotingHub();
+      return const PWAOfflineVotingHub();
     case AppRoutes.statusPageScreen:
+    case AppRoutes.statusPageScreenWebCanonical:
       return const StatusPageScreen();
     case AppRoutes.automatedThresholdBasedAlertingHub:
+    case AppRoutes.customAlertRulesEngineWebCanonical:
+    case AppRoutes.advancedCustomAlertRulesEngineWebCanonical:
       return const AutomatedThresholdBasedAlertingHub();
     case AppRoutes.unifiedAlertManagementCenter:
+    case AppRoutes.unifiedAlertManagementCenterWebCanonical:
       return const UnifiedAlertManagementCenter();
     case AppRoutes.realTimeAlertDashboard:
       return const RealTimeAlertDashboard();
@@ -857,13 +1088,13 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.logRocketSessionReplayMonitoringCenter:
       return const LogRocketSessionReplayMonitoringCenter();
     case AppRoutes.aiFailoverDashboardScreen:
-      return const AiFailoverDashboardScreen();
+      return const AIFailoverDashboardScreen();
     case AppRoutes.aiServiceFailoverControlCenter:
-      return const AiServiceFailoverControlCenter();
+      return const AIServiceFailoverControlCenter();
     case AppRoutes.automaticAiFailoverEngineControlCenter:
-      return const AutomaticAiFailoverEngineControlCenter();
+      return const AutomaticAIFailoverEngineControlCenter();
     case AppRoutes.aiVoiceInteractionHub:
-      return const AiVoiceInteractionHub();
+      return const AIVoiceInteractionHub();
     case AppRoutes.multiLanguageAiTranslationHub:
       return const MultiLanguageAiTranslationHub();
     case AppRoutes.claudeModelComparisonCenter:
@@ -878,34 +1109,57 @@ Widget? screenForRoute(String? name) {
       return const GeminiCostEfficiencyAnalyzer();
     case AppRoutes.anthropicContentIntelligenceHub:
       return const AnthropicContentIntelligenceHub();
+    case AppRoutes.anthropicAdvancedContentAnalysisCenter:
+      return const AnthropicAdvancedContentAnalysisCenter();
     case AppRoutes.aiRecommendationsCenter:
-      return const AiRecommendationsCenter();
+      return const AIRecommendationsCenter();
     case AppRoutes.aiPoweredPredictiveAnalyticsEngine:
       return const AiPoweredPredictiveAnalyticsEngine();
     case AppRoutes.aiPredictiveModelingScreen:
-      return const AiPredictiveModelingScreen();
+      return const AIPredictiveModelingScreen();
     case AppRoutes.aiVoterSentimentDashboard:
       return const AiVoterSentimentDashboard();
     case AppRoutes.aiAnalyticsHub:
-      return const AiAnalyticsHub();
+      return const AIAnalyticsHubScreen();
     case AppRoutes.unifiedAiPerformanceDashboard:
-      return const UnifiedAiPerformanceDashboard();
+      return const UnifiedAIPerformanceDashboard();
     case AppRoutes.contextAwareRecommendationsOverlay:
-      return const ContextAwareRecommendationsOverlay();
+      return const ContextAwareRecommendationsOverlay(
+        screenContext: 'default',
+      );
     case AppRoutes.geminiRecommendationSyncHub:
       return const GeminiRecommendationSyncHub();
     case AppRoutes.unifiedAnalyticsDashboard:
       return const UnifiedAnalyticsDashboard();
     case AppRoutes.unifiedBusinessIntelligenceHub:
       return const UnifiedBusinessIntelligenceHub();
+    case AppRoutes.unifiedBusinessIntelligenceHubWebCanonical:
+      return const UnifiedBusinessIntelligenceHub();
+    case AppRoutes.enhancedAdminRevenueAnalyticsHub:
+      return const UnifiedRevenueIntelligenceDashboard();
+    case AppRoutes.advancedAnalyticsAndPredictiveForecastingCenter:
+      return const UnifiedBusinessIntelligenceHub();
+    case AppRoutes.financialTrackingZoneAnalyticsCenter:
+      return const UnifiedRevenueIntelligenceDashboard();
+    case AppRoutes.livePlatformMonitoringDashboardWebCanonical:
+      return const LivePlatformMonitoringDashboardScreen();
+    case AppRoutes.realTimeAnalyticsDashboard:
+    case AppRoutes.realTimeAnalyticsDashboardWeb:
+      return const RealTimeAnalyticsDashboardScreen();
+    case AppRoutes.personalAnalyticsDashboard:
+    case AppRoutes.personalAnalyticsDashboardWebCanonical:
+      return const PersonalAnalyticsDashboardScreen();
     case AppRoutes.executiveBusinessIntelligenceSuite:
+    case AppRoutes.executiveReportingComplianceAutomationHubWebCanonical:
       return const ExecutiveBusinessIntelligenceSuite();
+    case AppRoutes.automatedExecutiveReportingClaudeIntelligenceHubWebCanonical:
+      return const AutomatedExecutiveReportingClaudeIntelligenceHub();
     case AppRoutes.revenueAnalytics:
-      return const RevenueAnalytics();
+      return const RevenueAnalyticsScreen();
     case AppRoutes.revenueSplitAnalyticsDashboard:
       return const RevenueSplitAnalyticsDashboard();
     case AppRoutes.revenueSplitAdminControlCenter:
-      return const RevenueSplitAdminControlCenter();
+      return const RevenueSplitAdminControlScreen();
     case AppRoutes.unifiedRevenueIntelligenceDashboard:
       return const UnifiedRevenueIntelligenceDashboard();
     case AppRoutes.googleAnalyticsIntegrationDashboard:
@@ -917,7 +1171,7 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.googleAnalyticsMonetizationTrackingHub:
       return const GoogleAnalyticsMonetizationTrackingHub();
     case AppRoutes.googleAnalyticsAiFeatureAdoptionDashboard:
-      return const GoogleAnalyticsAiFeatureAdoptionDashboard();
+      return const GoogleAnalyticsAIFeatureAdoptionDashboard();
     case AppRoutes.mlModelMonitoringDashboard:
       return const MlModelMonitoringDashboard();
     case AppRoutes.enhancedAnalyticsWithCdnIntegrationHub:
@@ -932,6 +1186,8 @@ Widget? screenForRoute(String? name) {
       return const EnhancedFeedRankingWithClaudeIntegrationHub();
     case AppRoutes.feedOrchestrationEngineControlCenter:
       return const FeedOrchestrationEngineControlCenter();
+    case AppRoutes.contentDistributionControlCenter:
+      return const ContentDistributionControlCenter();
     case AppRoutes.unifiedCrossDomainRecommendationEngineHub:
       return const UnifiedCrossDomainRecommendationEngineHub();
     case AppRoutes.crossDomainIntelligenceHub:
@@ -941,6 +1197,7 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.dedicatedMarketResearchDashboard:
       return const DedicatedMarketResearchDashboard();
     case AppRoutes.mobileElectionInsightsAnalytics:
+    case AppRoutes.electionInsightsPredictiveWebCanonical:
       return const MobileElectionInsightsAnalytics();
     case AppRoutes.engagementMetricsDashboard:
       return const EngagementMetricsDashboard();
@@ -948,12 +1205,16 @@ Widget? screenForRoute(String? name) {
       return const FeaturePerformanceDashboard();
     case AppRoutes.featureFlagManagementDashboard:
       return const FeatureFlagManagementDashboard();
+    case AppRoutes.userAnalyticsDashboard:
+    case AppRoutes.userAnalyticsDashboardWeb:
+      // Web User Analytics dashboard: same surface as first tab ("User Analytics") here.
+      return const AnalyticsPerformanceControlCenter();
     case AppRoutes.analyticsPerformanceControlCenter:
       return const AnalyticsPerformanceControlCenter();
     case AppRoutes.advancedABTestingCenter:
       return const AdvancedABTestingCenter();
     case AppRoutes.carouselAnalyticsDashboard:
-      return const CarouselAnalyticsDashboard();
+      return const CarouselAnalyticsDashboardScreen();
     case AppRoutes.carouselAnalyticsIntelligenceCenter:
       return const CarouselAnalyticsIntelligenceCenter();
     case AppRoutes.carouselPerformanceAnalyticsDashboard:
@@ -965,7 +1226,7 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.carouselHealthScalingDashboard:
       return const CarouselHealthScalingDashboard();
     case AppRoutes.carouselRoiAnalyticsDashboard:
-      return const CarouselRoiAnalyticsDashboard();
+      return const CarouselROIAnalyticsDashboard();
     case AppRoutes.carouselSecurityAuditDashboard:
       return const CarouselSecurityAuditDashboard();
     case AppRoutes.carouselTemplateMarketplace:
@@ -991,7 +1252,9 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.unifiedCarouselOperationsCommandCenter:
       return const UnifiedCarouselOperationsCommandCenter();
     case AppRoutes.advancedCarouselFilterControlCenter:
-      return const AdvancedCarouselFilterControlCenter();
+      return const AdvancedCarouselFilterControlCenter(
+        carouselType: 'general',
+      );
     case AppRoutes.smsProviderDashboard:
       return const SmsProviderDashboard();
     case AppRoutes.smsFailoverConfigurationCenter:
@@ -999,31 +1262,62 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.smsRateLimitingQueueControlCenter:
       return const SmsRateLimitingQueueControlCenter();
     case AppRoutes.smsQueueManagementDashboard:
-      return const SmsQueueManagementDashboard();
+      return const SMSQueueManagementDashboard();
     case AppRoutes.smsDeliveryAnalyticsDashboard:
       return const SmsDeliveryAnalyticsDashboard();
     case AppRoutes.smsComplianceManagerDashboard:
-      return const SmsComplianceManagerDashboard();
+      return const SMSComplianceManagerDashboard();
     case AppRoutes.smsWebhookManagementDashboard:
+    case AppRoutes.smsWebhookDeliveryAnalyticsHubWebCanonical:
       return const SmsWebhookManagementDashboard();
     case AppRoutes.smsAlertTemplateManagementCenter:
       return const SmsAlertTemplateManagementCenter();
     case AppRoutes.smsEmergencyAlertsHub:
+    case AppRoutes.smsEmergencyAlertsHubWebCanonical:
       return const SmsEmergencyAlertsHub();
     case AppRoutes.twilioSmsEmergencyAlertManagementCenter:
       return const TwilioSmsEmergencyAlertManagementCenter();
     case AppRoutes.twilioVideoLiveStreamingHub:
       return const TwilioVideoLiveStreamingHub();
     case AppRoutes.telnyxSmsProviderManagementDashboard:
+    case AppRoutes.telnyxSmsProviderManagementCenterWebCanonical:
       return const TelnyxSmsProviderManagementDashboard();
     case AppRoutes.openAiSmsOptimizationHub:
-      return const OpenAiSmsOptimizationHub();
-    case AppRoutes.blockchainAuditPortal:
-    case AppRoutes.liveStreamingCenter:
-      return RoutePlaceholderScreen(
-        routeName: name,
-        title: name.startsWith('/') ? name.substring(1).replaceAll('-', ' ') : name,
+      return const OpenAISMSOptimizationHub();
+    case AppRoutes.unifiedAiDecisionOrchestrationCommandCenterWebCanonical:
+      return const UnifiedIncidentOrchestrationCenter();
+    case AppRoutes.unifiedAiOrchestrationCommandCenterWebCanonical:
+      return const MultiAiThreatOrchestrationHub();
+    case AppRoutes.queryPerformanceMonitoringDashboardWebCanonical:
+      return const PerformanceMonitoringDashboard();
+    case AppRoutes.comprehensiveHealthMonitoringDashboardWebCanonical:
+    case AppRoutes.productionMonitoringDashboardWebCanonical:
+      return const UnifiedProductionMonitoringHub();
+    case AppRoutes.mlModelTrainingInterfaceWebCanonical:
+      return const MlModelMonitoringDashboard();
+    case AppRoutes.loadTestingPerformanceAnalyticsCenterWebCanonical:
+      return const ProductionLoadTestingSuiteDashboard();
+    case AppRoutes.performanceOptimizationEngineDashboardWebCanonical:
+    case AppRoutes.performanceRegressionDetectionWebCanonical:
+      return const PerformanceOptimizationRecommendationsEngineDashboard();
+    case AppRoutes.advancedSupabaseRealtimeCoordinationHubWebCanonical:
+      return const CrossDomainDataSyncHub();
+    case AppRoutes.advancedWebhookOrchestrationHubWebCanonical:
+      return const AdvancedWebhookOrchestrationHub();
+    case AppRoutes.enhancedRealtimeWebSocketCoordinationHubWebCanonical:
+    case AppRoutes.realtimeWebSocketMonitoringCommandCenterWebCanonical:
+      return const LivePlatformMonitoringDashboardScreen();
+    case AppRoutes.automatedDataCacheManagementHubWebCanonical:
+      return const AICacheManagementDashboard();
+    case AppRoutes.voteVerificationPortalWebCanonical:
+      return const WebAdminLauncherScreen(
+        title: 'Vote verification portal',
+        url: AppUrls.voteVerificationPortal,
       );
+    case AppRoutes.blockchainAuditPortal:
+      return const VerifyAuditElectionsHub();
+    case AppRoutes.liveStreamingCenter:
+      return const TwilioVideoLiveStreamingHub();
     default:
       return RoutePlaceholderScreen(
         routeName: name,

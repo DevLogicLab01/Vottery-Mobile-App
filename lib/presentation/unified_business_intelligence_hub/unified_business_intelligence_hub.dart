@@ -345,20 +345,57 @@ Use extended reasoning to identify non-obvious patterns.
   }
 
   void _showFilterDialog() {
+    String selected = _selectedSegment ?? 'all';
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Advanced Filters'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [const Text('Additional filtering options coming soon')],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setLocal) => AlertDialog(
+          title: const Text('Advanced Filters'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Segment'),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  ChoiceChip(
+                    label: const Text('All'),
+                    selected: selected == 'all',
+                    onSelected: (_) => setLocal(() => selected = 'all'),
+                  ),
+                  ChoiceChip(
+                    label: const Text('Voters'),
+                    selected: selected == 'voters',
+                    onSelected: (_) => setLocal(() => selected = 'voters'),
+                  ),
+                  ChoiceChip(
+                    label: const Text('Creators'),
+                    selected: selected == 'creators',
+                    onSelected: (_) => setLocal(() => selected = 'creators'),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                setState(() {
+                  _selectedSegment = selected == 'all' ? null : selected;
+                });
+                Navigator.pop(context);
+                _loadDashboardData();
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
       ),
     );
   }

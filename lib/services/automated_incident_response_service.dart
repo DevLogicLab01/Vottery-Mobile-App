@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import './fraud_detection_service.dart';
-import './user_security_service.dart';
 import './supabase_service.dart';
 import './auth_service.dart';
 import './twilio_notification_service.dart';
@@ -160,8 +158,6 @@ class AutomatedIncidentResponseService {
 
   SupabaseClient get _client => SupabaseService.instance.client;
   AuthService get _auth => AuthService.instance;
-  FraudDetectionService get _fraudDetection => FraudDetectionService.instance;
-  UserSecurityService get _securityService => UserSecurityService.instance;
   TwilioNotificationService get _twilioService =>
       TwilioNotificationService.instance;
   EnhancedNotificationService get _notificationService =>

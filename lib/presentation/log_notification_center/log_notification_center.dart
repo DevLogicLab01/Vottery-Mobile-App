@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../core/app_export.dart';
 import '../../models/platform_log.dart';
 import '../../services/logging/log_stream_service.dart';
 import './widgets/critical_alert_card_widget.dart';
@@ -24,6 +25,9 @@ class _LogNotificationCenterState extends State<LogNotificationCenter>
   String searchQuery = '';
   bool _isLoading = false;
   final List<PlatformLog> _logs = [];
+  final Set<String> _dismissedLogIds = {};
+  final Set<String> _readLogIds = {};
+  final Set<String> _lastVisibleLogIds = {};
 
   final List<String> categories = [
     'all',
@@ -332,7 +336,9 @@ class _LogNotificationCenterState extends State<LogNotificationCenter>
   }
 
   List<PlatformLog> _applyFilters(List<PlatformLog> logs) {
-    var filtered = logs;
+    var filtered = logs
+        .where((log) => !_dismissedLogIds.contains(log.id))
+        .toList();
 
     // Category filter
     if (selectedCategory != 'all') {
@@ -359,6 +365,9 @@ class _LogNotificationCenterState extends State<LogNotificationCenter>
           .toList();
     }
 
+    _lastVisibleLogIds
+      ..clear()
+      ..addAll(filtered.map((log) => log.id));
     return filtered;
   }
 
@@ -376,21 +385,25 @@ class _LogNotificationCenterState extends State<LogNotificationCenter>
   }
 
   void _markAllAsRead() {
-    // TODO: Implement mark all as read functionality
+    setState(() {
+      _readLogIds.addAll(_lastVisibleLogIds);
+    });
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('All notifications marked as read')));
   }
 
   void _openNotificationSettings() {
-    // TODO: Navigate to notification settings
-    ScaffoldMessenger.of(
+    Navigator.of(
       context,
-    ).showSnackBar(SnackBar(content: Text('Notification settings')));
+      rootNavigator: true,
+    ).pushNamed(AppRoutes.settingsAccountDashboardWebCanonical);
   }
 
   void _dismissAlert(String logId) {
-    // TODO: Implement dismiss functionality
+    setState(() {
+      _dismissedLogIds.add(logId);
+    });
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('Alert dismissed')));
@@ -582,9 +595,14 @@ class _LogNotificationCenterState extends State<LogNotificationCenter>
 
   void _handleAction(String action, PlatformLog log) {
     Navigator.pop(context);
+    setState(() {
+      _readLogIds.add(log.id);
+      if (action == 'suspend') {
+        _dismissedLogIds.add(log.id);
+      }
+    });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Action "$action" executed for alert')),
     );
-    // TODO: Implement actual action handlers
   }
 }

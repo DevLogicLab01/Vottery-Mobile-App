@@ -4,7 +4,6 @@ import './claude_service.dart';
 import './supabase_service.dart';
 import './auth_service.dart';
 import './fraud_detection_service.dart';
-import './enhanced_analytics_service.dart';
 import './ai_feature_adoption_analytics_service.dart';
 
 class ClaudeAgentService {
@@ -18,7 +17,18 @@ class ClaudeAgentService {
   AuthService get _auth => AuthService.instance;
   ClaudeService get _claude => ClaudeService.instance;
   FraudDetectionService get _fraudService => FraudDetectionService.instance;
-  EnhancedAnalyticsService get _analytics => EnhancedAnalyticsService.instance;
+
+  double _asDouble(dynamic value, {double fallback = 0.0}) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? fallback;
+    return fallback;
+  }
+
+  String _asString(dynamic value, {String fallback = ''}) {
+    if (value == null) return fallback;
+    final text = value.toString().trim();
+    return text.isEmpty ? fallback : text;
+  }
 
   /// Get confidence thresholds for action types
   Future<Map<String, dynamic>> getConfidenceThresholds() async {
@@ -29,10 +39,19 @@ class ClaudeAgentService {
 
       final thresholds = <String, Map<String, double>>{};
       for (var threshold in response) {
-        thresholds[threshold['action_type']] = {
-          'automation_threshold': (threshold['automation_threshold'] as num)
-              .toDouble(),
-          'review_threshold': (threshold['review_threshold'] as num).toDouble(),
+        final actionType = _asString(
+          threshold['action_type'],
+          fallback: 'unknown',
+        );
+        thresholds[actionType] = {
+          'automation_threshold': _asDouble(
+            threshold['automation_threshold'],
+            fallback: 90.0,
+          ),
+          'review_threshold': _asDouble(
+            threshold['review_threshold'],
+            fallback: 70.0,
+          ),
         };
       }
 
@@ -88,7 +107,7 @@ class ClaudeAgentService {
     required Map<String, dynamic> fraudData,
   }) async {
     try {
-      final fraudScore = fraudData['fraud_score'] as double? ?? 0.0;
+      final fraudScore = _asDouble(fraudData['fraud_score']);
       final thresholds = await getConfidenceThresholds();
       final fraudThreshold =
           thresholds['fraud_response']?['automation_threshold'] ?? 90.0;
@@ -105,10 +124,7 @@ class ClaudeAgentService {
         },
       );
 
-      final confidence =
-          (claudeAnalysis['confidence_score'] as num?)?.toDouble() ?? 0.0;
-      final recommendedAction =
-          claudeAnalysis['recommended_action'] ?? 'manual_review';
+      final confidence = _asDouble(claudeAnalysis['confidence_score']);
       final reasoning =
           claudeAnalysis['reasoning'] ?? 'Claude security analysis';
 
@@ -181,8 +197,7 @@ class ClaudeAgentService {
         contentType: contentType,
       );
 
-      final confidence =
-          (claudeAnalysis['confidence'] as num?)?.toDouble() ?? 0.0;
+      final confidence = _asDouble(claudeAnalysis['confidence']);
       final decision = claudeAnalysis['decision'] ?? 'approved';
       final violations = List<String>.from(claudeAnalysis['violations'] ?? []);
       final reasoning =
@@ -254,8 +269,7 @@ class ClaudeAgentService {
         contentType: contentType,
       );
 
-      final confidence =
-          (claudeAnalysis['confidence_score'] as num?)?.toDouble() ?? 0.0;
+      final confidence = _asDouble(claudeAnalysis['confidence_score']);
       final action = claudeAnalysis['action'] as String? ?? 'approved';
 
       // Store moderation result
@@ -313,8 +327,7 @@ class ClaudeAgentService {
         },
       );
 
-      final confidence =
-          (claudeAnalysis['confidence_score'] as num?)?.toDouble() ?? 0.0;
+      final confidence = _asDouble(claudeAnalysis['confidence_score']);
       final reasoning =
           claudeAnalysis['reasoning'] ?? 'Claude verification analysis';
 
@@ -471,6 +484,19 @@ class ClaudeAgentService {
   /// Get autonomous action metrics
   Future<Map<String, dynamic>> getAutonomousActionMetrics() async {
     try {
+      if (!_auth.isAuthenticated) {
+        return {
+          'total_actions': 0,
+          'automated_actions': 0,
+          'review_actions': 0,
+          'overridden_actions': 0,
+          'automation_rate': 0.0,
+          'override_rate': 0.0,
+          'average_confidence': 0.0,
+          'auth_required': true,
+        };
+      }
+
       final response = await _client
           .from('claude_autonomous_actions')
           .select()
@@ -495,7 +521,7 @@ class ClaudeAgentService {
       final avgConfidence = actions.isEmpty
           ? 0.0
           : actions
-                    .map((a) => (a['confidence_score'] as num).toDouble())
+                    .map((a) => _asDouble(a['confidence_score']))
                     .reduce((a, b) => a + b) /
                 actions.length;
 
@@ -511,10 +537,20 @@ class ClaudeAgentService {
             ? overriddenActions / automatedActions
             : 0.0,
         'average_confidence': avgConfidence,
+        'auth_required': false,
       };
     } catch (e) {
       debugPrint('Get autonomous action metrics error: $e');
-      return {};
+      return {
+        'total_actions': 0,
+        'automated_actions': 0,
+        'review_actions': 0,
+        'overridden_actions': 0,
+        'automation_rate': 0.0,
+        'override_rate': 0.0,
+        'average_confidence': 0.0,
+        'auth_required': false,
+      };
     }
   }
 

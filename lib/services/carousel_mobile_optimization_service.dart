@@ -24,7 +24,6 @@ class CarouselMobileOptimizationService {
   String? _deviceModel;
   String? _deviceTier;
   int? _totalMemoryMB;
-  int? _physicalCores;
 
   // Performance monitoring
   final List<double> _frameRenderTimes = [];
@@ -73,7 +72,6 @@ class CarouselMobileOptimizationService {
         _deviceModel = 'Web Browser';
         _deviceTier = 'high_end';
         _totalMemoryMB = 8192;
-        _physicalCores = 4;
         return;
       }
 
@@ -83,14 +81,12 @@ class CarouselMobileOptimizationService {
 
         // Estimate memory (simplified)
         _totalMemoryMB = 4096; // Default assumption
-        _physicalCores = 4;
       } else if (defaultTargetPlatform == TargetPlatform.iOS) {
         final iosInfo = await _deviceInfo.iosInfo;
         _deviceModel = iosInfo.model;
 
         // iOS devices generally have good specs
         _totalMemoryMB = 4096;
-        _physicalCores = 4;
       }
 
       // Classify device tier

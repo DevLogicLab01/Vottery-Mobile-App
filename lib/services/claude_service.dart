@@ -229,34 +229,33 @@ Provide analysis in JSON format:
   }
 
   Map<String, dynamic> _parseRevenuePatternResponse(String response) {
-    // Simple parsing - in production use proper JSON parsing
-    return {
-      'opportunities': [
-        {
-          'type': 'pricing',
-          'title': 'Increase Service Prices',
-          'description': 'Market analysis shows pricing power',
-          'estimated_impact_usd': 2400.0,
-          'confidence': 0.85,
-          'priority': 'high',
-          'timeframe': 'immediate',
-        },
-      ],
-      'pricing_recommendations': {
-        'current_avg_price': 500.0,
-        'suggested_avg_price': 575.0,
-        'reasoning': 'Demand supports 15% increase',
-      },
-      'content_strategy': [
-        'Focus on high-engagement categories',
-        'Optimize posting schedule',
-      ],
-      'revenue_forecast': {
-        'month_3': 3500.0,
-        'month_6': 4200.0,
-        'month_12': 5500.0,
-      },
-    };
+    try {
+      final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(response);
+      if (jsonMatch != null) {
+        final parsed = Map<String, dynamic>.from(
+          jsonDecode(jsonMatch.group(0)!) as Map,
+        );
+        return {
+          'opportunities': List<Map<String, dynamic>>.from(
+            (parsed['opportunities'] as List? ?? []).map(
+              (o) => Map<String, dynamic>.from(o as Map),
+            ),
+          ),
+          'pricing_recommendations': Map<String, dynamic>.from(
+            (parsed['pricing_recommendations'] as Map?) ?? {},
+          ),
+          'content_strategy': List<dynamic>.from(
+            parsed['content_strategy'] as List? ?? [],
+          ),
+          'revenue_forecast': Map<String, dynamic>.from(
+            (parsed['revenue_forecast'] as Map?) ?? {},
+          ),
+        };
+      }
+    } catch (e) {
+      debugPrint('Parse revenue pattern response error: $e');
+    }
+    return _getDefaultRevenuePatternAnalysis();
   }
 
   Map<String, dynamic> _getDefaultRevenuePatternAnalysis() {

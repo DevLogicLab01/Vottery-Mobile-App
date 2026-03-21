@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../routes/app_routes.dart';
 import '../../services/voting_service.dart';
 import '../../services/gemini_service.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -194,7 +195,7 @@ class _VoteDiscoveryState extends State<VoteDiscovery>
     Navigator.of(
       context,
       rootNavigator: true,
-    ).pushNamed('/vote-casting', arguments: vote['id']);
+    ).pushNamed(AppRoutes.voteCasting, arguments: vote['id']);
   }
 
   void _handleBookmark(Map<String, dynamic> vote) {
@@ -219,7 +220,7 @@ class _VoteDiscoveryState extends State<VoteDiscovery>
     Navigator.of(
       context,
       rootNavigator: true,
-    ).pushNamed('/vote-results', arguments: vote['id']);
+    ).pushNamed(AppRoutes.voteResults, arguments: vote['id']);
   }
 
   @override

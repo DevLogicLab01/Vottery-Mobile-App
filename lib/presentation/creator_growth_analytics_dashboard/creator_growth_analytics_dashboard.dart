@@ -56,8 +56,9 @@ class _CreatorGrowthAnalyticsDashboardState
       final userId = _authService.currentUser?.id;
       if (userId == null) {
         setState(() {
-          _analysisResult = GrowthAnalysisResult.fallback;
+          _analysisResult = null;
           _isLoading = false;
+          _error = 'Sign in required to load creator analytics';
         });
         return;
       }
@@ -82,9 +83,9 @@ class _CreatorGrowthAnalyticsDashboardState
       });
     } catch (e) {
       setState(() {
-        _analysisResult = GrowthAnalysisResult.fallback;
+        _analysisResult = null;
         _isLoading = false;
-        _error = 'Using cached analysis';
+        _error = 'Unable to load growth analysis';
       });
     }
   }
@@ -163,7 +164,29 @@ class _CreatorGrowthAnalyticsDashboardState
   }
 
   Widget _buildContent(ThemeData theme) {
-    final result = _analysisResult ?? GrowthAnalysisResult.fallback;
+    final result = _analysisResult;
+    if (result == null) {
+      return ListView(
+        padding: EdgeInsets.all(4.w),
+        children: [
+          Container(
+            padding: EdgeInsets.all(4.w),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(16.0),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+            ),
+            child: Text(
+              _error ?? 'No analytics data available.',
+              style: GoogleFonts.inter(
+                fontSize: 11.sp,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
 
     return RefreshIndicator(
       onRefresh: _refreshAnalysis,
