@@ -36,6 +36,7 @@ class CryptographicService {
   );
 
   static final BigInt _generator = BigInt.from(5);
+  static final BigInt _groupOrder = _prime - BigInt.one;
 
   BigInt _mod(BigInt n) {
     final r = n % _prime;
@@ -174,10 +175,10 @@ class CryptographicService {
     required String message,
     required String secret,
   }) {
-    final secretInt = _mod(_utf8ToBigInt(secret));
+    final secretInt = _utf8ToBigInt(secret) % _groupOrder;
     final random = Random.secure();
     final nonceBytes = List<int>.generate(32, (_) => random.nextInt(256));
-    final nonce = _mod(_utf8ToBigInt(base64.encode(nonceBytes)));
+    final nonce = _utf8ToBigInt(base64.encode(nonceBytes)) % _groupOrder;
 
     final commitment = _modPow(_generator, nonce);
     final pubKey = _modPow(_generator, secretInt);
@@ -185,8 +186,8 @@ class CryptographicService {
     final challengeHex = sha256
         .convert(utf8.encode('$message:${commitment.toRadixString(16)}:${pubKey.toRadixString(16)}'))
         .toString();
-    final challenge = BigInt.parse(challengeHex, radix: 16);
-    final response = _mod(nonce + challenge * secretInt);
+    final challenge = BigInt.parse(challengeHex, radix: 16) % _groupOrder;
+    final response = (nonce + challenge * secretInt) % _groupOrder;
 
     return SchnorrProof(
       commitmentHex: commitment.toRadixString(16),
@@ -209,14 +210,14 @@ class CryptographicService {
         .toString();
     if (expectedChallengeHex != proof.challengeHex) return false;
 
-    final challenge = BigInt.parse(proof.challengeHex, radix: 16);
+    final challenge = BigInt.parse(proof.challengeHex, radix: 16) % _groupOrder;
     final left = _modPow(_generator, response);
     final right = _mod(commitment * _modPow(publicKey, challenge));
     return left == right;
   }
 
   String derivePublicKeyHex(String secret) {
-    final secretInt = _mod(_utf8ToBigInt(secret));
+    final secretInt = _utf8ToBigInt(secret) % _groupOrder;
     return _modPow(_generator, secretInt).toRadixString(16);
   }
 }

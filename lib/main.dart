@@ -61,6 +61,7 @@ import './presentation/advanced_unified_search_screen/advanced_unified_search_sc
 import './config/route_feature_keys.dart';
 import './config/route_registry.dart';
 import './config/batch1_route_allowlist.dart';
+import './routes/route_catalog.dart';
 import './presentation/route_placeholder_screen/route_placeholder_screen.dart';
 import './widgets/feature_gate_widget.dart';
 import './services/accessibility_preferences_service.dart';
@@ -441,7 +442,7 @@ class _VotteryAppState extends State<MyApp> {
                   settings: settings,
                 );
               }
-              final featureKey =
+              final featureKey = RouteCatalog.lookup(settings.name ?? '')?.featureKey ??
                   RouteFeatureKeys.getFeatureKeyForRoute(settings.name ?? '');
 
               Widget gate(Widget child) {

@@ -387,6 +387,11 @@ class RouteFeatureKeys {
     'security-compliance-audit': 'security_compliance_audit_screen',
     'security-compliance-audit-screen': 'security_compliance_audit_screen',
     'security-compliance-automation-center': 'security_compliance_audit_screen',
+    'cryptographicSecurityManagementCenter': 'security_compliance_audit_screen',
+    'cryptographic-security-management-center':
+        'security_compliance_audit_screen',
+    'voteAnonymityMixnetControlHub': 'security_compliance_audit_screen',
+    'vote-anonymity-mixnet-control-hub': 'security_compliance_audit_screen',
     'automated-payout-calculation-engine': 'prize_distribution_tracking_center',
     'country-based-payout-processing-engine':
         'prize_distribution_tracking_center',

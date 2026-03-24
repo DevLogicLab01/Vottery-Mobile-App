@@ -276,15 +276,12 @@ class SubscriptionService {
     bool includeInactive = false,
   }) async {
     try {
-      var query = _client
-          .from('subscription_plans')
-          .select('*')
-          .order('plan_type')
-          .order('duration');
-      if (!includeInactive) {
-        query = query.eq('is_active', true);
-      }
-      final response = await query;
+      final baseQuery = _client.from('subscription_plans').select('*');
+      final filteredQuery = includeInactive
+          ? baseQuery
+          : baseQuery.eq('is_active', true);
+      final response =
+          await filteredQuery.order('plan_type').order('duration');
       final rows = List<Map<String, dynamic>>.from(response);
       if (rows.isNotEmpty) return rows;
     } catch (e) {

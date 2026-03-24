@@ -12,6 +12,12 @@ void main() {
       expect(AppRoutes.pushNotificationManagementCenter, isNotEmpty);
       expect(AppRoutes.voterEducationHub, isNotEmpty);
     });
+
+    test('cryptographic transparency routes exist', () {
+      expect(AppRoutes.cryptographicSecurityManagementCenter, isNotEmpty);
+      expect(AppRoutes.voteAnonymityMixnetControlHub, isNotEmpty);
+      expect(AppRoutes.publicBulletinBoardAuditTrailCenter, isNotEmpty);
+    });
   });
 
   group('Feature key mapping parity checks', () {
@@ -74,6 +80,24 @@ void main() {
           'regional-revenue-analytics-dashboard',
         ),
         'regional_revenue_analytics_dashboard',
+      );
+    });
+
+    test('cryptographic center route maps to security compliance key', () {
+      expect(
+        RouteFeatureKeys.getFeatureKeyForRoute(
+          'cryptographic-security-management-center',
+        ),
+        'security_compliance_audit_screen',
+      );
+    });
+
+    test('mixnet route maps to security compliance key', () {
+      expect(
+        RouteFeatureKeys.getFeatureKeyForRoute(
+          'vote-anonymity-mixnet-control-hub',
+        ),
+        'security_compliance_audit_screen',
       );
     });
   });

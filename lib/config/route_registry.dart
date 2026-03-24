@@ -929,7 +929,10 @@ Widget? screenForRoute(String? name) {
       return const CreatorRevenueForecastingDashboard();
     case AppRoutes.claudeAnalyticsDashboardForCampaignIntelligenceWebCanonical:
     case AppRoutes.claudePredictiveAnalyticsDashboardWebCanonical:
+    case AppRoutes.claudeAiFeedIntelligenceCenterWebCanonical:
       return const AiPoweredPredictiveAnalyticsEngine();
+    case AppRoutes.contextAwareClaudeRecommendationsOverlayWebCanonical:
+      return const ClaudeContextualInsightsOverlaySystem();
     case AppRoutes.claudeAiContentCurationIntelligenceCenterWebCanonical:
       return const AnthropicContentIntelligenceHub();
     case AppRoutes.claudeModelComparisonCenterWebCanonical:
@@ -961,6 +964,7 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.advancedThreatPredictionDashboard:
       return const AdvancedThreatPredictionDashboard();
     case AppRoutes.zoneSpecificThreatHeatmapsDashboard:
+    case AppRoutes.zoneSpecificThreatHeatmapsDashboardWebCanonical:
       return const ZoneSpecificThreatHeatmapsDashboard();
     case AppRoutes.realTimeThreatCorrelationIntelligenceHub:
       return const RealTimeThreatCorrelationDashboard();
@@ -1010,6 +1014,12 @@ Widget? screenForRoute(String? name) {
     case AppRoutes.owaspSecurityTestingDashboard:
       return const OWASPSecurityTestingDashboard();
     case AppRoutes.cryptographicSecurityManagementCenter:
+      return const VerifyAuditElectionsHub();
+    case AppRoutes.voteAnonymityMixnetControlHub:
+      return const VerifyAuditElectionsHub();
+    case AppRoutes.publicBulletinBoardAuditTrailCenter:
+      return const VerifyAuditElectionsHub();
+    case AppRoutes.publicBulletinBoardWeb:
       return const VerifyAuditElectionsHub();
     case AppRoutes.anthropicSecurityReasoningIntegrationHub:
       return const AnthropicAdvancedContentAnalysisCenter();

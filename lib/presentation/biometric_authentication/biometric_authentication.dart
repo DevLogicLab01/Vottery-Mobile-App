@@ -155,15 +155,14 @@ class _BiometricAuthenticationState extends State<BiometricAuthentication>
           );
         }
       } else {
-        final result = await AuthService.instance.signInPasskeyFirst(
+        final authResponse = await AuthService.instance.signInWithEmail(
           email: _emailController.text.trim(),
           password: _passwordController.text,
-          allowPasswordFallback: true,
         );
-        if (result['success'] == true && mounted) {
+        if (authResponse.user != null && mounted) {
           _handleSuccessfulAuthentication();
         } else {
-          throw Exception(result['error'] ?? 'Sign in failed');
+          throw Exception('Sign in failed');
         }
       }
     } catch (e) {

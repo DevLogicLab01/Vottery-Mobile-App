@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:dio/dio.dart';
 import 'dart:convert';
 import './supabase_service.dart';
 import './ai/gemini_chat_service.dart';
@@ -15,27 +14,12 @@ class OpenAISMSOptimizerService {
     _initializeService();
   }
 
-  static const String apiKey = String.fromEnvironment('OPENAI_API_KEY');
-  late final Dio _dio;
   final _supabase = SupabaseService.instance.client;
-  bool _openAiAvailable = false;
 
   void _initializeService() {
-    _openAiAvailable = apiKey.isNotEmpty;
-    if (!_openAiAvailable) {
-      debugPrint('✅ OpenAISMSOptimizerService using Gemini via ai-proxy (no OpenAI key)');
-    } else {
-      _dio = Dio(
-        BaseOptions(
-          baseUrl: 'https://api.openai.com/v1',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $apiKey',
-          },
-        ),
-      );
-      debugPrint('✅ OpenAISMSOptimizerService initialized (OpenAI fallback available)');
-    }
+    debugPrint(
+      '✅ OpenAISMSOptimizerService using Gemini via ai-proxy only (client-side OpenAI disabled)',
+    );
   }
 
   /// Optimize SMS length (fit within 160 characters)
@@ -363,43 +347,13 @@ Return ONLY valid JSON:
     }
   }
 
-  /// Call Gemini via ai-proxy (primary); fallback to OpenAI if configured and Gemini fails.
+  /// Call Gemini via ai-proxy only (no direct provider calls from client).
   Future<String> _callGeminiOrOpenAI(String prompt) async {
-    try {
-      return await GeminiChatService.sendChat(
-        [{'role': 'user', 'content': prompt}],
-        maxTokens: 200,
-        temperature: 0.3,
-      );
-    } catch (e) {
-      if (_openAiAvailable) {
-        return await _callOpenAI(prompt);
-      }
-      rethrow;
-    }
-  }
-
-  /// Fallback: call OpenAI API (only when OPENAI_API_KEY is set and Gemini failed).
-  Future<String> _callOpenAI(String prompt) async {
-    try {
-      final response = await _dio.post(
-        '/chat/completions',
-        data: {
-          'model': 'gpt-4o-mini',
-          'messages': [
-            {'role': 'user', 'content': prompt},
-          ],
-          'max_tokens': 200,
-        },
-      );
-
-      final content = response.data['choices'][0]['message']['content'];
-      return content.toString().trim();
-    } on DioException catch (e) {
-      throw Exception(
-        'OpenAI API error: ${e.response?.data['error']?['message'] ?? e.message}',
-      );
-    }
+    return GeminiChatService.sendChat(
+      [{'role': 'user', 'content': prompt}],
+      maxTokens: 200,
+      temperature: 0.3,
+    );
   }
 
   /// Log optimization to database (columns aligned with Web/Supabase: original_content, optimized_content, optimization_type 'gemini').

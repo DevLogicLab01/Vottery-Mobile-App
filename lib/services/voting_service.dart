@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 
 import './auth_service.dart';
 import './blockchain_audit_service.dart';
+import './cryptographic_service.dart';
 import './gamification_service.dart';
 import './supabase_service.dart';
 import './vp_service.dart';
@@ -20,6 +21,7 @@ class VotingService {
   AuthService get _auth => AuthService.instance;
   VPService get _vpService => VPService.instance;
   GamificationService get _gamificationService => GamificationService.instance;
+  final CryptographicService _cryptographicService = CryptographicService();
 
   Future<List<Map<String, dynamic>>> getElections({
     String? status,
@@ -125,15 +127,28 @@ class VotingService {
 
       final voteId = inserted['id'];
 
-      // Store a lightweight zero-knowledge proof record to mirror Web analytics.
+      // Generate and verify a Schnorr-style proof to keep parity with Web vote proofs.
+      final proofSecret = '${voteHash.substring(0, 16)}:${blockchainHash.substring(0, 16)}';
+      final publicKeyHex = _cryptographicService.derivePublicKeyHex(proofSecret);
+      final schnorrProof = _cryptographicService.generateSchnorrProof(
+        message: voteHash,
+        secret: proofSecret,
+      );
+      final proofVerified = _cryptographicService.verifySchnorrProof(
+        message: voteHash,
+        publicKeyHex: publicKeyHex,
+        proof: schnorrProof,
+      );
+
+      // Store zero-knowledge proof record mirroring Web analytics contract.
       await _client.from('zero_knowledge_proofs').insert({
         'vote_id': voteId,
         'election_id': electionId,
-        'commitment': voteHash,
-        'challenge': blockchainHash,
-        'response': voteHash,
-        'public_key': 'mobile-lite',
-        'verified': false,
+        'commitment': schnorrProof.commitmentHex,
+        'challenge': schnorrProof.challengeHex,
+        'response': schnorrProof.responseHex,
+        'public_key': publicKeyHex,
+        'verified': proofVerified,
       });
 
       // Award VP for voting
@@ -170,8 +185,13 @@ class VotingService {
         'voteHash': voteHash,
         'blockchainHash': blockchainHash,
         'zkProof': {
-          'commitment': voteHash.substring(0, 20),
-          'verified': false,
+          'commitment': schnorrProof.commitmentHex.substring(
+            0,
+            schnorrProof.commitmentHex.length < 20
+                ? schnorrProof.commitmentHex.length
+                : 20,
+          ),
+          'verified': proofVerified,
         },
         'cryptographicProofs': {
           'hashChain': 'Mobile SHA-256 hash chain',
@@ -229,6 +249,73 @@ class VotingService {
     } catch (e) {
       debugPrint('Check vote error: $e');
       return false;
+    }
+  }
+
+  /// Verify a vote hash using stored zero-knowledge proof and bulletin-board entry.
+  /// Mirrors the Web `verifyVoteWithCryptography` contract.
+  Future<
+      ({
+        Map<String, dynamic>? data,
+        String? errorMessage,
+      })> verifyVoteWithCryptography(String voteHash) async {
+    try {
+      if (voteHash.trim().isEmpty) {
+        throw Exception('voteHash is required');
+      }
+
+      final vote = await _client
+          .from('votes')
+          .select()
+          .eq('vote_hash', voteHash)
+          .single();
+
+      final zkProof = await _client
+          .from('zero_knowledge_proofs')
+          .select()
+          .eq('vote_id', vote['id'])
+          .single();
+
+      final proof = SchnorrProof(
+        commitmentHex: (zkProof['commitment'] ?? '').toString(),
+        challengeHex: (zkProof['challenge'] ?? '').toString(),
+        responseHex: (zkProof['response'] ?? '').toString(),
+      );
+      final publicKeyHex = (zkProof['public_key'] ?? '').toString();
+
+      final proofValid = _cryptographicService.verifySchnorrProof(
+        message: (vote['vote_hash'] ?? '').toString(),
+        publicKeyHex: publicKeyHex,
+        proof: proof,
+      );
+
+      Map<String, dynamic>? bulletinEntry;
+      try {
+        final bulletin = await _client
+            .from('bulletin_board_transactions')
+            .select()
+            .eq('election_id', vote['election_id'])
+            .contains('metadata', {'vote_hash': vote['vote_hash']}).single();
+        bulletinEntry = Map<String, dynamic>.from(bulletin);
+      } catch (_) {
+        bulletinEntry = null;
+      }
+
+      final verificationStatus =
+          (proofValid && bulletinEntry != null) ? 'verified' : 'failed';
+
+      return (
+        data: {
+          'vote': vote,
+          'zkProofValid': proofValid,
+          'bulletinBoardEntry': bulletinEntry,
+          'verificationStatus': verificationStatus,
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+        errorMessage: null,
+      );
+    } catch (e) {
+      return (data: null, errorMessage: e.toString());
     }
   }
 

@@ -349,6 +349,12 @@ class AppRoutes {
 
   /// Public transparency (opens Web vote verification / bulletin)
   static const String publicBulletinBoardWeb = '/public-bulletin-board-web';
+  /// Web parity: `/public-bulletin-board-audit-trail-center`
+  static const String publicBulletinBoardAuditTrailCenter =
+      '/public-bulletin-board-audit-trail-center';
+  /// Web parity: `/vote-anonymity-mixnet-control-hub`
+  static const String voteAnonymityMixnetControlHub =
+      '/vote-anonymity-mixnet-control-hub';
   static const String voteVerificationPortalWeb =
       '/vote-verification-portal-web';
   static const String adminQuestConfigurationControlCenterWeb =
@@ -585,6 +591,10 @@ class AppRoutes {
       '/claude-analytics-dashboard-for-campaign-intelligence';
   static const String claudePredictiveAnalyticsDashboardWebCanonical =
       '/claude-predictive-analytics-dashboard';
+  static const String claudeAiFeedIntelligenceCenterWebCanonical =
+      '/claude-ai-feed-intelligence-center';
+  static const String contextAwareClaudeRecommendationsOverlayWebCanonical =
+      '/context-aware-claude-recommendations-overlay';
   static const String claudeAiContentCurationIntelligenceCenterWebCanonical =
       '/claude-ai-content-curation-intelligence-center';
   static const String claudeModelComparisonCenterWebCanonical =
@@ -776,6 +786,9 @@ class AppRoutes {
       '/advancedThreatPredictionDashboard';
   static const String zoneSpecificThreatHeatmapsDashboard =
       '/zoneSpecificThreatHeatmapsDashboard';
+  /// Web parity: `/zone-specific-threat-heatmaps-dashboard`
+  static const String zoneSpecificThreatHeatmapsDashboardWebCanonical =
+      '/zone-specific-threat-heatmaps-dashboard';
   static const String realTimeThreatCorrelationDashboard =
       '/realTimeThreatCorrelationDashboard';
   static const String automatedThreatResponseExecution =

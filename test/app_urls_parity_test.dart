@@ -84,6 +84,14 @@ void main() {
         endsWith('/public-bulletin-board-audit-trail-center'),
       );
       expect(
+        AppUrls.cryptographicSecurityManagementCenter,
+        endsWith('/cryptographic-security-management-center'),
+      );
+      expect(
+        AppUrls.voteAnonymityMixnetControlHub,
+        endsWith('/vote-anonymity-mixnet-control-hub'),
+      );
+      expect(
         AppUrls.voteVerificationPortal,
         endsWith('/vote-verification-portal'),
       );
