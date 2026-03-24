@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../integration_management_service.dart';
 
 /// Exception thrown when AI service encounters an error
 class AIServiceException implements Exception {
@@ -17,6 +18,38 @@ abstract class AIServiceBase {
   static const String baseUrl = String.fromEnvironment('SUPABASE_URL');
   static final SupabaseClient supabase = Supabase.instance.client;
 
+  static bool _isHighStakes(String functionName, Map<String, dynamic> params) {
+    final normalized = functionName.toLowerCase();
+    final useCase = (params['use_case'] ?? '').toString().toLowerCase();
+    return normalized.contains('dispute') ||
+        normalized.contains('security') ||
+        normalized.contains('forensic') ||
+        useCase == 'high_stakes_dispute' ||
+        useCase == 'forensic_security';
+  }
+
+  static Map<String, dynamic> _applyProviderPolicy(
+    String functionName,
+    Map<String, dynamic> params,
+  ) {
+    final next = Map<String, dynamic>.from(params);
+    final requestedProvider =
+        (next['preferred_provider'] ?? next['provider'] ?? '').toString().toLowerCase();
+    final highStakes = _isHighStakes(functionName, params);
+    final blockedProvider =
+        requestedProvider.contains('openai') || requestedProvider.contains('perplexity');
+    final mappedProvider = highStakes ? 'anthropic_haiku' : 'gemini';
+
+    next['preferred_provider'] = mappedProvider;
+    if (next.containsKey('provider')) {
+      next['provider'] = mappedProvider;
+    }
+    if (blockedProvider) {
+      next['provider_policy_override'] = 'batch1_blocked_provider_remap';
+    }
+    return next;
+  }
+
   /// Universal AI request handler with failover support
   ///
   /// Invokes Supabase Edge Functions for AI operations with automatic
@@ -32,12 +65,32 @@ abstract class AIServiceBase {
     Map<String, dynamic> params,
   ) async {
     try {
+      final routedParams = _applyProviderPolicy(functionName, params);
+      final preferredProvider =
+          (routedParams['preferred_provider'] ?? 'gemini').toString().toLowerCase();
+      final integrationName = preferredProvider.contains('anthropic')
+          ? 'Anthropic'
+          : 'Gemini';
+      final integrationCheck =
+          await IntegrationManagementService.instance.canUseIntegration(
+        integrationName,
+        projectedCost: ((routedParams['estimated_cost'] as num?) ?? 0).toDouble(),
+      );
+      if (integrationCheck['allowed'] != true) {
+        throw AIServiceException(
+          'AI request blocked: ${integrationCheck['reason'] ?? "integration policy"}',
+        );
+      }
       final response = await supabase.functions.invoke(
         functionName,
-        body: params,
+        body: routedParams,
       );
 
       if (response.status == 200) {
+        await IntegrationManagementService.instance.recordUsage(
+          integrationName,
+          costDelta: ((routedParams['estimated_cost'] as num?) ?? 0).toDouble(),
+        );
         return response.data as Map<String, dynamic>;
       }
 

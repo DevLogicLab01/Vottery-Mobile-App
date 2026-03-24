@@ -26,6 +26,7 @@ class _CarouselContentModerationAutomationCenterState
 
   late TabController _tabController;
   List<Map<String, dynamic>> _pendingQueue = [];
+  List<Map<String, dynamic>> _automatedActions = [];
   Map<String, dynamic> _statistics = {};
   bool _isLoading = true;
 

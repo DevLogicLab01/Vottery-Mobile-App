@@ -169,7 +169,7 @@ class PayoutHistoryCardWidget extends StatelessWidget {
       case 'digital_wallet':
         return Icons.account_balance_wallet;
       case 'cryptocurrency':
-        return Icons.currency_bitcoin;
+        return Icons.account_balance_wallet;
       case 'paypal':
         return Icons.payment;
       case 'stripe':
@@ -180,6 +180,7 @@ class PayoutHistoryCardWidget extends StatelessWidget {
   }
 
   String _formatPayoutMethod(String method) {
+    if (method == 'cryptocurrency') return 'Legacy digital payout';
     return method
         .split('_')
         .map((word) {

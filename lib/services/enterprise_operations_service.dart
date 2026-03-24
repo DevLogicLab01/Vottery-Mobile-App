@@ -128,7 +128,7 @@ class EnterpriseOperationsService {
           'smsProviderStrategy': 'telnyx_primary_twilio_fallback',
         },
       );
-      return res.data != null && res.error == null;
+      return res.data != null;
     } catch (e) {
       debugPrint('sendWhatsAppNotification error: $e');
       return false;

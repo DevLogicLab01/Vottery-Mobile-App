@@ -29,10 +29,14 @@ class PerplexityService extends AIServiceBase {
   }) async {
     try {
       final response = await AIServiceBase.invokeAIFunction(
-        'perplexity-threat-intelligence',
+        'gemini-fallback-handler',
         {
-          'forecast_period': forecastPeriod,
-          'include_web_search': true,
+          'original_function': 'threat_intelligence',
+          'params': {
+            'provider': 'gemini',
+            'forecast_period': forecastPeriod,
+            'include_web_search': true,
+          },
           'timestamp': DateTime.now().toIso8601String(),
         },
       );
@@ -66,13 +70,19 @@ class PerplexityService extends AIServiceBase {
     String timeframe = 'last_30_days',
   }) async {
     try {
-      final response =
-          await AIServiceBase.invokeAIFunction('perplexity-market-research', {
+      final response = await AIServiceBase.invokeAIFunction(
+        'gemini-fallback-handler',
+        {
+          'original_function': 'market_research',
+          'params': {
+            'provider': 'gemini',
             'topics': topics,
             'timeframe': timeframe,
             'include_sentiment': true,
-            'timestamp': DateTime.now().toIso8601String(),
-          });
+          },
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
 
       AIServiceBase.validateResponse(response, [
         'research_id',
@@ -98,10 +108,14 @@ class PerplexityService extends AIServiceBase {
   static Future<StrategicPlanningReport> generateStrategicInsights() async {
     try {
       final response = await AIServiceBase.invokeAIFunction(
-        'perplexity-strategic-planning',
+        'gemini-fallback-handler',
         {
-          'analysis_type': 'comprehensive',
-          'include_competitive_analysis': true,
+          'original_function': 'strategic_planning',
+          'params': {
+            'provider': 'gemini',
+            'analysis_type': 'comprehensive',
+            'include_competitive_analysis': true,
+          },
           'timestamp': DateTime.now().toIso8601String(),
         },
       );
@@ -131,12 +145,18 @@ class PerplexityService extends AIServiceBase {
     required String industry,
   }) async {
     try {
-      final response =
-          await AIServiceBase.invokeAIFunction('perplexity-market-trends', {
+      final response = await AIServiceBase.invokeAIFunction(
+        'gemini-fallback-handler',
+        {
+          'original_function': 'market_trends',
+          'params': {
+            'provider': 'gemini',
             'industry': industry,
             'include_web_search': true,
-            'timestamp': DateTime.now().toIso8601String(),
-          });
+          },
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
 
       return response;
     } catch (e) {
@@ -158,10 +178,14 @@ class PerplexityService extends AIServiceBase {
   }) async {
     try {
       final response = await AIServiceBase.invokeAIFunction(
-        'perplexity-competitive-analysis',
+        'gemini-fallback-handler',
         {
-          'competitors': competitors,
-          'include_web_search': true,
+          'original_function': 'competitive_analysis',
+          'params': {
+            'provider': 'gemini',
+            'competitors': competitors,
+            'include_web_search': true,
+          },
           'timestamp': DateTime.now().toIso8601String(),
         },
       );
@@ -238,7 +262,7 @@ class PerplexityService extends AIServiceBase {
   static Future<bool> isMarketIntelligenceHealthy() async {
     try {
       final response = await AIServiceBase.invokeAIFunction('health-check', {
-        'service': 'perplexity-market-intelligence',
+        'service': 'gemini-market-intelligence',
       });
 
       return response['status'] == 'healthy';

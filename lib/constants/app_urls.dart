@@ -132,4 +132,24 @@ class AppUrls {
       '$webAppBase/continuous-ml-feedback-outcome-learning-center';
   static const String autoImprovingFraudDetectionIntelligenceCenter =
       '$webAppBase/auto-improving-fraud-detection-intelligence-center';
+
+  /// Unified admin activity log (Web: `/unified-admin-activity-log`)
+  static const String unifiedAdminActivityLog =
+      '$webAppBase/unified-admin-activity-log';
+
+  /// Admin platform logs — Web: `/admin-platform-logs-center` (`AdminPlatformLogsCenter`)
+  static const String adminPlatformLogsCenter =
+      '$webAppBase/admin-platform-logs-center';
+
+  /// Centralized support ticketing (Web: `/centralized-support-ticketing-system`)
+  static const String centralizedSupportTicketingSystem =
+      '$webAppBase/centralized-support-ticketing-system';
+
+  /// Incident response analytics (Web: `/enhanced-incident-response-analytics`; legacy `/incident-response-analytics` redirects)
+  static const String enhancedIncidentResponseAnalytics =
+      '$webAppBase/enhanced-incident-response-analytics';
+
+  /// Creator earnings / Stripe Connect (Web: `/enhanced-creator-payout-dashboard-with-stripe-connect-integration`)
+  static const String enhancedCreatorPayoutDashboard =
+      '$webAppBase/enhanced-creator-payout-dashboard-with-stripe-connect-integration';
 }

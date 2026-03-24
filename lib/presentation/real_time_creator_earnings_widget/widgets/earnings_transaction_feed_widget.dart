@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../config/batch1_route_allowlist.dart';
 import '../../../core/app_export.dart';
 import '../../../routes/app_routes.dart';
 import '../../../services/creator_earnings_service.dart';
@@ -36,6 +37,11 @@ class EarningsTransactionFeedWidget extends StatelessWidget {
               ),
               TextButton(
                 onPressed: () {
+                  if (!Batch1RouteAllowlist.isAllowed(
+                    AppRoutes.payoutHistoryScreen,
+                  )) {
+                    return;
+                  }
                   Navigator.pushNamed(context, AppRoutes.payoutHistoryScreen);
                 },
                 child: Text('View All'),

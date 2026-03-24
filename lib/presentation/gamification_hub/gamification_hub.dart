@@ -22,6 +22,18 @@ class GamificationHub extends StatefulWidget {
 
 class _GamificationHubState extends State<GamificationHub>
     with SingleTickerProviderStateMixin {
+  static const List<int> _levelProgressMilestones = [
+    1,
+    5,
+    15,
+    30,
+    45,
+    60,
+    75,
+    90,
+    100,
+  ];
+
   final GamificationService _gamificationService = GamificationService.instance;
 
   late TabController _tabController;
@@ -311,11 +323,13 @@ class _GamificationHubState extends State<GamificationHub>
             ),
           ),
           SizedBox(height: 2.h),
-          ...GamificationService.levelTiers.map((tier) {
+          ..._levelProgressMilestones.map((tierLv) {
+            final tier = GamificationService.levelTiers[tierLv - 1];
+            final userLv = _userLevel['current_level'] as int? ?? 1;
             return LevelProgressionWidget(
               tier: tier,
-              isUnlocked: (_userLevel['tier'] ?? 1) >= tier['tier'],
-              isCurrent: (_userLevel['tier'] ?? 1) == tier['tier'],
+              isUnlocked: userLv >= tierLv,
+              isCurrent: userLv == tierLv,
             );
           }),
           SizedBox(height: 2.h),

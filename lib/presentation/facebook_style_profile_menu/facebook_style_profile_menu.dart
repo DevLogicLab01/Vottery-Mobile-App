@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../constants/roles.dart';
+import '../../constants/vottery_ads_constants.dart';
 import '../../core/app_export.dart';
 import '../../routes/app_routes.dart';
 import '../../services/auth_service_new.dart';
@@ -53,6 +54,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
   }
 
   bool get _showAdminTools => AppRoles.isAdminRole(_userRole);
+  bool get _showBatch2Sections => false;
 
   Future<void> _loadThemePreference() async {
     final brightness =
@@ -268,12 +270,13 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
               SizedBox(height: 2.h),
 
               // Monitoring & DevOps Section
-              ExpandableMenuSectionWidget(
-                title: 'Monitoring & DevOps',
-                icon: 'analytics',
-                isExpanded: expandedSection == 'monitoring',
-                onToggle: () => _toggleSection('monitoring'),
-                children: [
+              if (_showBatch2Sections)
+                ExpandableMenuSectionWidget(
+                  title: 'Monitoring & DevOps',
+                  icon: 'analytics',
+                  isExpanded: expandedSection == 'monitoring',
+                  onToggle: () => _toggleSection('monitoring'),
+                  children: [
                   MenuItemWidget(
                     icon: 'analytics',
                     title: 'Incident Analytics',
@@ -317,7 +320,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     },
                   ),
                 ],
-              ),
+                ),
 
               SizedBox(height: 2.h),
 
@@ -500,7 +503,18 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     icon: 'help_center',
                     title: 'Help Center',
                     onTap: () {
-                      Navigator.pushNamed(context, AppRoutes.creatorSupportHub);
+                      Navigator.pushNamed(context, AppRoutes.helpSupportCenter);
+                    },
+                  ),
+                  MenuItemWidget(
+                    icon: 'confirmation_number',
+                    title: 'Help & support',
+                    subtitle: 'Tickets & FAQ (same as Web profile menu)',
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.centralizedSupportTicketingSystemWebCanonical,
+                      );
                     },
                   ),
                   MenuItemWidget(
@@ -553,12 +567,13 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
               SizedBox(height: 2.h),
 
               // Security & Fraud Detection Section
-              ExpandableMenuSectionWidget(
-                title: 'Security & Fraud Detection',
-                icon: 'security',
-                isExpanded: expandedSection == 'security',
-                onToggle: () => _toggleSection('security'),
-                children: [
+              if (_showBatch2Sections)
+                ExpandableMenuSectionWidget(
+                  title: 'Security & Fraud Detection',
+                  icon: 'security',
+                  isExpanded: expandedSection == 'security',
+                  onToggle: () => _toggleSection('security'),
+                  children: [
                   MenuItemWidget(
                     icon: 'security',
                     title: 'Advanced Fraud Detection',
@@ -613,7 +628,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     },
                   ),
                 ],
-              ),
+                ),
 
               SizedBox(height: 2.h),
 
@@ -644,7 +659,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     onTap: () {
                       Navigator.pushNamed(
                         context,
-                        AppRoutes.predictionPoolNotificationsHub,
+                        AppRoutes.predictionPoolNotificationsHubWebCanonical,
                       );
                     },
                   ),
@@ -655,7 +670,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                       Navigator.pop(context);
                       Navigator.pushNamed(
                         context,
-                        AppRoutes.multiCurrencySettlementDashboard,
+                        AppRoutes.multiCurrencySettlementDashboardWebCanonical,
                       );
                     },
                   ),
@@ -706,7 +721,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
               ),
 
               // Admin Tools Section (admin role only)
-              if (_showAdminTools) ...[
+              if (_showAdminTools && _showBatch2Sections) ...[
                 SizedBox(height: 2.h),
                 ExpandableMenuSectionWidget(
                   title: 'Admin Tools',
@@ -768,7 +783,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
               ),
               ],
               // Monitoring & DevOps Section (admin role only)
-              if (_showAdminTools) ...[
+              if (_showAdminTools && _showBatch2Sections) ...[
                 SizedBox(height: 2.h),
                 ExpandableMenuSectionWidget(
                   title: 'Monitoring & DevOps',
@@ -879,12 +894,13 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
               ),
               ],
               SizedBox(height: 2.h),
-              ExpandableMenuSectionWidget(
-                title: 'Advertising',
-                icon: 'campaign',
-                isExpanded: expandedSection == 'advertising',
-                onToggle: () => _toggleSection('advertising'),
-                children: [
+              if (_showBatch2Sections)
+                ExpandableMenuSectionWidget(
+                  title: 'Advertising',
+                  icon: 'campaign',
+                  isExpanded: expandedSection == 'advertising',
+                  onToggle: () => _toggleSection('advertising'),
+                  children: [
                   MenuItemWidget(
                     icon: 'campaign',
                     title: 'Campaign Management',
@@ -892,7 +908,18 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     onTap: () {
                       Navigator.pushNamed(
                         context,
-                        AppRoutes.campaignManagementDashboard,
+                        AppRoutes.campaignManagementDashboardWebCanonical,
+                      );
+                    },
+                  ),
+                  MenuItemWidget(
+                    icon: 'trending_up',
+                    title: 'Dynamic CPE Engine',
+                    subtitle: 'Zone pricing, demand, 24h drift',
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.dynamicCpePricingEngineDashboardWebCanonical,
                       );
                     },
                   ),
@@ -911,19 +938,20 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     onTap: () {
                       Navigator.pushNamed(
                         context,
-                        AppRoutes.campaignManagementDashboard,
+                        AppRoutes.advertiserAnalyticsDashboardWebCanonical,
                       );
                     },
                   ),
                 ],
-              ),
+                ),
               SizedBox(height: 2.h),
-              ExpandableMenuSectionWidget(
-                title: 'Payments',
-                icon: 'payments',
-                isExpanded: expandedSection == 'payments',
-                onToggle: () => _toggleSection('payments'),
-                children: [
+              if (_showBatch2Sections)
+                ExpandableMenuSectionWidget(
+                  title: 'Payments',
+                  icon: 'payments',
+                  isExpanded: expandedSection == 'payments',
+                  onToggle: () => _toggleSection('payments'),
+                  children: [
                   MenuItemWidget(
                     icon: 'hub',
                     title: 'Payment Orchestration Hub',
@@ -942,7 +970,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                       Navigator.pop(context);
                       Navigator.pushNamed(
                         context,
-                        AppRoutes.multiCurrencySettlementDashboard,
+                        AppRoutes.multiCurrencySettlementDashboardWebCanonical,
                       );
                     },
                   ),
@@ -958,7 +986,7 @@ class _FacebookStyleProfileMenuState extends State<FacebookStyleProfileMenu> {
                     },
                   ),
                 ],
-              ),
+                ),
 
               SizedBox(height: 4.h),
             ],

@@ -41,8 +41,9 @@ class SharedConstants {
   static const String participatoryAdsStudio = '/participatory-ads-studio';
   static const String communityEngagementDashboard =
       '/community-engagement-dashboard';
+  /// Same canonical path as Web `Routes.jsx` + `SHARED_CONSTANTS.ROUTE_PATHS.ENHANCED_INCIDENT_RESPONSE_ANALYTICS`
   static const String incidentResponseAnalytics =
-      '/incident-response-analytics';
+      '/enhanced-incident-response-analytics';
   static const String contentRemovedAppeal = '/contentRemovedAppeal';
   static const String userFeedbackPortal = '/userFeedbackPortal';
   static const String featureImplementationTracking =

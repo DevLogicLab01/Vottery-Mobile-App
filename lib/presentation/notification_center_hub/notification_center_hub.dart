@@ -2,9 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_export.dart';
+import '../../services/auth_service.dart';
+import '../../services/notification_center_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/enhanced_empty_state_widget.dart';
 import '../../widgets/error_boundary_wrapper.dart';
@@ -20,8 +21,10 @@ class NotificationCenterHub extends StatefulWidget {
 }
 
 class _NotificationCenterHubState extends State<NotificationCenterHub> {
-  final SupabaseClient _supabase = Supabase.instance.client;
-  StreamSubscription? _notificationSubscription;
+  final NotificationCenterService _notificationsSvc =
+      NotificationCenterService.instance;
+  final AuthService _auth = AuthService.instance;
+  StreamSubscription<List<Map<String, dynamic>>>? _notificationSubscription;
   List<Map<String, dynamic>> _notifications = [];
   Set<String> _activeFilters = {
     'votes',
@@ -29,6 +32,7 @@ class _NotificationCenterHubState extends State<NotificationCenterHub> {
     'achievements',
     'elections',
     'campaigns',
+    'payments',
   };
   bool _isLoading = true;
   int _unreadCount = 0;
@@ -48,57 +52,48 @@ class _NotificationCenterHubState extends State<NotificationCenterHub> {
     super.dispose();
   }
 
-  Future<void> _loadNotifications() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadNotifications({bool showSpinner = true}) async {
+    if (showSpinner && mounted) setState(() => _isLoading = true);
     try {
-      final response = await _supabase
-          .from('unified_notifications')
-          .select()
-          .order('created_at', ascending: false)
-          .limit(100);
-
+      final rows = await _notificationsSvc.fetchNotifications(limit: 100);
+      if (!mounted) return;
       setState(() {
-        _notifications = List<Map<String, dynamic>>.from(response);
-        _unreadCount = _notifications
-            .where((n) => n['is_read'] == false)
-            .length;
+        _notifications = rows;
+        _unreadCount = rows.where((n) => n['is_read'] != true).length;
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _setupRealTimeNotifications() {
-    _notificationSubscription = _supabase
-        .from('unified_notifications')
-        .stream(primaryKey: ['id'])
-        .listen((data) {
-          setState(() {
-            _notifications = List<Map<String, dynamic>>.from(data);
-            _unreadCount = _notifications
-                .where((n) => n['is_read'] == false)
-                .length;
-          });
-        });
+    _notificationSubscription?.cancel();
+    final uid = _auth.currentUser?.id;
+    if (uid == null) return;
+    _notificationSubscription =
+        _notificationsSvc.watchNotifications(uid).listen((rows) {
+      if (!mounted) return;
+      setState(() {
+        _notifications = rows;
+        _unreadCount = rows.where((n) => n['is_read'] != true).length;
+      });
+    });
   }
 
   Future<void> _markAllAsRead() async {
     try {
-      await _supabase
-          .from('unified_notifications')
-          .update({'is_read': true})
-          .eq('is_read', false);
+      await _notificationsSvc.markAllAsRead();
+      if (!mounted) return;
       setState(() => _unreadCount = 0);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('All notifications marked as read'),
-            backgroundColor: AppTheme.accentLight,
-          ),
-        );
-      }
+      await _loadNotifications(showSpinner: false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('All notifications marked as read'),
+          backgroundColor: AppTheme.accentLight,
+        ),
+      );
     } catch (e) {
       debugPrint('Mark all as read error: $e');
     }
@@ -106,10 +101,17 @@ class _NotificationCenterHubState extends State<NotificationCenterHub> {
 
   Future<void> _markAsRead(String notificationId) async {
     try {
-      await _supabase
-          .from('unified_notifications')
-          .update({'is_read': true})
-          .eq('id', notificationId);
+      await _notificationsSvc.markAsRead(notificationId);
+      if (!mounted) return;
+      setState(() {
+        _notifications = _notifications.map((n) {
+          if (n['id'].toString() == notificationId) {
+            return {...n, 'is_read': true};
+          }
+          return n;
+        }).toList();
+        _unreadCount = _notifications.where((n) => n['is_read'] != true).length;
+      });
     } catch (e) {
       debugPrint('Mark as read error: $e');
     }
@@ -117,10 +119,14 @@ class _NotificationCenterHubState extends State<NotificationCenterHub> {
 
   Future<void> _deleteNotification(String notificationId) async {
     try {
-      await _supabase
-          .from('unified_notifications')
-          .delete()
-          .eq('id', notificationId);
+      await _notificationsSvc.deleteById(notificationId);
+      if (!mounted) return;
+      setState(() {
+        _notifications = _notifications
+            .where((n) => n['id'].toString() != notificationId)
+            .toList();
+        _unreadCount = _notifications.where((n) => n['is_read'] != true).length;
+      });
     } catch (e) {
       debugPrint('Delete notification error: $e');
     }
@@ -130,19 +136,15 @@ class _NotificationCenterHubState extends State<NotificationCenterHub> {
     if (_selectedNotifications.isEmpty) return;
 
     try {
-      for (final id in _selectedNotifications) {
-        await _supabase
-            .from('unified_notifications')
-            .update({'is_read': true})
-            .eq('id', id);
-      }
-
-      setState(() {
-        _selectedNotifications.clear();
-        _isSelectionMode = false;
-      });
+      await _notificationsSvc.markManyAsRead(_selectedNotifications);
 
       if (mounted) {
+        setState(() {
+          _selectedNotifications.clear();
+          _isSelectionMode = false;
+        });
+        await _loadNotifications(showSpinner: false);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Selected notifications marked as read'),
@@ -159,16 +161,15 @@ class _NotificationCenterHubState extends State<NotificationCenterHub> {
     if (_selectedNotifications.isEmpty) return;
 
     try {
-      for (final id in _selectedNotifications) {
-        await _supabase.from('unified_notifications').delete().eq('id', id);
-      }
-
-      setState(() {
-        _selectedNotifications.clear();
-        _isSelectionMode = false;
-      });
+      await _notificationsSvc.deleteMany(_selectedNotifications);
 
       if (mounted) {
+        setState(() {
+          _selectedNotifications.clear();
+          _isSelectionMode = false;
+        });
+        await _loadNotifications(showSpinner: false);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Selected notifications deleted'),
@@ -183,12 +184,11 @@ class _NotificationCenterHubState extends State<NotificationCenterHub> {
 
   Future<void> _clearCategory(String category) async {
     try {
-      await _supabase
-          .from('unified_notifications')
-          .delete()
-          .eq('notification_type', category);
+      await _notificationsSvc.deleteByCategory(category);
 
       if (mounted) {
+        await _loadNotifications(showSpinner: false);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('All $category notifications cleared'),
@@ -222,9 +222,8 @@ class _NotificationCenterHubState extends State<NotificationCenterHub> {
 
   void _selectAll() {
     setState(() {
-      _selectedNotifications = _filteredNotifications
-          .map((n) => n['id'] as String)
-          .toSet();
+      _selectedNotifications =
+          _filteredNotifications.map((n) => n['id'].toString()).toSet();
     });
   }
 
@@ -353,9 +352,8 @@ class _NotificationCenterHubState extends State<NotificationCenterHub> {
                         itemCount: _filteredNotifications.length,
                         itemBuilder: (context, index) {
                           final notification = _filteredNotifications[index];
-                          final isSelected = _selectedNotifications.contains(
-                            notification['id'],
-                          );
+                          final nid = notification['id'].toString();
+                          final isSelected = _selectedNotifications.contains(nid);
 
                           return UnifiedNotificationCardWidget(
                             notification: notification,
@@ -363,23 +361,18 @@ class _NotificationCenterHubState extends State<NotificationCenterHub> {
                             isSelected: isSelected,
                             onTap: () {
                               if (_isSelectionMode) {
-                                _toggleNotificationSelection(
-                                  notification['id'],
-                                );
+                                _toggleNotificationSelection(nid);
                               } else {
-                                _markAsRead(notification['id']);
+                                _markAsRead(nid);
                               }
                             },
                             onLongPress: () {
                               if (!_isSelectionMode) {
                                 _toggleSelectionMode();
-                                _toggleNotificationSelection(
-                                  notification['id'],
-                                );
+                                _toggleNotificationSelection(nid);
                               }
                             },
-                            onDismiss: () =>
-                                _deleteNotification(notification['id']),
+                            onDismiss: () => _deleteNotification(nid),
                           );
                         },
                       ),

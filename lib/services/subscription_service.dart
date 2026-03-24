@@ -271,4 +271,137 @@ class SubscriptionService {
         : DateTime(now.year + 1, now.month, now.day);
     return nextDate.toIso8601String();
   }
+
+  Future<List<Map<String, dynamic>>> getSubscriptionPlanCatalog({
+    bool includeInactive = false,
+  }) async {
+    try {
+      var query = _client
+          .from('subscription_plans')
+          .select('*')
+          .order('plan_type')
+          .order('duration');
+      if (!includeInactive) {
+        query = query.eq('is_active', true);
+      }
+      final response = await query;
+      final rows = List<Map<String, dynamic>>.from(response);
+      if (rows.isNotEmpty) return rows;
+    } catch (e) {
+      debugPrint('Get subscription plan catalog error: $e');
+    }
+
+    // Fallback to static tiers when DB is unavailable.
+    return tiers.entries
+        .expand((entry) => [
+              {
+                'id': '${entry.key}_monthly',
+                'plan_name': entry.value['name'],
+                'plan_type': entry.key,
+                'duration': 'monthly',
+                'price': entry.value['price_monthly'],
+                'features': entry.value['features'],
+                'is_active': true,
+              },
+              {
+                'id': '${entry.key}_annual',
+                'plan_name': entry.value['name'],
+                'plan_type': entry.key,
+                'duration': 'annual',
+                'price': entry.value['price_yearly'],
+                'features': entry.value['features'],
+                'is_active': true,
+              },
+            ])
+        .toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getAllSubscriptionPlansForAdmin() async {
+    return getSubscriptionPlanCatalog(includeInactive: true);
+  }
+
+  Future<Map<String, dynamic>?> updateSubscriptionPlan(
+    String planId,
+    Map<String, dynamic> updates,
+  ) async {
+    try {
+      final payload = Map<String, dynamic>.from(updates)
+        ..['updated_at'] = DateTime.now().toIso8601String()
+        ..['discount_percent'] =
+            ((updates['discount_percent'] ?? updates['discountPercent']) as num?)
+                    ?.toDouble() ??
+                0;
+      final response = await _client
+          .from('subscription_plans')
+          .update(payload)
+          .eq('id', planId)
+          .select()
+          .single();
+      return Map<String, dynamic>.from(response);
+    } catch (e) {
+      debugPrint('Update subscription plan error: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> createSubscriptionPlan(
+    Map<String, dynamic> plan,
+  ) async {
+    try {
+      final payload = Map<String, dynamic>.from(plan)
+        ..['is_active'] = plan['is_active'] ?? plan['isActive'] ?? true
+        ..['discount_percent'] =
+            ((plan['discount_percent'] ?? plan['discountPercent']) as num?)
+                    ?.toDouble() ??
+                0;
+      final response =
+          await _client.from('subscription_plans').insert(payload).select().single();
+      return Map<String, dynamic>.from(response);
+    } catch (e) {
+      debugPrint('Create subscription plan error: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> setPlanEnabled(String planId, bool isEnabled) {
+    return updateSubscriptionPlan(planId, {'is_active': isEnabled});
+  }
+
+  Future<bool> subscribeToPlan({
+    required String planId,
+  }) async {
+    try {
+      if (!_auth.isAuthenticated) return false;
+
+      final plan = await _client
+          .from('subscription_plans')
+          .select('*')
+          .eq('id', planId)
+          .single();
+      final price = (plan['price'] as num?)?.toDouble() ?? 0;
+      final paymentResult = await _payment.purchaseVP(vpAmount: 0, priceUsd: price);
+      if (!paymentResult.success) return false;
+
+      final duration = (plan['duration'] ?? 'monthly').toString();
+      final nowIso = DateTime.now().toIso8601String();
+      await _client.from('user_subscriptions').upsert({
+        'user_id': _auth.currentUser!.id,
+        'plan_id': planId,
+        'subscriber_type': 'individual',
+        'is_active': true,
+        'auto_renew': true,
+        'start_date': nowIso,
+        'end_date': _calculateNextBillingDate(duration == 'annual' ? 'yearly' : 'monthly'),
+        'updated_at': nowIso,
+      });
+
+      final tierKey = (plan['plan_type'] ?? 'basic').toString().toLowerCase();
+      final vpMultiplier = (tiers[tierKey]?['vp_multiplier'] as num?)?.toDouble() ?? 1.0;
+      await _applyVPMultiplier(vpMultiplier);
+      return true;
+    } catch (e) {
+      debugPrint('Subscribe to plan error: $e');
+      return false;
+    }
+  }
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../config/batch1_route_allowlist.dart';
 import '../../routes/app_routes.dart';
 import '../../services/unified_alert_service.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -263,35 +264,47 @@ class _UnifiedAlertManagementCenterState
       switch (type) {
         case 'votes':
           if (metadata['election_id'] != null) {
-            Navigator.pushNamed(
+            _navigateIfAllowed(
               context,
-              AppRoutes.voteResults,
+              route: AppRoutes.voteResults,
               arguments: metadata['election_id'],
             );
           }
           break;
         case 'messages':
-          Navigator.pushNamed(context, AppRoutes.directMessagingScreen);
+          _navigateIfAllowed(context, route: AppRoutes.directMessagingScreen);
           break;
         case 'achievements':
-          Navigator.pushNamed(context, AppRoutes.gamificationHub);
+          _navigateIfAllowed(context, route: AppRoutes.gamificationHub);
           break;
         case 'elections':
-          Navigator.pushNamed(context, AppRoutes.voteDiscovery);
+          _navigateIfAllowed(context, route: AppRoutes.voteDiscovery);
           break;
         case 'campaigns':
-          Navigator.pushNamed(context, AppRoutes.campaignTemplateGallery);
+          _navigateIfAllowed(context, route: AppRoutes.campaignTemplateGallery);
           break;
         case 'security':
-          Navigator.pushNamed(context, AppRoutes.userSecurityCenter);
+          _navigateIfAllowed(context, route: AppRoutes.userSecurityCenter);
           break;
         case 'payments':
-          Navigator.pushNamed(context, AppRoutes.walletPrizeDistributionCenter);
+          _navigateIfAllowed(
+            context,
+            route: AppRoutes.walletPrizeDistributionCenter,
+          );
           break;
         default:
           break;
       }
     }
+  }
+
+  void _navigateIfAllowed(
+    BuildContext context, {
+    required String route,
+    Object? arguments,
+  }) {
+    if (!Batch1RouteAllowlist.isAllowed(route)) return;
+    Navigator.pushNamed(context, route, arguments: arguments);
   }
 
   void _showPreferences() {

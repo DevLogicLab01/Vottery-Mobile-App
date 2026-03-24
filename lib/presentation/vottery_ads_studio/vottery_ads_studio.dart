@@ -3,6 +3,7 @@ import 'package:sizer/sizer.dart';
 
 import '../../constants/vottery_ads_constants.dart';
 import '../../core/app_export.dart';
+import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../services/supabase_service.dart';
 import '../../services/vottery_ads_service.dart';
@@ -250,20 +251,96 @@ class _VotteryAdsStudioState extends State<VotteryAdsStudio> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (VotteryAdsConstants.internalAdsBatch1Disabled) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Vottery Ads Studio'),
+          backgroundColor: theme.colorScheme.primary,
+          foregroundColor: theme.colorScheme.onPrimary,
+        ),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  VotteryAdsConstants.batch1InternalAdsDisabledTitle,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  VotteryAdsConstants.batch1InternalAdsDisabledBody,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.maybePop(context),
+        ),
         title: const Text('Vottery Ads Studio'),
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: theme.colorScheme.onPrimary,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.trending_up),
+            tooltip: 'Dynamic CPE engine',
+            onPressed: () => Navigator.pushNamed(
+              context,
+              AppRoutes.dynamicCpePricingEngineDashboardWebCanonical,
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(
           children: [
+            _buildParticipatoryStudioBanner(),
             _buildStepHeader(),
             Expanded(child: _buildStepBody()),
             _buildFooter(),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildParticipatoryStudioBanner() {
+    return Material(
+      color: AppTheme.primaryLight.withValues(alpha: 0.08),
+      child: InkWell(
+        onTap: () => Navigator.pushNamed(
+          context,
+          AppRoutes.participatoryAdsStudioWebCanonical,
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+          child: Row(
+            children: [
+              Icon(Icons.how_to_vote_outlined,
+                  size: 18, color: AppTheme.primaryLight),
+              SizedBox(width: 2.w),
+              Expanded(
+                child: Text(
+                  'Full sponsored-election wizard with zone budgets — Participatory Ads Studio',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.textPrimaryLight,
+                      ),
+                ),
+              ),
+              Icon(Icons.chevron_right, color: AppTheme.textSecondaryLight),
+            ],
+          ),
         ),
       ),
     );

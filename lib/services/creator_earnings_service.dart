@@ -215,6 +215,37 @@ class CreatorEarningsService {
     }
   }
 
+  /// Per-election totals for export / widgets (normalized field names).
+  Future<List<Map<String, dynamic>>> getEarningsByElection({
+    int limit = 10,
+  }) async {
+    try {
+      if (!_auth.isAuthenticated) return [];
+      final rows = await getTopElectionsByRevenue(limit: limit);
+      return rows
+          .map(
+            (row) => {
+              'election_title': row['election_title'] ??
+                  row['title'] ??
+                  row['name'] ??
+                  'Election',
+              'total_usd_earned': row['total_usd_earned'] ??
+                  row['total_usd'] ??
+                  row['usd_earned'] ??
+                  0.0,
+              'total_vp_earned': row['total_vp_earned'] ??
+                  row['total_vp'] ??
+                  row['vp_earned'] ??
+                  0,
+            },
+          )
+          .toList();
+    } catch (e) {
+      debugPrint('Get earnings by election error: $e');
+      return [];
+    }
+  }
+
   /// Get VP transaction history
   Future<List<Map<String, dynamic>>> getTransactionHistory({
     String? filterType,

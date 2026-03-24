@@ -182,6 +182,138 @@ class _BulkManagementScreenState extends State<BulkManagementScreen> {
       ),
     );
   }
+
+  Widget _buildStats(ThemeData theme) {
+    return Row(
+      children: [
+        _statChip(theme, 'Total', _stats['total']?.toString() ?? '0'),
+        SizedBox(width: 2.w),
+        _statChip(theme, 'Completed', _stats['completed']?.toString() ?? '0'),
+        SizedBox(width: 2.w),
+        _statChip(theme, 'Processing', _stats['processing']?.toString() ?? '0'),
+        SizedBox(width: 2.w),
+        _statChip(theme, 'Failed', _stats['failed']?.toString() ?? '0'),
+      ],
+    );
+  }
+
+  Widget _statChip(ThemeData theme, String label, String value) {
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 2.h, horizontal: 3.w),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: theme.dividerColor),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(label, style: theme.textTheme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOperationCard(ThemeData theme, Map<String, dynamic> op) {
+    final id = op['id'] as String?;
+    final name = op['operation_name'] as String? ?? 'Operation';
+    final status = op['status'] as String? ?? 'pending';
+    final progress = (op['progress_percentage'] as num?)?.toDouble() ?? 0.0;
+    final total = op['total_items'] as int? ?? 0;
+    final processed = op['processed_items'] as int? ?? 0;
+
+    return Card(
+      margin: EdgeInsets.only(bottom: 2.h),
+      child: ListTile(
+        title: Text(name),
+        subtitle: Text(
+          '$status • $processed / $total (${progress.toStringAsFixed(0)}%)',
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (status == 'pending')
+              TextButton(
+                onPressed: id == null ? null : () => _execute(id),
+                child: const Text('Execute'),
+              ),
+            if (status == 'completed' && (op['rollback_enabled'] == true))
+              TextButton(
+                onPressed: id == null ? null : () => _rollback(id),
+                child: const Text('Rollback'),
+              ),
+            IconButton(
+              icon: const Icon(Icons.info_outline),
+              onPressed: id == null ? null : () => _loadDetail(id),
+            ),
+          ],
+        ),
+        onTap: id == null ? null : () => _loadDetail(id),
+      ),
+    );
+  }
+
+  Widget _buildDetailPanel(ThemeData theme) {
+    final op = _selectedDetail!['operation'] as Map<String, dynamic>?;
+    final items = _selectedDetail!['items'] as List<dynamic>? ?? [];
+    final logs = _selectedDetail!['logs'] as List<dynamic>? ?? [];
+    if (op == null) return const SizedBox();
+
+    final id = op['id'] as String?;
+    final status = op['status'] as String? ?? '';
+
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(4.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Details',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => setState(() => _selectedDetail = null),
+                ),
+              ],
+            ),
+            Text('Status: $status'),
+            Text('Items: ${items.length}'),
+            Text('Logs: ${logs.length}'),
+            if (status == 'pending' && id != null) ...[
+              SizedBox(height: 2.h),
+              ElevatedButton(
+                onPressed: () => _execute(id),
+                child: const Text('Execute operation'),
+              ),
+            ],
+            if (status == 'completed' &&
+                (op['rollback_enabled'] == true) &&
+                id != null) ...[
+              SizedBox(height: 2.h),
+              OutlinedButton(
+                onPressed: () => _rollback(id),
+                child: const Text('Rollback'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _CreateOperationDialog extends StatefulWidget {
@@ -278,136 +410,6 @@ class _CreateOperationDialogState extends State<_CreateOperationDialog> {
           child: const Text('Create'),
         ),
       ],
-    );
-  }
-
-  Widget _buildStats(ThemeData theme) {
-    return Row(
-      children: [
-        _statChip(theme, 'Total', _stats['total']?.toString() ?? '0'),
-        SizedBox(width: 2.w),
-        _statChip(theme, 'Completed', _stats['completed']?.toString() ?? '0'),
-        SizedBox(width: 2.w),
-        _statChip(theme, 'Processing', _stats['processing']?.toString() ?? '0'),
-        SizedBox(width: 2.w),
-        _statChip(theme, 'Failed', _stats['failed']?.toString() ?? '0'),
-      ],
-    );
-  }
-
-  Widget _statChip(ThemeData theme, String label, String value) {
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 2.h, horizontal: 3.w),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: theme.dividerColor),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(label, style: theme.textTheme.bodySmall),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOperationCard(ThemeData theme, Map<String, dynamic> op) {
-    final id = op['id'] as String?;
-    final name = op['operation_name'] as String? ?? 'Operation';
-    final status = op['status'] as String? ?? 'pending';
-    final progress = (op['progress_percentage'] as num?)?.toDouble() ?? 0.0;
-    final total = op['total_items'] as int? ?? 0;
-    final processed = op['processed_items'] as int? ?? 0;
-
-    return Card(
-      margin: EdgeInsets.only(bottom: 2.h),
-      child: ListTile(
-        title: Text(name),
-        subtitle: Text(
-          '$status • $processed / $total (${progress.toStringAsFixed(0)}%)',
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (status == 'pending')
-              TextButton(
-                onPressed: () => _execute(id!),
-                child: const Text('Execute'),
-              ),
-            if (status == 'completed' && (op['rollback_enabled'] == true))
-              TextButton(
-                onPressed: () => _rollback(id!),
-                child: const Text('Rollback'),
-              ),
-            IconButton(
-              icon: const Icon(Icons.info_outline),
-              onPressed: () => _loadDetail(id!),
-            ),
-          ],
-        ),
-        onTap: () => _loadDetail(id!),
-      ),
-    );
-  }
-
-  Widget _buildDetailPanel(ThemeData theme) {
-    final op = _selectedDetail!['operation'] as Map<String, dynamic>?;
-    final items = _selectedDetail!['items'] as List<dynamic>? ?? [];
-    final logs = _selectedDetail!['logs'] as List<dynamic>? ?? [];
-    if (op == null) return const SizedBox();
-
-    final id = op['id'] as String?;
-    final status = op['status'] as String? ?? '';
-
-    return Card(
-      child: Padding(
-        padding: EdgeInsets.all(4.w),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Details',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => setState(() => _selectedDetail = null),
-                ),
-              ],
-            ),
-            Text('Status: $status'),
-            Text('Items: ${items.length}'),
-            Text('Logs: ${logs.length}'),
-            if (status == 'pending') ...[
-              SizedBox(height: 2.h),
-              ElevatedButton(
-                onPressed: () => _execute(id!),
-                child: const Text('Execute operation'),
-              ),
-            ],
-            if (status == 'completed' && (op['rollback_enabled'] == true)) ...[
-              SizedBox(height: 2.h),
-              OutlinedButton(
-                onPressed: () => _rollback(id!),
-                child: const Text('Rollback'),
-              ),
-            ],
-          ],
-        ),
-      ),
     );
   }
 }

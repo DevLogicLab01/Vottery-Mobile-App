@@ -1,11 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../constants/vottery_ads_constants.dart';
 import '../../core/app_export.dart';
+import '../../routes/app_routes.dart';
 import '../../services/advertiser_analytics_service.dart';
 import '../../services/auth_service.dart';
-import '../../services/brand_partnership_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/enhanced_empty_state_widget.dart';
 import '../../widgets/error_boundary_wrapper.dart';
@@ -27,10 +30,10 @@ class _AdvertiserAnalyticsDashboardState
     extends State<AdvertiserAnalyticsDashboard> {
   final AdvertiserAnalyticsService _analyticsService =
       AdvertiserAnalyticsService.instance;
-  final BrandPartnershipService _partnershipService =
-      BrandPartnershipService.instance;
 
   bool _isLoading = true;
+  String _timeRange = '30d';
+  Timer? _refreshTimer;
   String? _selectedCampaignId;
   List<Map<String, dynamic>> _campaigns = [];
   Map<String, dynamic> _analytics = {};
@@ -45,6 +48,33 @@ class _AdvertiserAnalyticsDashboardState
     _loadCampaigns();
   }
 
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  void _syncRefreshTimer() {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+    if (_campaigns.isEmpty || _selectedCampaignId == null) return;
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!mounted) return;
+      final id = _selectedCampaignId;
+      if (id == null) return;
+      _loadAnalytics(id, silent: true);
+    });
+  }
+
+  void _onTimeRangeChanged(String value) {
+    if (_timeRange == value) return;
+    setState(() => _timeRange = value);
+    final id = _selectedCampaignId;
+    if (id != null) {
+      _loadAnalytics(id);
+    }
+  }
+
   Future<void> _loadCampaigns() async {
     setState(() => _isLoading = true);
 
@@ -54,10 +84,13 @@ class _AdvertiserAnalyticsDashboardState
         advertiserId: advertiserId,
       );
 
+      if (!mounted) return;
       setState(() {
         _campaigns = campaigns;
         if (_campaigns.isNotEmpty) {
-          _selectedCampaignId = _campaigns.first['id'] as String?;
+          _selectedCampaignId = _campaigns.first['id']?.toString();
+        } else {
+          _selectedCampaignId = null;
         }
       });
 
@@ -67,35 +100,41 @@ class _AdvertiserAnalyticsDashboardState
     } catch (e) {
       debugPrint('Load campaigns error: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      _syncRefreshTimer();
     }
   }
 
-  Future<void> _loadAnalytics(String campaignId) async {
+  Future<void> _loadAnalytics(String campaignId, {bool silent = false}) async {
     try {
       final advertiserId = AuthService.instance.currentUser?.id ?? '';
       final results = await Future.wait([
         _analyticsService.getVotteryAdsCampaignPerformance(
           advertiserId: advertiserId,
-          timeRange: '30d',
+          timeRange: _timeRange,
         ),
         _analyticsService.getVotteryReachByZone(
           advertiserId: advertiserId,
-          timeRange: '30d',
+          timeRange: _timeRange,
         ),
         _analyticsService.getVotteryReachByCountry(
           advertiserId: advertiserId,
-          timeRange: '30d',
+          timeRange: _timeRange,
         ),
       ]);
 
+      if (!mounted) return;
       setState(() {
-        _analytics = results[0];
-        _zoneReach = results[1] as Map<String, int>;
-        _countryReach = results[2] as Map<String, int>;
+        _analytics = results[0] as Map<String, dynamic>;
+        _zoneReach = Map<String, int>.from(results[1] as Map<String, int>);
+        _countryReach = Map<String, int>.from(results[2] as Map<String, int>);
       });
     } catch (e) {
-      debugPrint('Load analytics error: $e');
+      if (!silent) {
+        debugPrint('Load analytics error: $e');
+      }
     }
   }
 
@@ -121,6 +160,38 @@ class _AdvertiserAnalyticsDashboardState
           title: 'Advertiser Analytics',
           actions: [
             IconButton(
+              tooltip: 'Campaign management',
+              icon: Icon(Icons.dashboard_outlined, size: 6.w),
+              onPressed: () => Navigator.pushNamed(
+                context,
+                AppRoutes.campaignManagementDashboardWebCanonical,
+              ),
+            ),
+            IconButton(
+              tooltip: 'Vottery Ads Studio',
+              icon: Icon(Icons.campaign_outlined, size: 6.w),
+              onPressed: () => Navigator.pushNamed(
+                context,
+                VotteryAdsConstants.votteryAdsStudioRoute,
+              ),
+            ),
+            IconButton(
+              tooltip: 'Participatory Ads Studio',
+              icon: Icon(Icons.how_to_vote_outlined, size: 6.w),
+              onPressed: () => Navigator.pushNamed(
+                context,
+                AppRoutes.participatoryAdsStudioWebCanonical,
+              ),
+            ),
+            IconButton(
+              tooltip: 'Template gallery',
+              icon: Icon(Icons.collections_bookmark_outlined, size: 6.w),
+              onPressed: () => Navigator.pushNamed(
+                context,
+                AppRoutes.campaignTemplateGalleryWebCanonical,
+              ),
+            ),
+            IconButton(
               icon: CustomIconWidget(
                 iconName: 'refresh',
                 size: 6.w,
@@ -129,6 +200,8 @@ class _AdvertiserAnalyticsDashboardState
               onPressed: () {
                 if (_selectedCampaignId != null) {
                   _loadAnalytics(_selectedCampaignId!);
+                } else {
+                  _loadCampaigns();
                 }
               },
             ),
@@ -153,6 +226,8 @@ class _AdvertiserAnalyticsDashboardState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      _buildTimeRangeSelector(),
+                      SizedBox(height: 2.h),
                       _buildCampaignSelector(),
                       SizedBox(height: 3.h),
                       _buildPerformanceMetrics(),
@@ -170,6 +245,48 @@ class _AdvertiserAnalyticsDashboardState
                 ),
               ),
       ),
+    );
+  }
+
+  Widget _buildTimeRangeSelector() {
+    final options = <MapEntry<String, String>>[
+      const MapEntry('24h', '24 Hours'),
+      const MapEntry('7d', '7 Days'),
+      const MapEntry('30d', '30 Days'),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Time range',
+          style: GoogleFonts.inter(
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimaryLight,
+          ),
+        ),
+        SizedBox(height: 1.h),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options.map((e) {
+            final selected = _timeRange == e.key;
+            return ChoiceChip(
+              label: Text(e.value),
+              selected: selected,
+              onSelected: (_) => _onTimeRangeChanged(e.key),
+            );
+          }).toList(),
+        ),
+        SizedBox(height: 0.5.h),
+        Text(
+          'Metrics refresh every 30 seconds while this screen is open.',
+          style: GoogleFonts.inter(
+            fontSize: 10.sp,
+            color: AppTheme.textSecondaryLight,
+          ),
+        ),
+      ],
     );
   }
 
@@ -248,10 +365,16 @@ class _AdvertiserAnalyticsDashboardState
               ),
             ),
             items: _campaigns.map((campaign) {
+              final id = campaign['id']?.toString();
+              if (id == null) return null;
+              final title = (campaign['name'] ??
+                      campaign['campaign_name'] ??
+                      'Unnamed Campaign')
+                  .toString();
               return DropdownMenuItem<String>(
-                value: campaign['id'] as String,
+                value: id,
                 child: Text(
-                  campaign['campaign_name'] ?? 'Unnamed Campaign',
+                  title,
                   style: GoogleFonts.inter(
                     fontSize: 11.sp,
                     color: AppTheme.textPrimaryLight,
@@ -259,11 +382,12 @@ class _AdvertiserAnalyticsDashboardState
                   overflow: TextOverflow.ellipsis,
                 ),
               );
-            }).toList(),
+            }).whereType<DropdownMenuItem<String>>().toList(),
             onChanged: (value) {
               if (value != null) {
                 setState(() => _selectedCampaignId = value);
                 _loadAnalytics(value);
+                _syncRefreshTimer();
               }
             },
           ),

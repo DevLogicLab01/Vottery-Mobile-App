@@ -15,8 +15,8 @@ import './widgets/decision_making_interface_widget.dart';
 import './widgets/incident_resolution_widget.dart';
 
 /// Unified AI Performance Dashboard
-/// Integrates Claude Sonnet 4.5, Perplexity Sonar Reasoning Pro, and OpenAI GPT-4o
-/// with side-by-side comparison, confidence scoring, 1-click incident resolution,
+/// Integrates Gemini and Claude with side-by-side comparison, confidence scoring,
+/// 1-click incident resolution,
 /// automated anomaly correlation, decision-making interface, AI model health monitoring,
 /// cost efficiency tracking, and response time analytics
 class UnifiedAIPerformanceDashboard extends StatefulWidget {
@@ -85,17 +85,14 @@ class _UnifiedAIPerformanceDashboardState
     try {
       // Return placeholder health data since getServiceHealth methods don't exist
       final claudeHealth = <String, dynamic>{'health_score': 0.85};
-      final perplexityHealth = <String, dynamic>{'health_score': 0.90};
-      final openaiHealth = <String, dynamic>{'health_score': 0.88};
+      final geminiHealth = <String, dynamic>{'health_score': 0.90};
 
       return {
         'claude': claudeHealth,
-        'perplexity': perplexityHealth,
-        'openai': openaiHealth,
+        'gemini': geminiHealth,
         'overall_health': _calculateOverallHealth([
           claudeHealth,
-          perplexityHealth,
-          openaiHealth,
+          geminiHealth,
         ]),
       };
     } catch (e) {
@@ -389,12 +386,8 @@ class _UnifiedAIPerformanceDashboardState
         'ms': _modelResponseMs(_dashboardData['claude']),
       },
       {
-        'name': 'Perplexity',
-        'ms': _modelResponseMs(_dashboardData['perplexity']),
-      },
-      {
-        'name': 'OpenAI',
-        'ms': _modelResponseMs(_dashboardData['openai']),
+        'name': 'Gemini',
+        'ms': _modelResponseMs(_dashboardData['gemini']),
       },
     ];
     final avgMs = modelRows.fold<int>(0, (sum, row) => sum + (row['ms'] as int)) ~/

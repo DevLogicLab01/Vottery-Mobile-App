@@ -31,6 +31,7 @@ void main() {
       AppRoutes.securityMonitoringDashboardWebCanonical,
       AppRoutes.unifiedBusinessIntelligenceHubWebCanonical,
       AppRoutes.livePlatformMonitoringDashboardWebCanonical,
+      AppRoutes.unifiedRevenueIntelligenceDashboardWebCanonical,
     ];
 
     for (final route in shouldBeNative) {

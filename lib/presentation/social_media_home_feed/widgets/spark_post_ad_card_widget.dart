@@ -62,12 +62,13 @@ class _SparkPostAdCardWidgetState extends State<SparkPostAdCardWidget> {
       }
 
       if (social != null) {
-        final profile = (social['creator'] as Map<String, dynamic>?) ??
-            (social['author'] as Map<String, dynamic>?) ??
+        final row = social;
+        final profile = (row['creator'] as Map<String, dynamic>?) ??
+            (row['author'] as Map<String, dynamic>?) ??
             {};
         final fullName =
             (profile['full_name'] ?? profile['name'] ?? 'User').toString();
-        final mediaUrls = (social['media_urls'] as List?)
+        final mediaUrls = (row['media_urls'] as List?)
                 ?.map((e) => e.toString())
                 .toList() ??
             [];
@@ -75,15 +76,15 @@ class _SparkPostAdCardWidgetState extends State<SparkPostAdCardWidget> {
 
         setState(() {
           _post = {
-            'id': social['id'],
-            'content': social['content'] ?? '',
+            'id': row['id'],
+            'content': row['content'] ?? '',
             'image_url': (imageUrl != null && imageUrl.isNotEmpty)
                 ? imageUrl
                 : null,
-            'like_count': social['like_count'] ?? 0,
-            'comment_count': social['comment_count'] ?? 0,
-            'share_count': social['share_count'] ?? 0,
-            'created_at': social['created_at'],
+            'like_count': row['like_count'] ?? 0,
+            'comment_count': row['comment_count'] ?? 0,
+            'share_count': row['share_count'] ?? 0,
+            'created_at': row['created_at'],
             'author': {
               'full_name': fullName,
               'avatar_url': profile['avatar_url'] ?? profile['avatar'] ?? '',

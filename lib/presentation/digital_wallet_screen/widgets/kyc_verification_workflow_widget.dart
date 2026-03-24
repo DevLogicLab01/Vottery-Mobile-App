@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../config/batch1_route_allowlist.dart';
+import '../../../routes/app_routes.dart';
 import '../../../theme/app_theme.dart';
 
 class KYCVerificationWorkflowWidget extends StatefulWidget {
@@ -302,6 +304,9 @@ class _KYCVerificationWorkflowWidgetState
   }
 
   Widget _buildStartVerificationCard() {
+    if (!Batch1RouteAllowlist.isAllowed(AppRoutes.creatorVerificationKycScreen)) {
+      return const SizedBox.shrink();
+    }
     return Column(
       children: [
         Text(
@@ -319,7 +324,7 @@ class _KYCVerificationWorkflowWidgetState
             onPressed: () {
               Navigator.pushNamed(
                 context,
-                '/creator-verification-kyc-screen',
+                AppRoutes.creatorVerificationKycScreen,
               ).then((_) => widget.onVerificationUpdate());
             },
             child: Text('Start Verification'),

@@ -55,6 +55,9 @@ class AppRoutes {
   static const String vpUniversalCurrencyCenterWebCanonical =
       '/vottery-points-vp-universal-currency-center';
   static const String vpEconomyHealthMonitor = '/vpEconomyHealthMonitor';
+  /// Web parity: `/vp-economy-health-monitor-dashboard` (same admin VP tooling as Web)
+  static const String vpEconomyHealthMonitorWebCanonical =
+      '/vp-economy-health-monitor-dashboard';
   static const String vpEconomyManagementDashboard =
       '/vpEconomyManagementDashboard';
   static const String completeGamifiedLotteryDrawingSystem =
@@ -94,7 +97,6 @@ class AppRoutes {
   /// Web parity: `/vp-redemption-marketplace-charity-hub`
   static const String vpRedemptionMarketplaceCharityHubWebCanonical =
       '/vp-redemption-marketplace-charity-hub';
-  static const String vpCryptoConversion = '/vpCryptoConversion';
   static const String unifiedPaymentOrchestrationHub =
       '/unifiedPaymentOrchestrationHub';
   /// Web parity: `/unified-payment-orchestration-hub`
@@ -109,6 +111,9 @@ class AppRoutes {
       '/multi-currency-settlement-dashboard';
   static const String enhancedMultiCurrencySettlementDashboard =
       '/enhancedMultiCurrencySettlementDashboard';
+  /// Web parity: `/enhanced-multi-currency-settlement-dashboard` (Web redirects to multi-currency hub)
+  static const String enhancedMultiCurrencySettlementDashboardWebCanonical =
+      '/enhanced-multi-currency-settlement-dashboard';
   static const String stripeConnectPayoutManagementHub =
       '/stripeConnectPayoutManagementHub';
   static const String settlementReconciliationHub =
@@ -125,6 +130,9 @@ class AppRoutes {
   /// Web parity: `/enhanced-premium-subscription-center`
   static const String premiumSubscriptionCenterWebCanonical =
       '/enhanced-premium-subscription-center';
+  /// Web parity: `/user-subscription-dashboard` (native: [PremiumSubscriptionCenter])
+  static const String userSubscriptionDashboardWebCanonical =
+      '/user-subscription-dashboard';
   static const String walletAuthenticationScreen =
       '/walletAuthenticationScreen';
 
@@ -147,6 +155,13 @@ class AppRoutes {
       '/creatorVerificationKycScreen';
   static const String creatorOnboardingWizard = '/creatorOnboardingWizard';
   static const String creatorSupportHub = '/creatorSupportHub';
+  /// Tabs: Help Center, Support Inbox, Report Problem, Terms & Policies
+  static const String helpSupportCenter = '/helpSupportCenter';
+  /// Native support tickets + FAQ (Web path alias below)
+  static const String supportTicketingSystem = '/supportTicketingSystem';
+  /// Web parity: `/centralized-support-ticketing-system`
+  static const String centralizedSupportTicketingSystemWebCanonical =
+      '/centralized-support-ticketing-system';
   static const String creatorQaManagementCenter = '/creatorQaManagementCenter';
   static const String creatorFeedbackLoop = '/creatorFeedbackLoop';
   static const String creatorGrowthAnalyticsDashboard =
@@ -190,6 +205,9 @@ class AppRoutes {
   /// Web parity: `/advanced-search-discovery-intelligence-hub`
   static const String advancedUnifiedSearchScreenWebCanonical =
       '/advanced-search-discovery-intelligence-hub';
+  /// Alias for Web path (same value as [advancedUnifiedSearchScreenWebCanonical]).
+  static const String advancedSearchDiscoveryIntelligenceHubWebCanonical =
+      advancedUnifiedSearchScreenWebCanonical;
   static const String contentQualityScoringClaude =
       '/contentQualityScoringClaude';
   static const String contentQualityScoringClaudeWeb =
@@ -212,19 +230,33 @@ class AppRoutes {
   // Advertising
   static const String campaignManagementDashboard =
       '/campaignManagementDashboard';
+  /// Web parity: `/campaign-management-dashboard` (deep links / universal links)
+  static const String campaignManagementDashboardWebCanonical =
+      '/campaign-management-dashboard';
+  /// Web parity: `/sponsored-elections-schema-cpe-management-hub` (same screen as campaign management)
+  static const String sponsoredElectionsSchemaCpeManagementHubWebCanonical =
+      '/sponsored-elections-schema-cpe-management-hub';
   static const String campaignOptimizationDashboard =
       '/campaignOptimizationDashboard';
   static const String campaignTemplateGallery = '/campaignTemplateGallery';
+  /// Web parity: `/campaign-template-gallery`
+  static const String campaignTemplateGalleryWebCanonical =
+      '/campaign-template-gallery';
   static const String participatoryAdsStudio = '/participatoryAdsStudio';
   /// Web parity: `/participatory-ads-studio`
   static const String participatoryAdsStudioWebCanonical =
       '/participatory-ads-studio';
-  /// Web parity: `/vottery-ads-studio` (redirect target on Web = ads studio)
+  /// Web parity: `/vottery-ads-studio` — same value as `VotteryAdsConstants.votteryAdsStudioWebRoute`.
   static const String votteryAdsStudioWebCanonical = '/vottery-ads-studio';
+  /// Flutter `Navigator.pushNamed` path for [VotteryAdsStudio] (matches [VotteryAdsConstants.votteryAdsStudioRoute]).
+  static const String votteryAdsStudio = '/votteryAdsStudio';
   static const String participatoryAdsGamificationCenter =
       '/participatoryAdsGamificationCenter';
   static const String advertiserAnalyticsDashboard =
       '/advertiserAnalyticsDashboard';
+  /// Web parity: `/advertiser-analytics-roi-dashboard`
+  static const String advertiserAnalyticsDashboardWebCanonical =
+      '/advertiser-analytics-roi-dashboard';
   static const String advertiserPortalScreen = '/advertiserPortalScreen';
   static const String realTimeAdvertiserRoiDashboard =
       '/realTimeAdvertiserRoiDashboard';
@@ -237,6 +269,9 @@ class AppRoutes {
   static const String brandOnboardingWizard = '/brandOnboardingWizard';
   static const String dynamicCpePricingEngineDashboard =
       '/dynamicCpePricingEngineDashboard';
+  /// Web parity: `/dynamic-cpe-pricing-engine-dashboard`
+  static const String dynamicCpePricingEngineDashboardWebCanonical =
+      '/dynamic-cpe-pricing-engine-dashboard';
   static const String googleAdSenseLiveIntegrationHub =
       '/googleAdSenseLiveIntegrationHub';
   static const String googleAdSenseMonetizationHub =
@@ -263,6 +298,12 @@ class AppRoutes {
   /// Web parity: country revenue share management, regional analytics, dispute, multi-currency
   static const String countryRevenueShareAdmin = '/country-revenue-share-admin';
   static const String regionalRevenueAnalyticsAdmin = '/regional-revenue-analytics-admin';
+  /// Web parity: `/country-revenue-share-management-center` (`COUNTRY_REVENUE_SHARE_MANAGEMENT_CENTER_ROUTE`)
+  static const String countryRevenueShareManagementCenterWebCanonical =
+      '/country-revenue-share-management-center';
+  /// Web parity: `/regional-revenue-analytics-dashboard` (`REGIONAL_REVENUE_ANALYTICS_DASHBOARD_ROUTE`)
+  static const String regionalRevenueAnalyticsDashboardWebCanonical =
+      '/regional-revenue-analytics-dashboard';
   static const String claudeDisputeResolutionAdmin = '/claude-dispute-resolution-admin';
   static const String multiCurrencySettlementAdmin = '/multi-currency-settlement-admin';
 
@@ -318,6 +359,11 @@ class AppRoutes {
   static const String enhancedAdminControlPanel = '/enhancedAdminControlPanel';
   static const String enhancedMobileAdminDashboard =
       '/enhancedMobileAdminDashboard';
+  static const String mobileOperationsCommandConsole =
+      '/mobileOperationsCommandConsole';
+  /// Web parity: `/mobile-operations-command-console`
+  static const String mobileOperationsCommandConsoleWebCanonical =
+      '/mobile-operations-command-console';
   static const String multiRoleAdminControlCenter =
       '/multiRoleAdminControlCenter';
 
@@ -338,7 +384,7 @@ class AppRoutes {
   static const String comprehensiveSettingsHub = '/comprehensiveSettingsHub';
   static const String enhancedSettingsAccountDashboard =
       '/enhancedSettingsAccountDashboard';
-  /// Web parity: `/settings-account-dashboard`
+  /// Web: `SETTINGS_ACCOUNT_DASHBOARD_ROUTE` in `navigationHubRoutes.js`
   static const String settingsAccountDashboardWebCanonical =
       '/settings-account-dashboard';
   static const String enhancedPrivacySettingsHub =
@@ -369,6 +415,12 @@ class AppRoutes {
       '/interactiveOnboardingToursHub';
   static const String aiGuidedInteractiveTutorial =
       '/aiGuidedInteractiveTutorial';
+  /// Web parity: `/ai-guided-interactive-tutorial-system`
+  static const String aiGuidedInteractiveTutorialSystemWebCanonical =
+      '/ai-guided-interactive-tutorial-system';
+  /// Web parity: `/interactive-onboarding-wizard`
+  static const String interactiveOnboardingWizardWebCanonical =
+      '/interactive-onboarding-wizard';
   static const String topicPreferenceCollectionHub =
       '/topicPreferenceCollectionHub';
   /// Web parity: `/interactive-topic-preference-collection-hub`
@@ -378,7 +430,7 @@ class AppRoutes {
 
   // Notifications
   static const String notificationCenterHub = '/notificationCenterHub';
-  /// Web parity: `/notification-center-hub`
+  /// Web parity: `NOTIFICATION_CENTER_HUB_ROUTE` in `navigationHubRoutes.js`
   static const String notificationCenterHubWebCanonical =
       '/notification-center-hub';
   static const String aiNotificationCenter = '/aiNotificationCenter';
@@ -396,7 +448,7 @@ class AppRoutes {
   static const String socialConnectionsManager = '/socialConnectionsManager';
   static const String friendRequestsHub = '/friendRequestsHub';
   static const String friendsManagementHub = '/friendsManagementHub';
-  /// Web parity: `/friends-management-hub`
+  /// Web: `FRIENDS_MANAGEMENT_HUB_ROUTE` in `navigationHubRoutes.js`
   static const String friendsManagementHubWebCanonical =
       '/friends-management-hub';
   static const String socialActivityTimeline = '/socialActivityTimeline';
@@ -416,7 +468,7 @@ class AppRoutes {
   /// Web parity: `/user-analytics-dashboard`
   static const String userAnalyticsDashboardWeb = '/user-analytics-dashboard';
   static const String directMessagingScreen = '/directMessagingScreen';
-  /// Web parity: `/direct-messaging-center`
+  /// Web: `DIRECT_MESSAGING_CENTER_ROUTE` in `navigationHubRoutes.js`
   static const String directMessagingScreenWebCanonical =
       '/direct-messaging-center';
   static const String directMessagingSystem = '/directMessagingSystem';
@@ -424,7 +476,7 @@ class AppRoutes {
       '/enhancedDirectMessagingScreen';
   static const String groupsHub = '/groupsHub';
   static const String enhancedGroupsHub = '/enhancedGroupsHub';
-  /// Web parity: `/enhanced-groups-discovery-management-hub`
+  /// Web: `ENHANCED_GROUPS_DISCOVERY_MANAGEMENT_HUB_ROUTE` in `navigationHubRoutes.js`
   static const String enhancedGroupsHubWebCanonical =
       '/enhanced-groups-discovery-management-hub';
   static const String momentsStoriesHub = '/momentsStoriesHub';
@@ -439,10 +491,16 @@ class AppRoutes {
       '/joltsCreatorGamificationHub';
   static const String enhancedSocialMediaHomeFeed =
       '/enhancedSocialMediaHomeFeed';
+  /// Web parity: `/enhanced-home-feed-dashboard`
+  static const String enhancedHomeFeedDashboardWebCanonical =
+      '/enhanced-home-feed-dashboard';
   static const String communityElectionsHub = '/communityElectionsHub';
   /// Web parity: `/community-elections-hub`
   static const String communityElectionsHubWebCanonical =
       '/community-elections-hub';
+  /// Web parity: `/topic-based-community-elections-hub`
+  static const String topicBasedCommunityElectionsHubWebCanonical =
+      '/topic-based-community-elections-hub';
   static const String communityEngagementDashboard =
       '/communityEngagementDashboard';
   /// Web parity: `/community-engagement-dashboard`
@@ -629,6 +687,48 @@ class AppRoutes {
   static const String contentModerationControlCenterWebCanonical =
       '/content-moderation-control-center';
   static const String bulkManagementScreen = '/bulk-management-screen';
+
+  /// Enterprise hub (native); Web: `enterprise-operations-center` page when routed.
+  static const String enterpriseOperationsCenter = '/enterprise-operations-center';
+  /// Web parity: `/unified-admin-activity-log`
+  static const String unifiedAdminActivityLogWebCanonical =
+      '/unified-admin-activity-log';
+  /// Web parity: `/admin-platform-logs-center`
+  static const String adminPlatformLogsCenterWebCanonical =
+      '/admin-platform-logs-center';
+  /// Web parity: `/white-label-election-platform`
+  static const String whiteLabelElectionPlatformWebCanonical =
+      '/white-label-election-platform';
+  /// Web parity: `/enterprise-sso-integration-hub`
+  static const String enterpriseSsoIntegrationWebCanonical =
+      '/enterprise-sso-integration-hub';
+  /// Web parity: `/bulk-election-creation-hub`
+  static const String bulkElectionCreationHubWebCanonical =
+      '/bulk-election-creation-hub';
+  /// Web parity: `/enterprise-analytics-hub`
+  static const String enterpriseAnalyticsHubWebCanonical =
+      '/enterprise-analytics-hub';
+  /// Web parity: `/enterprise-api-access-center`
+  static const String enterpriseApiAccessCenterWebCanonical =
+      '/enterprise-api-access-center';
+  /// Web parity: `/custom-branding-options-center`
+  static const String customBrandingOptionsCenterWebCanonical =
+      '/custom-branding-options-center';
+  /// Web parity: `/sla-backed-infrastructure-center`
+  static const String slaBackedInfrastructureCenterWebCanonical =
+      '/sla-backed-infrastructure-center';
+  /// Web parity: `/enterprise-compliance-reports-center`
+  static const String enterpriseComplianceReportsCenterWebCanonical =
+      '/enterprise-compliance-reports-center';
+  /// Web parity: `/volume-pricing-licensing-center`
+  static const String volumePricingLicensingCenterWebCanonical =
+      '/volume-pricing-licensing-center';
+  /// Web parity: `/dedicated-account-manager-center`
+  static const String dedicatedAccountManagerCenterWebCanonical =
+      '/dedicated-account-manager-center';
+  /// Web parity: `/whatsapp-notifications-center`
+  static const String whatsappNotificationsCenterWebCanonical =
+      '/whatsapp-notifications-center';
   static const String aiContentModerationDashboard =
       '/aiContentModerationDashboard';
   static const String contentRemovedAppeal = '/contentRemovedAppeal';
@@ -712,11 +812,11 @@ class AppRoutes {
       '/incidentTestingSuiteDashboard';
   static const String enhancedIncidentCorrelationEngine =
       '/enhancedIncidentCorrelationEngine';
+  /// Web parity: `/enhanced-incident-response-analytics` (legacy `/incident-response-analytics` redirects on Web)
   static const String incidentResponseAnalytics =
-      '/incident-response-analytics';
-  /// Web parity: `/enhanced-incident-response-analytics`
-  static const String enhancedIncidentResponseAnalyticsWebCanonical =
       '/enhanced-incident-response-analytics';
+  static const String enhancedIncidentResponseAnalyticsWebCanonical =
+      incidentResponseAnalytics;
   /// Web parity: `/advanced-monitoring-hub-with-automated-incident-response`
   static const String advancedMonitoringWithAutomatedIncidentResponseWebCanonical =
       '/advanced-monitoring-hub-with-automated-incident-response';
@@ -839,6 +939,8 @@ class AppRoutes {
   static const String statusPageScreen = '/statusPageScreen';
   /// Web parity: `/public-status-page`
   static const String statusPageScreenWebCanonical = '/public-status-page';
+  /// Web parity: `/status` (same feature gate + screen as [statusPageScreenWebCanonical])
+  static const String statusRouteWebCanonical = '/status';
   static const String automatedThresholdBasedAlertingHub =
       '/automatedThresholdBasedAlertingHub';
   static const String unifiedAlertManagementCenter =
@@ -880,12 +982,18 @@ class AppRoutes {
   static const String aiRecommendationsCenter = '/aiRecommendationsCenter';
   static const String aiPoweredPredictiveAnalyticsEngine =
       '/aiPoweredPredictiveAnalyticsEngine';
+  /// Web parity: `/ai-powered-predictive-analytics-engine`
+  static const String aiPoweredPredictiveAnalyticsEngineWebCanonical =
+      '/ai-powered-predictive-analytics-engine';
   static const String aiPredictiveModelingScreen =
       '/aiPredictiveModelingScreen';
   static const String aiVoterSentimentDashboard = '/aiVoterSentimentDashboard';
   static const String aiAnalyticsHub = '/aiAnalyticsHub';
   static const String unifiedAiPerformanceDashboard =
       '/unifiedAiPerformanceDashboard';
+  /// Web parity: `/unified-ai-performance-dashboard`
+  static const String unifiedAiPerformanceDashboardWebCanonical =
+      '/unified-ai-performance-dashboard';
   static const String contextAwareRecommendationsOverlay =
       '/contextAwareRecommendationsOverlay';
   // Gemini Recommendation & Sync (replaces Shaped AI); Web path: /shaped-ai-sync-docker-automation-hub
@@ -911,6 +1019,9 @@ class AppRoutes {
       '/revenueSplitAdminControlCenter';
   static const String unifiedRevenueIntelligenceDashboard =
       '/unifiedRevenueIntelligenceDashboard';
+  /// Web parity: `/unified-revenue-intelligence-dashboard` (`UNIFIED_REVENUE_INTELLIGENCE_DASHBOARD_ROUTE`)
+  static const String unifiedRevenueIntelligenceDashboardWebCanonical =
+      '/unified-revenue-intelligence-dashboard';
   static const String googleAnalyticsIntegrationDashboard =
       '/googleAnalyticsIntegrationDashboard';
   static const String advancedGoogleAnalyticsTrackingHub =
@@ -946,10 +1057,19 @@ class AppRoutes {
       '/crossDomainIntelligenceHub';
   static const String predictionAnalyticsDashboard =
       '/predictionAnalyticsDashboard';
+  /// Web parity: `/prediction-analytics-dashboard`
+  static const String predictionAnalyticsDashboardWebCanonical =
+      '/prediction-analytics-dashboard';
   static const String predictionPoolNotificationsHub =
       '/predictionPoolNotificationsHub';
+  /// Web parity: `/prediction-pool-notifications-hub`
+  static const String predictionPoolNotificationsHubWebCanonical =
+      '/prediction-pool-notifications-hub';
   static const String dedicatedMarketResearchDashboard =
       '/dedicatedMarketResearchDashboard';
+  /// Web parity: `/dedicated-market-research-dashboard`
+  static const String dedicatedMarketResearchDashboardWebCanonical =
+      '/dedicated-market-research-dashboard';
   static const String mobileElectionInsightsAnalytics =
       '/mobileElectionInsightsAnalytics';
   /// Web parity: `/election-insights-predictive-analytics`

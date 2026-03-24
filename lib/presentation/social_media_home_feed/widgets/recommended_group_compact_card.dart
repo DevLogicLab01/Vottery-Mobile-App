@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../config/batch1_route_allowlist.dart';
 import '../../../core/app_export.dart';
 import '../../../theme/app_theme.dart' as app_theme;
 import '../../../widgets/custom_image_widget.dart';
@@ -19,6 +20,9 @@ class RecommendedGroupCompactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!Batch1RouteAllowlist.isAllowed(AppRoutes.groupsHub)) {
+      return const SizedBox.shrink();
+    }
     final name = group['name'] as String? ?? 'Group';
     final imageUrl =
         group['image_url'] as String? ??
@@ -27,7 +31,10 @@ class RecommendedGroupCompactCard extends StatelessWidget {
     final mutualMembers = group['mutual_members'] as int? ?? 0;
 
     return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, AppRoutes.groupsHub),
+      onTap: () {
+        if (!Batch1RouteAllowlist.isAllowed(AppRoutes.groupsHub)) return;
+        Navigator.pushNamed(context, AppRoutes.groupsHub);
+      },
       child: Container(
         width: double.infinity,
         constraints: BoxConstraints(minWidth: 36.w),

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import './supabase_service.dart';
 import './auth_service.dart';
+import './notification_cost_optimizer_service.dart';
 
 class UserSecurityService {
   static UserSecurityService? _instance;
@@ -300,6 +301,9 @@ class UserSecurityService {
       }
 
       if (normalizedMethod == 'sms') {
+        final smsAllowed = NotificationCostOptimizerService.instance
+            .isSmsAllowedUseCase('otp_fallback');
+        if (!smsAllowed) return false;
         await _client.auth.signInWithOtp(
           phone: recipient.trim(),
           shouldCreateUser: false,
@@ -334,6 +338,9 @@ class UserSecurityService {
       }
 
       if (normalizedMethod == 'sms') {
+        final smsAllowed = NotificationCostOptimizerService.instance
+            .isSmsAllowedUseCase('otp_fallback');
+        if (!smsAllowed) return false;
         final response = await _client.auth.verifyOTP(
           phone: recipient.trim(),
           token: code.trim(),

@@ -15,13 +15,19 @@ class PerplexityService {
   static const String apiUrl = 'https://api.perplexity.ai/chat/completions';
   static const String reasoningModel = 'sonar-reasoning';
   static const String proModel = 'sonar-pro';
+  static const bool _allowLegacyAI = bool.fromEnvironment(
+    'ALLOW_LEGACY_AI',
+    defaultValue: false,
+  );
 
   SupabaseClient get _client => SupabaseService.instance.client;
 
   final DatadogTracingService _tracing = DatadogTracingService.instance;
 
   bool get _perplexityConfigured =>
-      apiKey.isNotEmpty && apiKey != 'your-perplexity-api-key-here';
+      _allowLegacyAI &&
+      apiKey.isNotEmpty &&
+      apiKey != 'your-perplexity-api-key-here';
 
   List<Map<String, dynamic>> _asMapList(dynamic raw) {
     if (raw is! List) return [];

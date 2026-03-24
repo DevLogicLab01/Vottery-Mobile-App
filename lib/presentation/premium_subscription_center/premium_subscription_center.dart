@@ -27,6 +27,7 @@ class _PremiumSubscriptionCenterState extends State<PremiumSubscriptionCenter> {
   bool _isLoading = true;
   bool _isAnnual = false;
   Map<String, dynamic>? _currentSubscription;
+  List<Map<String, dynamic>> _planCatalog = [];
   List<Map<String, String>> _familyMembers = [
     {'email': 'alex@family.com', 'role': 'primary'},
     {'email': 'sam@family.com', 'role': 'secondary'},
@@ -55,6 +56,7 @@ class _PremiumSubscriptionCenterState extends State<PremiumSubscriptionCenter> {
 
     final subscription = await SubscriptionService.instance
         .getCurrentSubscription();
+    final catalog = await SubscriptionService.instance.getSubscriptionPlanCatalog();
     final vpBalance = await VPService.instance.getVPBalance();
     final wallet = await WalletService.instance.getWalletBalance();
     final walletTransactions =
@@ -71,6 +73,7 @@ class _PremiumSubscriptionCenterState extends State<PremiumSubscriptionCenter> {
 
     setState(() {
       _currentSubscription = subscription;
+      _planCatalog = catalog;
       if (parsedMembers.isNotEmpty) {
         _familyMembers = parsedMembers;
       }
@@ -351,21 +354,61 @@ class _PremiumSubscriptionCenterState extends State<PremiumSubscriptionCenter> {
   }
 
   Widget _buildSubscriptionTiers() {
+    final activePlans =
+        _planCatalog.where((plan) => plan['is_active'] != false).toList();
+    final selectedDuration = _isAnnual ? 'annual' : 'monthly';
+    final durationPlans = activePlans
+        .where((plan) => (plan['duration'] ?? '').toString() == selectedDuration)
+        .toList()
+      ..sort((a, b) => ((a['price'] as num?) ?? 0).compareTo((b['price'] as num?) ?? 0));
+
     return Column(
       children: [
         SizedBox(height: 3.h),
-        _buildTierCard('basic', SubscriptionService.tiers['basic']!),
-        _buildTierCard('pro', SubscriptionService.tiers['pro']!),
-        _buildTierCard('elite', SubscriptionService.tiers['elite']!),
+        ...durationPlans.map(_buildTierCardFromPlan),
       ],
     );
   }
 
+  Widget _buildTierCardFromPlan(Map<String, dynamic> plan) {
+    final planType = (plan['plan_type'] ?? 'basic').toString().toLowerCase();
+    final fallback = SubscriptionService.tiers[planType] ?? SubscriptionService.tiers['basic']!;
+    final normalized = {
+      'name': plan['plan_name'] ?? fallback['name'],
+      'vp_multiplier': fallback['vp_multiplier'],
+      'price_monthly': (plan['duration'] == 'monthly') ? plan['price'] : (plan['price'] ?? fallback['price_monthly']),
+      'price_yearly': (plan['duration'] == 'annual') ? plan['price'] : (plan['price'] ?? fallback['price_yearly']),
+      'discount_percent':
+          (plan['discount_percent'] as num?)?.toDouble() ??
+              (plan['discountPercent'] as num?)?.toDouble() ??
+              0,
+      'discount_label':
+          plan['discount_label']?.toString() ?? plan['discountLabel']?.toString(),
+      'features': (plan['features'] as List?) ?? fallback['features'],
+      'id': plan['id'],
+      'duration': plan['duration'],
+      'plan_type': planType,
+    };
+    return _buildTierCard(planType, normalized);
+  }
+
   Widget _buildTierCard(String tierId, Map<String, dynamic> tierData) {
-    final isCurrentTier = _currentSubscription?['tier'] == tierId;
+    final currentPlanId = _currentSubscription?['plan_id']?.toString();
+    final thisPlanId = tierData['id']?.toString();
+    final currentType = (_currentSubscription?['plan']?['plan_type'] ??
+            _currentSubscription?['tier'] ??
+            _currentSubscription?['plan_type'])
+        ?.toString()
+        .toLowerCase();
+    final isCurrentTier =
+        (currentPlanId != null && thisPlanId != null && currentPlanId == thisPlanId) ||
+            (currentType != null && currentType == tierId);
     final price = _isAnnual
         ? tierData['price_yearly']
         : tierData['price_monthly'];
+    final discountPercent =
+        (tierData['discount_percent'] as num?)?.toDouble() ?? 0;
+    final discountLabel = tierData['discount_label']?.toString();
 
     Color tierColor;
     switch (tierId) {
@@ -447,6 +490,20 @@ class _PremiumSubscriptionCenterState extends State<PremiumSubscriptionCenter> {
               color: AppTheme.textSecondaryLight,
             ),
           ),
+          if (_isAnnual && discountPercent > 0)
+            Padding(
+              padding: EdgeInsets.only(top: 0.6.h),
+              child: Text(
+                discountLabel?.isNotEmpty == true
+                    ? discountLabel!
+                    : 'Save ${discountPercent.toStringAsFixed(0)}%',
+                style: TextStyle(
+                  fontSize: 10.sp,
+                  color: Colors.green,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           SizedBox(height: 2.h),
           ...((tierData['features'] as List).map(
             (feature) => Padding(
@@ -478,7 +535,11 @@ class _PremiumSubscriptionCenterState extends State<PremiumSubscriptionCenter> {
             child: ElevatedButton(
               onPressed: isCurrentTier
                   ? null
-                  : () => _subscribe(tierId, _isAnnual ? 'yearly' : 'monthly'),
+                  : () => _subscribe(
+                        tierId,
+                        _isAnnual ? 'yearly' : 'monthly',
+                        planId: tierData['id']?.toString(),
+                      ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: isCurrentTier ? Colors.grey : tierColor,
                 padding: EdgeInsets.symmetric(vertical: 1.5.h),
@@ -497,11 +558,13 @@ class _PremiumSubscriptionCenterState extends State<PremiumSubscriptionCenter> {
     );
   }
 
-  Future<void> _subscribe(String tier, String billingPeriod) async {
-    final success = await SubscriptionService.instance.subscribe(
-      tier: tier,
-      billingPeriod: billingPeriod,
-    );
+  Future<void> _subscribe(String tier, String billingPeriod, {String? planId}) async {
+    final success = planId != null
+        ? await SubscriptionService.instance.subscribeToPlan(planId: planId)
+        : await SubscriptionService.instance.subscribe(
+            tier: tier,
+            billingPeriod: billingPeriod,
+          );
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(

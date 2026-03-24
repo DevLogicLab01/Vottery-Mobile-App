@@ -64,7 +64,8 @@ class WebMobileSyncValidator {
       '/participatory-ads-studio': SharedConstants.participatoryAdsStudio,
       '/community-engagement-dashboard':
           SharedConstants.communityEngagementDashboard,
-      '/incident-response-analytics': SharedConstants.incidentResponseAnalytics,
+      '/enhanced-incident-response-analytics':
+          SharedConstants.incidentResponseAnalytics,
       '/subscription-architecture': SharedConstants.subscriptionArchitecture,
       '/unified-payment-orchestration-hub':
           SharedConstants.unifiedPaymentOrchestration,

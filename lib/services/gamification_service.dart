@@ -19,6 +19,44 @@ class GamificationService {
 
   static const int maxLevel = 100;
 
+  /// Level thresholds for UI (VP widget, hub progression). Matches `_calculateLevelFromXP` math.
+  static final List<Map<String, dynamic>> levelTiers = List<Map<String, dynamic>>.unmodifiable(
+    List.generate(
+      maxLevel,
+      (i) {
+        final level = i + 1;
+        final xpRequired = (level - 1) * 100;
+        final mult = _vpMultiplierForLevel(level);
+        return {
+          'tier': level,
+          'level': level,
+          'name': titleForLevel(level),
+          'xpRequired': xpRequired,
+          'xp_required': xpRequired,
+          'vpMultiplier': mult,
+        };
+      },
+    ),
+  );
+
+  static double _vpMultiplierForLevel(int level) {
+    if (level >= maxLevel) return 5.0;
+    final growth = 1.0 + (level / maxLevel) * 4.0;
+    return double.parse(growth.toStringAsFixed(2));
+  }
+
+  /// Public titles for level badges (same as `_titleForLevel`).
+  static String titleForLevel(int level) {
+    if (level >= 90) return 'Legendary Master';
+    if (level >= 75) return 'Elite Champion';
+    if (level >= 60) return 'Diamond Leader';
+    if (level >= 45) return 'Platinum Strategist';
+    if (level >= 30) return 'Gold Advocate';
+    if (level >= 15) return 'Silver Contributor';
+    if (level >= 5) return 'Bronze Voter';
+    return 'Novice';
+  }
+
   /// Get user's current level
   Future<Map<String, dynamic>?> getUserLevel() async {
     try {
@@ -358,27 +396,10 @@ class GamificationService {
     final level = boundedLevel;
     return {
       'level': level,
-      'title': _titleForLevel(level),
+      'title': titleForLevel(level),
       'xp_required': (level - 1) * 100,
-      'vp_multiplier': _multiplierForLevel(level),
+      'vp_multiplier': _vpMultiplierForLevel(level),
     };
-  }
-
-  String _titleForLevel(int level) {
-    if (level >= 90) return 'Legendary Master';
-    if (level >= 75) return 'Elite Champion';
-    if (level >= 60) return 'Diamond Leader';
-    if (level >= 45) return 'Platinum Strategist';
-    if (level >= 30) return 'Gold Advocate';
-    if (level >= 15) return 'Silver Contributor';
-    if (level >= 5) return 'Bronze Voter';
-    return 'Novice';
-  }
-
-  double _multiplierForLevel(int level) {
-    if (level >= maxLevel) return 5.0;
-    final growth = 1.0 + (level / maxLevel) * 4.0;
-    return double.parse(growth.toStringAsFixed(2));
   }
 
   /// Calculate streak multiplier

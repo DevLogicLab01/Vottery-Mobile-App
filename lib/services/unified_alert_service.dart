@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import './notification_cost_optimizer_service.dart';
+import './integration_management_service.dart';
 
 /// Unified Alert Management Service
 /// Handles all notification types with real-time subscriptions,
@@ -460,5 +462,79 @@ class UnifiedAlertService {
     } catch (e) {
       debugPrint('Track alert action error: $e');
     }
+  }
+
+  /// Cost-optimized dispatch plan for channels:
+  /// push first, then WhatsApp/SMS fallback after 24h for non-urgent alerts.
+  Future<Map<String, dynamic>> dispatchOptimizedAlert({
+    required String title,
+    required String body,
+    required String severity,
+    required String recipientId,
+    String? useCase,
+    String? phoneNumber,
+    String? whatsappNumber,
+    bool hasPushToken = true,
+  }) async {
+    final plan = NotificationCostOptimizerService.instance.buildChannelPlan(
+      severity: severity,
+      useCase: useCase,
+      hasPushToken: hasPushToken,
+      hasWhatsApp: (whatsappNumber ?? '').isNotEmpty,
+      hasPhone: (phoneNumber ?? '').isNotEmpty,
+    );
+
+    final optimizedSms = NotificationCostOptimizerService.instance
+        .optimizeSmsMessage(body);
+    final executedChannels = <String>[];
+    for (final channelPlan in plan) {
+      final channel = (channelPlan['channel'] ?? '').toString();
+      if (channel.isEmpty) continue;
+      String integrationName = 'Push Notifications';
+      double projectedCost = 0;
+      if (channel == 'email') {
+        integrationName = 'Resend';
+        projectedCost = 0.001;
+      } else if (channel == 'whatsapp') {
+        integrationName = 'WhatsApp (Twilio)';
+        projectedCost = 0.004;
+      } else if (channel == 'sms') {
+        integrationName = 'Twilio';
+        projectedCost = 0.008;
+      }
+      final integrationCheck =
+          await IntegrationManagementService.instance.canUseIntegration(
+        integrationName,
+        projectedCost: projectedCost,
+      );
+      if (integrationCheck['allowed'] == true) {
+        executedChannels.add(channel);
+        if (projectedCost > 0) {
+          await IntegrationManagementService.instance.recordUsage(
+            integrationName,
+            costDelta: projectedCost,
+          );
+        }
+      }
+    }
+
+    await _supabase.from('alert_history').insert({
+      'notification_id': recipientId,
+      'action': 'dispatch_planned',
+      'metadata': {
+        'title': title,
+        'severity': severity,
+        'use_case': useCase,
+        'plan': plan,
+        'executed_channels': executedChannels,
+        'optimized_sms_preview': optimizedSms,
+      },
+    });
+
+    return {
+      'plan': plan,
+      'executed_channels': executedChannels,
+      'optimized_sms': optimizedSms,
+    };
   }
 }

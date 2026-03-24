@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../config/batch1_route_allowlist.dart';
 import '../../../routes/app_routes.dart';
 import '../../../services/admin_management_service.dart';
 
@@ -100,8 +101,15 @@ class _EmergencyActionPanelWidgetState
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => Navigator.pushNamed(
-                        context, AppRoutes.contentModerationControlCenter),
+                    onPressed:
+                        Batch1RouteAllowlist.isAllowed(
+                          AppRoutes.contentModerationControlCenter,
+                        )
+                        ? () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.contentModerationControlCenter,
+                          )
+                        : null,
                     icon: const Icon(Icons.shield_outlined, size: 20),
                     label: const Text('Content Moderation'),
                     style: OutlinedButton.styleFrom(
@@ -113,8 +121,14 @@ class _EmergencyActionPanelWidgetState
                 SizedBox(width: 3.w),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => Navigator.pushNamed(
-                        context, AppRoutes.bulkManagementScreen),
+                    onPressed: Batch1RouteAllowlist.isAllowed(
+                          AppRoutes.bulkManagementScreen,
+                        )
+                        ? () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.bulkManagementScreen,
+                          )
+                        : null,
                     icon: const Icon(Icons.layers, size: 20),
                     label: const Text('Bulk Management'),
                     style: OutlinedButton.styleFrom(
@@ -130,8 +144,15 @@ class _EmergencyActionPanelWidgetState
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => Navigator.pushNamed(
-                        context, AppRoutes.contentDistributionControlCenter),
+                    onPressed:
+                        Batch1RouteAllowlist.isAllowed(
+                          AppRoutes.contentDistributionControlCenter,
+                        )
+                        ? () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.contentDistributionControlCenter,
+                          )
+                        : null,
                     icon: const Icon(Icons.pie_chart_outline, size: 20),
                     label: const Text('Content Distribution'),
                     style: OutlinedButton.styleFrom(
@@ -143,8 +164,15 @@ class _EmergencyActionPanelWidgetState
                 SizedBox(width: 3.w),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => Navigator.pushNamed(
-                        context, AppRoutes.participationFeeControls),
+                    onPressed:
+                        Batch1RouteAllowlist.isAllowed(
+                          AppRoutes.participationFeeControls,
+                        )
+                        ? () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.participationFeeControls,
+                          )
+                        : null,
                     icon: const Icon(Icons.payments_outlined, size: 20),
                     label: const Text('Participation Fees'),
                     style: OutlinedButton.styleFrom(

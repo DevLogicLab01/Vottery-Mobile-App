@@ -198,8 +198,6 @@ class LoadTestControlPanelWidget extends StatelessWidget {
       backgroundColor: Colors.grey.shade100,
       checkmarkColor: Colors.white,
       padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.2.h),
-      minimumSize: const Size(44, 44),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
   }
 }

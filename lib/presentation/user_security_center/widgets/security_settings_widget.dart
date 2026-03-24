@@ -18,7 +18,7 @@ class SecuritySettingsWidget extends StatefulWidget {
 
 class _SecuritySettingsWidgetState extends State<SecuritySettingsWidget> {
   bool _twoFactorEnabled = false;
-  String _twoFactorMethod = 'sms';
+  String _twoFactorMethod = 'authenticator';
   bool _biometricEnabled = false;
   bool _breachNotifications = true;
   int _sessionTimeout = 60;
@@ -41,7 +41,8 @@ class _SecuritySettingsWidgetState extends State<SecuritySettingsWidget> {
     if (widget.settings != null) {
       setState(() {
         _twoFactorEnabled = widget.settings!['two_factor_enabled'] ?? false;
-        _twoFactorMethod = widget.settings!['two_factor_method'] ?? 'sms';
+        _twoFactorMethod =
+            widget.settings!['two_factor_method'] ?? 'authenticator';
         _biometricEnabled = widget.settings!['biometric_enabled'] ?? false;
         _breachNotifications =
             widget.settings!['breach_notifications_enabled'] ?? true;
@@ -224,7 +225,6 @@ class _SecuritySettingsWidgetState extends State<SecuritySettingsWidget> {
                             border: OutlineInputBorder(),
                           ),
                           items: const [
-                            DropdownMenuItem(value: 'sms', child: Text('SMS')),
                             DropdownMenuItem(
                               value: 'authenticator',
                               child: Text('Authenticator App'),
@@ -242,9 +242,7 @@ class _SecuritySettingsWidgetState extends State<SecuritySettingsWidget> {
                           TextFormField(
                             controller: _twoFactorRecipientController,
                             decoration: InputDecoration(
-                              labelText: _twoFactorMethod == 'email'
-                                  ? 'Email for OTP'
-                                  : 'Phone for OTP',
+                              labelText: 'Email for OTP',
                               border: const OutlineInputBorder(),
                             ),
                           ),

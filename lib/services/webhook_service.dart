@@ -320,7 +320,10 @@ class WebhookService {
       updates['delivered_at'] = DateTime.now().toIso8601String();
     }
 
-    await _client.from('webhook_delivery_logs').update(updates).eq('id', logId);
+    await _client
+        .from('webhook_delivery_logs')
+        .update(updates)
+        .match({'id': logId});
   }
 
   /// Get webhook delivery logs
@@ -329,15 +332,18 @@ class WebhookService {
     int limit = 50,
   }) async {
     try {
-      var query = _client
-          .from('webhook_delivery_logs')
-          .select()
-          .order('created_at', ascending: false)
-          .limit(limit);
-      if (configId != null && configId.isNotEmpty) {
-        query = query.eq('webhook_config_id', configId);
-      }
-      final response = await query;
+      final response = configId != null && configId.isNotEmpty
+          ? await _client
+              .from('webhook_delivery_logs')
+              .select()
+              .eq('webhook_config_id', configId)
+              .order('created_at', ascending: false)
+              .limit(limit)
+          : await _client
+              .from('webhook_delivery_logs')
+              .select()
+              .order('created_at', ascending: false)
+              .limit(limit);
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {

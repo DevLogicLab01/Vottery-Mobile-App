@@ -1,10 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:vottery/config/route_feature_keys.dart';
+import 'package:vottery/config/route_registry.dart';
+import 'package:vottery/presentation/route_placeholder_screen/route_placeholder_screen.dart';
 import 'package:vottery/routes/app_routes.dart';
 
 void main() {
   group('Creator analytics route parity checks', () {
+    test('creator growth WebCanonical maps to native screen in registry', () {
+      final w = screenForRoute(
+        AppRoutes.creatorGrowthAnalyticsDashboardWebCanonical,
+      );
+      expect(w, isNotNull);
+      expect(w, isNot(isA<RoutePlaceholderScreen>()));
+    });
+
     test('creator analytics routes are defined', () {
       expect(AppRoutes.creatorGrowthAnalyticsDashboard, isNotEmpty);
       expect(AppRoutes.creatorPredictiveInsightsHub, isNotEmpty);

@@ -305,10 +305,10 @@ class _EnhancedCreatorAnalyticsDashboardWithGamificationMetricsState
   }
 
   int _getNextLevelXP(int currentLevel) {
-    if (currentLevel >= GamificationService.levelTiers.length) {
+    if (currentLevel >= GamificationService.maxLevel) {
       return GamificationService.levelTiers.last['xp_required'] as int;
     }
-    return GamificationService.levelTiers[currentLevel]['xp_required'] as int;
+    return currentLevel * 100;
   }
 
   int _calculateEngagementScore() {

@@ -720,6 +720,8 @@ Return structured JSON with keys: probability, confidence, timeframe_days, prima
 
   static const String _prefLastChurnUserRefreshMs =
       'last_creator_churn_user_refresh_epoch_ms';
+  static const String _prefLastRecordLoginGeoMs =
+      'last_record_login_geo_epoch_ms';
 
   /// Best-effort: invokes Edge `creator-churn-user-refresh` for signed-in users (throttled client-side).
   /// Server enforces 1× per UTC day; full batch remains `creator-churn-prediction-cron` + CRON_SECRET.

@@ -15,7 +15,7 @@ import './widgets/withdrawal_limits_widget.dart';
 ///
 /// Features:
 /// - Gamified election winnings breakdown (lottery, predictions, quests)
-/// - Prize redemption (cash via Stripe/Trolley, gift cards, crypto USDC)
+/// - Prize redemption (cash via Stripe/Trolley, gift cards, charity hub)
 /// - Automated payout processing with KYC verification
 /// - Stripe Connect integration for creator bank accounts
 /// - 70/30 creator revenue split calculator

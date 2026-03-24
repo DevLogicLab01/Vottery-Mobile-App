@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'supabase_service.dart';
+import '../config/batch1_control_policy.dart';
 
 /// Reads platform feature toggles from Supabase (admin On/Off panel).
 /// Use for gating routes/screens: when a feature is disabled, hide or redirect.
@@ -12,6 +13,10 @@ class PlatformFeatureToggleService {
   PlatformFeatureToggleService._();
 
   static const _cacheTtlMs = 5 * 60 * 1000; // 5 minutes
+  static const bool _fullFeatureCertificationMode = bool.fromEnvironment(
+    'FULL_FEATURE_CERTIFICATION',
+    defaultValue: false,
+  );
 
   Set<String>? _enabledKeys;
   int _cacheTimestamp = 0;
@@ -61,7 +66,17 @@ class PlatformFeatureToggleService {
   Future<bool> isFeatureEnabled(String featureKey) async {
     if (featureKey.isEmpty) return false;
     final key = featureKey.trim().toLowerCase().replaceAll(' ', '_').replaceAll('-', '_');
+    if (Batch1ControlPolicy.forceDisabledFeatureKeys.contains(key)) return false;
     final enabled = await getEnabledFeatureKeys();
+    if (_fullFeatureCertificationMode && !enabled.contains(key)) return true;
+    if (!enabled.contains(key) &&
+        Batch1ControlPolicy.defaultEnabledIfMissing.contains(key)) {
+      return true;
+    }
+    if (!enabled.contains(key) &&
+        Batch1ControlPolicy.defaultDisabledIfMissing.contains(key)) {
+      return false;
+    }
     return enabled.contains(key);
   }
 

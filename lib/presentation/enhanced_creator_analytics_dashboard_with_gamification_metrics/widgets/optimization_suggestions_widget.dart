@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../config/batch1_route_allowlist.dart';
 import '../../../routes/app_routes.dart';
 import '../../../theme/app_theme.dart';
 
@@ -221,15 +222,19 @@ class OptimizationSuggestionsWidget extends StatelessWidget {
   void _handleAction(BuildContext context, String action) {
     switch (action) {
       case 'create_jolt':
+        if (!Batch1RouteAllowlist.isAllowed(AppRoutes.joltsVideoFeed)) return;
         Navigator.pushNamed(context, AppRoutes.joltsVideoFeed);
         break;
       case 'join_prediction':
+        if (!Batch1RouteAllowlist.isAllowed(AppRoutes.socialHomeFeed)) return;
         Navigator.pushNamed(context, AppRoutes.socialHomeFeed);
         break;
       case 'view_quests':
+        if (!Batch1RouteAllowlist.isAllowed(AppRoutes.feedQuestDashboard)) return;
         Navigator.pushNamed(context, AppRoutes.feedQuestDashboard);
         break;
       case 'browse_elections':
+        if (!Batch1RouteAllowlist.isAllowed(AppRoutes.voteDiscovery)) return;
         Navigator.pushNamed(context, AppRoutes.voteDiscovery);
         break;
       default:

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../config/batch1_route_allowlist.dart';
 
 /// Dual Header Navigation System - Top Header
 /// Menu → Logo → Search → Friend Requests → Messages → Notifications
@@ -25,8 +26,10 @@ class DualHeaderTopBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
+    final canOpenNavHub =
+        Batch1RouteAllowlist.isAllowed(AppRoutes.socialMediaNavigationHub);
+    final canOpenSearch =
+        Batch1RouteAllowlist.isAllowed(AppRoutes.advancedUnifiedSearchScreen);
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
@@ -34,11 +37,12 @@ class DualHeaderTopBar extends StatelessWidget implements PreferredSizeWidget {
       title: Row(
         children: [
           // Menu Icon
-          _buildBrandIconButton(
-            Icons.menu,
-            () => Navigator.pushNamed(context, AppRoutes.socialMediaNavigationHub),
-            AppRoutes.socialMediaNavigationHub,
-          ),
+          if (canOpenNavHub)
+            _buildBrandIconButton(
+              context,
+              Icons.menu,
+              AppRoutes.socialMediaNavigationHub,
+            ),
 
           SizedBox(width: 2.w),
 
@@ -58,11 +62,12 @@ class DualHeaderTopBar extends StatelessWidget implements PreferredSizeWidget {
           const Spacer(),
 
           // Search Icon - users, posts, elections, groups
-          _buildBrandIconButton(
-            Icons.search,
-            () => Navigator.pushNamed(context, AppRoutes.advancedUnifiedSearchScreen),
-            null,
-          ),
+          if (canOpenSearch)
+            _buildBrandIconButton(
+              context,
+              Icons.search,
+              AppRoutes.advancedUnifiedSearchScreen,
+            ),
 
           // Friend Requests Icon
           _buildIconWithBadge(
@@ -80,12 +85,12 @@ class DualHeaderTopBar extends StatelessWidget implements PreferredSizeWidget {
             AppRoutes.directMessagingScreen,
           ),
 
-          // Notifications Icon
+          // Notifications Icon — Web parity: `/notification-center-hub`
           _buildIconWithBadge(
             context,
             Icons.notifications_outlined,
             notificationsCount,
-            AppRoutes.aiNotificationCenter,
+            AppRoutes.notificationCenterHub,
           ),
         ],
       ),
@@ -93,11 +98,11 @@ class DualHeaderTopBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   Widget _buildBrandIconButton(
+    BuildContext context,
     IconData icon,
-    VoidCallback onPressed,
-    String? route,
+    String route,
   ) {
-    final isActive = route != null && _isActive(route);
+    final isActive = _isActive(route);
     return IconButton(
       icon: isActive
           ? Container(
@@ -110,7 +115,10 @@ class DualHeaderTopBar extends StatelessWidget implements PreferredSizeWidget {
               child: Icon(icon, color: AppTheme.pureBlue, size: 5.w),
             )
           : Icon(icon, color: Colors.black87, size: 6.w),
-      onPressed: onPressed,
+      onPressed: () {
+        if (!Batch1RouteAllowlist.isAllowed(route)) return;
+        Navigator.pushNamed(context, route);
+      },
     );
   }
 
@@ -120,6 +128,9 @@ class DualHeaderTopBar extends StatelessWidget implements PreferredSizeWidget {
     int count,
     String route,
   ) {
+    if (!Batch1RouteAllowlist.isAllowed(route)) {
+      return const SizedBox.shrink();
+    }
     final isActive = _isActive(route);
     return Stack(
       children: [

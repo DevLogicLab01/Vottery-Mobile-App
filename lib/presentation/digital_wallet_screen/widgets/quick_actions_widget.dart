@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../config/batch1_route_allowlist.dart';
 import '../../../routes/app_routes.dart';
 import '../../../theme/app_theme.dart';
 
@@ -39,63 +40,76 @@ class QuickActionsWidget extends StatelessWidget {
           SizedBox(height: 2.h),
           Row(
             children: [
-              Expanded(
-                child: _buildActionButton(
-                  context,
-                  icon: Icons.payment,
-                  label: 'Request Payout',
-                  color: AppTheme.primaryLight,
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.payoutScheduleSettingsScreen,
-                    );
-                  },
+              if (Batch1RouteAllowlist.isAllowed(
+                AppRoutes.payoutScheduleSettingsScreen,
+              ))
+                Expanded(
+                  child: _buildActionButton(
+                    context,
+                    icon: Icons.payment,
+                    label: 'Request Payout',
+                    color: AppTheme.primaryLight,
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.payoutScheduleSettingsScreen,
+                      );
+                    },
+                  ),
                 ),
-              ),
               SizedBox(width: 2.w),
-              Expanded(
-                child: _buildActionButton(
-                  context,
-                  icon: Icons.description,
-                  label: 'Tax Documents',
-                  color: AppTheme.secondaryLight,
-                  onTap: () {
-                    Navigator.pushNamed(context, AppRoutes.taxComplianceDashboard);
-                  },
+              if (Batch1RouteAllowlist.isAllowed(
+                AppRoutes.taxComplianceDashboard,
+              ))
+                Expanded(
+                  child: _buildActionButton(
+                    context,
+                    icon: Icons.description,
+                    label: 'Tax Documents',
+                    color: AppTheme.secondaryLight,
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.taxComplianceDashboard,
+                      );
+                    },
+                  ),
                 ),
-              ),
             ],
           ),
           SizedBox(height: 2.h),
           Row(
             children: [
-              Expanded(
-                child: _buildActionButton(
-                  context,
-                  icon: Icons.credit_card,
-                  label: 'Payment Method',
-                  color: AppTheme.accentLight,
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.bankAccountLinkingScreen,
-                    );
-                  },
+              if (Batch1RouteAllowlist.isAllowed(
+                AppRoutes.bankAccountLinkingScreen,
+              ))
+                Expanded(
+                  child: _buildActionButton(
+                    context,
+                    icon: Icons.credit_card,
+                    label: 'Payment Method',
+                    color: AppTheme.accentLight,
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.bankAccountLinkingScreen,
+                      );
+                    },
+                  ),
                 ),
-              ),
               SizedBox(width: 2.w),
-              Expanded(
-                child: _buildActionButton(
-                  context,
-                  icon: Icons.support_agent,
-                  label: 'Contact Support',
-                  color: Colors.orange,
-                  onTap: () {
-                    Navigator.pushNamed(context, AppRoutes.creatorSupportHub);
-                  },
+              if (Batch1RouteAllowlist.isAllowed(AppRoutes.creatorSupportHub))
+                Expanded(
+                  child: _buildActionButton(
+                    context,
+                    icon: Icons.support_agent,
+                    label: 'Contact Support',
+                    color: Colors.orange,
+                    onTap: () {
+                      Navigator.pushNamed(context, AppRoutes.creatorSupportHub);
+                    },
+                  ),
                 ),
-              ),
             ],
           ),
         ],

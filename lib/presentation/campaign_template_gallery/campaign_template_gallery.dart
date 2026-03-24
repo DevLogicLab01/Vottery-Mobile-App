@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../routes/app_routes.dart';
 import '../../services/campaign_template_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/error_boundary_wrapper.dart';
@@ -148,11 +149,11 @@ class _CampaignTemplateGalleryState extends State<CampaignTemplateGallery> {
   Future<void> _applyTemplate(Map<String, dynamic> template) async {
     Navigator.pop(context); // Close preview modal
 
-    // Navigate to Participatory Ads Studio with template data
+    // Web parity: `/participatory-ads-studio` with `{ template }` in navigation state
     Navigator.pushNamed(
       context,
-      AppRoutes.electionCreationStudio,
-      arguments: {'template_id': template['id'], 'template_data': template},
+      AppRoutes.participatoryAdsStudioWebCanonical,
+      arguments: {'template': template},
     );
 
     ScaffoldMessenger.of(context).showSnackBar(

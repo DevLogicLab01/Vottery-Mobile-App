@@ -4,9 +4,41 @@
 class VotteryAdsConstants {
   VotteryAdsConstants._();
 
+  /// Public Web URL — sync with JS `VOTTERY_ADS_ROUTE` and [AppRoutes.votteryAdsStudioWebCanonical].
+  static const String votteryAdsStudioWebRoute = '/vottery-ads-studio';
+
+  /// Flutter `Navigator.pushNamed` path for [VotteryAdsStudio] (not the kebab-case public URL).
   static const String votteryAdsStudioRoute = '/votteryAdsStudio';
-  static const String campaignManagementRoute = '/campaignManagementDashboard';
-  static const String advertiserAnalyticsRoute = '/advertiserAnalyticsDashboard';
+  /// Web parity: `/participatory-ads-studio` — sponsored-election wizard.
+  static const String participatoryAdsStudioRoute = '/participatory-ads-studio';
+  /// Same path as Web `CAMPAIGN_MANAGEMENT_ROUTE` (React Router).
+  static const String campaignManagementRoute = '/campaign-management-dashboard';
+  /// Web React alias route (same hub UI as [campaignManagementRoute]).
+  static const String sponsoredElectionsSchemaCpeHubRoute =
+      '/sponsored-elections-schema-cpe-management-hub';
+  /// Web parity: `/dynamic-cpe-pricing-engine-dashboard`
+  static const String dynamicCpePricingEngineRoute =
+      '/dynamic-cpe-pricing-engine-dashboard';
+  /// Web parity: `/campaign-template-gallery`
+  static const String campaignTemplateGalleryRoute = '/campaign-template-gallery';
+  /// Same path as Web `ADVERTISER_ANALYTICS_ROUTE`.
+  static const String advertiserAnalyticsRoute =
+      '/advertiser-analytics-roi-dashboard';
+  /// Flutter `Navigator.pushNamed` — use with [AppRoutes.campaignManagementDashboard].
+  static const String campaignManagementAppRoute = '/campaignManagementDashboard';
+  /// Flutter in-app route for advertiser analytics screen.
+  static const String advertiserAnalyticsAppRoute =
+      '/advertiserAnalyticsDashboard';
+  /// Web parity: `/api-documentation-portal`
+  static const String apiDocumentationPortalRoute = '/api-documentation-portal';
+  /// Web parity: `/brand-advertiser-registration-portal`
+  static const String brandAdvertiserRegistrationPortalRoute =
+      '/brand-advertiser-registration-portal';
+  /// Web parity: `/res-tful-api-management-center`
+  static const String restfulApiManagementCenterRoute =
+      '/res-tful-api-management-center';
+  /// Web parity: `/webhook-integration-hub`
+  static const String webhookIntegrationHubRoute = '/webhook-integration-hub';
 
   static const String campaignObjectiveReach = 'reach';
   static const String campaignObjectiveTraffic = 'traffic';
@@ -83,4 +115,16 @@ class VotteryAdsConstants {
   static const double pricingCpcMax = 1.0;
   static const double pricingPremiumSlotDayMin = 40000;
   static const double pricingPremiumSlotDayMax = 160000;
+
+  /// Batch-1 internal ads — keep identical to Web `votteryAdsConstants.js` (`BATCH1_*`).
+  static const String batch1InternalAdsDisabledTitle = 'Internal Ads Disabled for Batch 1';
+  static const String batch1InternalAdsDisabledBody =
+      'Vottery internal ads are intentionally disabled in Batch 1. Use external ad network integrations from the admin integrations panel.';
+  static const String batch1ParticipatoryAdsDisabledTitle = 'Participatory Ads Disabled for Batch 1';
+  static const String batch1ParticipatoryAdsDisabledBody =
+      'Participatory/gamified internal ads are disabled in Batch 1. Continue with external ad network partners only.';
+
+  // Batch-1 hard guard: internal ad studios must stay disabled.
+  static const bool internalAdsBatch1Disabled = true;
+  static const List<String> externalAdNetworkIntegrations = ['Google AdSense'];
 }

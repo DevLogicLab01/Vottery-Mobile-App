@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../config/batch1_route_allowlist.dart';
 import '../../../routes/app_routes.dart';
 import '../../user_profile/widgets/settings_section_widget.dart';
 
@@ -13,14 +14,15 @@ class AccountManagementSectionWidget extends StatelessWidget {
     return SettingsSectionWidget(
       title: 'Account Management',
       items: [
-        {
-          'icon': 'person',
-          'title': 'Edit Profile',
-          'subtitle': 'Update your profile information',
-          'onTap': () {
-            Navigator.pushNamed(context, AppRoutes.userProfile);
+        if (Batch1RouteAllowlist.isAllowed(AppRoutes.userProfile))
+          {
+            'icon': 'person',
+            'title': 'Edit Profile',
+            'subtitle': 'Update your profile information',
+            'onTap': () {
+              Navigator.pushNamed(context, AppRoutes.userProfile);
+            },
           },
-        },
         {
           'icon': 'lock',
           'title': 'Change Password',

@@ -30,6 +30,8 @@ class _CampaignCardWidgetState extends State<CampaignCardWidget> {
       case 'paused':
         return const Color(0xFFF59E0B);
       case 'ended':
+      case 'archived':
+      case 'completed':
         return const Color(0xFF6B7280);
       default:
         return const Color(0xFF6B7280);
@@ -43,6 +45,8 @@ class _CampaignCardWidgetState extends State<CampaignCardWidget> {
       case 'paused':
         return Icons.pause_circle_filled;
       case 'ended':
+      case 'archived':
+      case 'completed':
         return Icons.stop_circle;
       default:
         return Icons.circle;
@@ -166,6 +170,9 @@ class _CampaignCardWidgetState extends State<CampaignCardWidget> {
                   icon: status == 'paused' ? Icons.play_arrow : Icons.pause,
                   label: status == 'paused' ? 'Resume' : 'Pause',
                   color: const Color(0xFFF59E0B),
+                  enabled: status != 'archived' &&
+                      status != 'completed' &&
+                      status != 'ended',
                   onTap: widget.onPause,
                 ),
                 SizedBox(width: 2.w),
@@ -180,6 +187,9 @@ class _CampaignCardWidgetState extends State<CampaignCardWidget> {
                   icon: Icons.archive,
                   label: 'Archive',
                   color: const Color(0xFF6B7280),
+                  enabled: status != 'archived' &&
+                      status != 'completed' &&
+                      status != 'ended',
                   onTap: widget.onArchive,
                 ),
               ],
@@ -323,38 +333,41 @@ class _ControlButton extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
+  final bool enabled;
 
   const _ControlButton({
     required this.icon,
     required this.label,
     required this.color,
     required this.onTap,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final effectiveColor = enabled ? color : color.withAlpha(80);
     return Expanded(
       child: InkWell(
-        onTap: onTap,
+        onTap: enabled ? onTap : null,
         borderRadius: BorderRadius.circular(8.0),
         child: Container(
           padding: EdgeInsets.symmetric(vertical: 1.h),
           decoration: BoxDecoration(
-            color: color.withAlpha(20),
+            color: effectiveColor.withAlpha(20),
             borderRadius: BorderRadius.circular(8.0),
-            border: Border.all(color: color.withAlpha(80)),
+            border: Border.all(color: effectiveColor.withAlpha(80)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: color, size: 3.5.w),
+              Icon(icon, color: effectiveColor, size: 3.5.w),
               SizedBox(width: 1.w),
               Text(
                 label,
                 style: GoogleFonts.inter(
                   fontSize: 10.sp,
                   fontWeight: FontWeight.w600,
-                  color: color,
+                  color: effectiveColor,
                 ),
               ),
             ],

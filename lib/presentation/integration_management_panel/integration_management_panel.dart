@@ -41,6 +41,7 @@ class _IntegrationManagementPanelState
   @override
   void initState() {
     super.initState();
+    _integrationService.ensureBatch1ExternalAdDefaults();
     _setupRealtimeSubscription();
   }
 

@@ -410,7 +410,7 @@ class _IncidentResponseAnalyticsScreenState
       ('correlation', 'Correlation', Icons.hub),
       ('root_cause', 'Root Cause', Icons.search),
       ('health_impact', 'Health Impact', Icons.health_and_safety),
-      ('deployment', 'Deployment', Icons.deployed_code),
+      ('deployment', 'Deployment', Icons.rocket_launch),
       ('predictive', 'Predictive', Icons.trending_up),
       ('intelligence', 'Intelligence', Icons.auto_awesome),
     ];
@@ -573,7 +573,7 @@ class _IncidentResponseAnalyticsScreenState
     if (deploymentInsights.isEmpty) {
       return [
         const ListTile(
-          leading: Icon(Icons.deployed_code),
+          leading: Icon(Icons.rocket_launch),
           title: Text('No deployment correlations detected in selected range'),
         ),
       ];
@@ -677,7 +677,7 @@ class _IncidentResponseAnalyticsScreenState
       (
         'Deployment Linked',
         '${summary['deploymentLinked'] ?? 0}',
-        Icons.deployed_code,
+        Icons.rocket_launch,
         Colors.purple
       ),
       (

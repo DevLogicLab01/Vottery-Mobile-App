@@ -668,6 +668,6 @@ class _ModuleDetailScreenState extends State<ModuleDetailScreen> {
     Navigator.of(
       context,
       rootNavigator: true,
-    ).pushNamed(AppRoutes.mcqABTestingAnalyticsDashboard);
+    ).pushNamed(AppRoutes.mcqAbTestingAnalyticsDashboard);
   }
 }

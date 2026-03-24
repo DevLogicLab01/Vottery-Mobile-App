@@ -4,7 +4,7 @@ import '../models/ai_consensus_result.dart';
 import './ai/ai_service_base.dart';
 
 /// AI Orchestration Service for Multi-AI Consensus Analysis
-/// Coordinates multiple AI providers (GPT-5, Claude, Perplexity, Gemini)
+/// Coordinates multiple AI providers (Claude, Gemini)
 class AIOrchestratorService extends AIServiceBase {
   static AIOrchestratorService? _instance;
   static AIOrchestratorService get instance =>
@@ -26,9 +26,7 @@ class AIOrchestratorService extends AIServiceBase {
     required String context,
     required String analysisType,
     List<String> providers = const [
-      'openai',
       'anthropic',
-      'perplexity',
       'gemini',
     ],
   }) async {
@@ -175,9 +173,7 @@ class AIOrchestratorService extends AIServiceBase {
     required Map<String, String> contexts,
     required String analysisType,
     List<String> providers = const [
-      'openai',
       'anthropic',
-      'perplexity',
       'gemini',
     ],
   }) async {

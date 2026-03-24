@@ -44,7 +44,6 @@ import './presentation/user_feedback_portal/user_feedback_portal.dart';
 import './presentation/feature_implementation_tracking/feature_implementation_tracking_screen.dart';
 import './presentation/api_documentation_portal/api_documentation_portal.dart';
 import './presentation/api_rate_limiting_dashboard/api_rate_limiting_dashboard_screen.dart';
-import './presentation/prediction_pool_notifications_hub/prediction_pool_notifications_hub.dart';
 import './presentation/offline_sync_diagnostics/offline_sync_diagnostics.dart';
 import './presentation/community_elections_hub/community_elections_hub.dart';
 import './presentation/content_removed_appeal/content_removed_appeal_screen.dart';
@@ -61,6 +60,7 @@ import './presentation/social_activity_timeline/social_activity_timeline_screen.
 import './presentation/advanced_unified_search_screen/advanced_unified_search_screen.dart';
 import './config/route_feature_keys.dart';
 import './config/route_registry.dart';
+import './config/batch1_route_allowlist.dart';
 import './presentation/route_placeholder_screen/route_placeholder_screen.dart';
 import './widgets/feature_gate_widget.dart';
 import './services/accessibility_preferences_service.dart';
@@ -432,6 +432,15 @@ class _VotteryAppState extends State<MyApp> {
             debugShowCheckedModeBanner: false,
             initialRoute: AppRoutes.initial,
             onGenerateRoute: (settings) {
+              if (!Batch1RouteAllowlist.isAllowed(settings.name)) {
+                return MaterialPageRoute(
+                  builder: (_) => RoutePlaceholderScreen(
+                    routeName: settings.name ?? '',
+                    title: 'Disabled for Batch 1',
+                  ),
+                  settings: settings,
+                );
+              }
               final featureKey =
                   RouteFeatureKeys.getFeatureKeyForRoute(settings.name ?? '');
 
@@ -591,6 +600,7 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 case AppRoutes.countryRevenueShareAdmin:
+                case AppRoutes.countryRevenueShareManagementCenterWebCanonical:
                   return MaterialPageRoute(
                     builder: (_) => gate(
                       RoleRouteGuard(
@@ -604,6 +614,7 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 case AppRoutes.regionalRevenueAnalyticsAdmin:
+                case AppRoutes.regionalRevenueAnalyticsDashboardWebCanonical:
                   return MaterialPageRoute(
                     builder: (_) => gate(
                       RoleRouteGuard(
@@ -710,6 +721,7 @@ class _VotteryAppState extends State<MyApp> {
                     settings: settings,
                   );
                 case AppRoutes.comprehensiveGamificationAdminWeb:
+                case AppRoutes.comprehensiveGamificationAdminControlCenterWebCanonical:
                   return MaterialPageRoute(
                     builder: (_) => gate(
                       RoleRouteGuard(
@@ -1029,13 +1041,6 @@ class _VotteryAppState extends State<MyApp> {
                         requiredRoles: AppRoles.adminRoles,
                         child: const ApiRateLimitingDashboardScreen(),
                       ),
-                    ),
-                    settings: settings,
-                  );
-                case AppRoutes.predictionPoolNotificationsHub:
-                  return MaterialPageRoute(
-                    builder: (_) => gate(
-                      const PredictionPoolNotificationsHub(),
                     ),
                     settings: settings,
                   );

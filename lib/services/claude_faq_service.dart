@@ -93,7 +93,7 @@ KNOWLEDGE BASE:
 **Payment Methods**
 - Bank transfer (most common)
 - PayPal
-- Cryptocurrency (BTC, ETH)
+- Stripe (cards and payouts where enabled)
 - Minimum withdrawal: \$10
 - Processing time: 3-5 business days
 

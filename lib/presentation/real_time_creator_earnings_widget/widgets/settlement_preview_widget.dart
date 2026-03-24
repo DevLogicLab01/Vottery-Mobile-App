@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../config/batch1_route_allowlist.dart';
 import '../../../core/app_export.dart';
 import '../../../routes/app_routes.dart';
 import '../../../services/creator_earnings_service.dart';
@@ -83,9 +84,16 @@ class SettlementPreviewWidget extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, AppRoutes.creatorPayoutDashboard);
-                    },
+                    onPressed: Batch1RouteAllowlist.isAllowed(
+                          AppRoutes.creatorPayoutDashboard,
+                        )
+                        ? () {
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.creatorPayoutDashboard,
+                            );
+                          }
+                        : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.accentLight,
                       padding: EdgeInsets.symmetric(vertical: 2.h),

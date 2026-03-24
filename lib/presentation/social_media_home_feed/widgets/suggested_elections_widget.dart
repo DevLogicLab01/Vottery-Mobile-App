@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../config/batch1_route_allowlist.dart';
 import '../../../core/app_export.dart';
 import '../../../services/suggested_elections_service.dart';
 
@@ -42,6 +43,9 @@ class _SuggestedElectionsWidgetState extends State<SuggestedElectionsWidget> {
 
   @override
   Widget build(BuildContext context) {
+    if (!Batch1RouteAllowlist.isAllowed(AppRoutes.voteCasting)) {
+      return const SizedBox.shrink();
+    }
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(3.w),
@@ -352,6 +356,7 @@ class _SuggestedElectionsWidgetState extends State<SuggestedElectionsWidget> {
 
   void _navigateToElection(String electionId) {
     _service.trackElectionClicked(electionId);
+    if (!Batch1RouteAllowlist.isAllowed(AppRoutes.voteCasting)) return;
     Navigator.pushNamed(
       context,
       AppRoutes.voteCasting,

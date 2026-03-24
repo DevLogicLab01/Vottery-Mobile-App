@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../config/batch1_route_allowlist.dart';
 import '../../user_profile/widgets/settings_section_widget.dart';
 import '../../../routes/app_routes.dart';
 
@@ -9,6 +10,9 @@ class SecuritySettingsSectionWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!Batch1RouteAllowlist.isAllowed(AppRoutes.userSecurityCenter)) {
+      return const SizedBox.shrink();
+    }
     return SettingsSectionWidget(
       title: 'Security Settings',
       items: [

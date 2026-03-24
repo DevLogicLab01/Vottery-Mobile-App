@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../constants/vottery_ads_constants.dart';
 import '../../core/app_export.dart';
+import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
 import '../../services/payment_service.dart';
 import '../../services/sponsored_elections_service.dart';
@@ -62,11 +64,93 @@ class _ParticipatoryAdsStudioState extends State<ParticipatoryAdsStudio>
   final bool _doubleXpEnabled = true;
   final int _targetParticipants = 1000;
 
+  bool _routeArgsConsumed = false;
+  String? _pendingElectionIdFromRoute;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _loadAvailableElections();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _consumeRouteArgumentsOnce();
+  }
+
+  void _consumeRouteArgumentsOnce() {
+    if (_routeArgsConsumed) return;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args == null) {
+      _routeArgsConsumed = true;
+      return;
+    }
+    if (args is! Map) {
+      _routeArgsConsumed = true;
+      return;
+    }
+    final raw = Map<String, dynamic>.from(args);
+
+    final template = raw['template'] ?? raw['template_data'];
+    if (template is Map) {
+      _applyTemplatePrefill(Map<String, dynamic>.from(template));
+      _routeArgsConsumed = true;
+      return;
+    }
+
+    _applySponsoredElectionPrefill(raw);
+    _routeArgsConsumed = true;
+  }
+
+  void _applyTemplatePrefill(Map<String, dynamic> template) {
+    final name = template['name']?.toString();
+    if (name != null && name.isNotEmpty) {
+      _campaignNameController.text = name;
+    }
+    var desc = template['description']?.toString() ?? '';
+    final rawQuestions =
+        template['preWrittenQuestions'] ?? template['pre_written_questions'];
+    if (rawQuestions is List && rawQuestions.isNotEmpty) {
+      final lines = rawQuestions.map((q) => '• ${q.toString()}').join('\n');
+      desc = desc.isEmpty
+          ? 'Suggested questions:\n$lines'
+          : '$desc\n\nSuggested questions:\n$lines';
+    }
+    if (desc.isNotEmpty) {
+      _campaignDescriptionController.text = desc;
+    }
+    if (mounted) setState(() {});
+  }
+
+  void _applySponsoredElectionPrefill(Map<String, dynamic> row) {
+    final name = row['campaign_name'] ?? row['title'];
+    if (name != null) {
+      _campaignNameController.text = name.toString();
+    }
+    final desc = row['description'];
+    if (desc != null) {
+      _campaignDescriptionController.text = desc.toString();
+    }
+    final nested = row['election'];
+    String? eid = row['election_id']?.toString();
+    if (eid == null && nested is Map) {
+      eid = nested['id']?.toString();
+    }
+    if (eid != null && eid.isNotEmpty) {
+      _pendingElectionIdFromRoute = eid;
+      if (_availableElections.isNotEmpty) {
+        final exists = _availableElections.any(
+          (e) => (e['id']?.toString()) == eid,
+        );
+        if (exists) {
+          _selectedElectionId = eid;
+          _pendingElectionIdFromRoute = null;
+        }
+      }
+    }
+    if (mounted) setState(() {});
   }
 
   @override
@@ -88,6 +172,16 @@ class _ParticipatoryAdsStudioState extends State<ParticipatoryAdsStudio>
         setState(() {
           _availableElections = elections;
           _isLoading = false;
+          final pending = _pendingElectionIdFromRoute;
+          if (pending != null) {
+            final exists = elections.any(
+              (e) => (e['id']?.toString()) == pending,
+            );
+            if (exists) {
+              _selectedElectionId = pending;
+              _pendingElectionIdFromRoute = null;
+            }
+          }
         });
       }
     } catch (e) {
@@ -221,6 +315,32 @@ class _ParticipatoryAdsStudioState extends State<ParticipatoryAdsStudio>
 
   @override
   Widget build(BuildContext context) {
+    if (VotteryAdsConstants.internalAdsBatch1Disabled) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Participatory Ads Studio')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  VotteryAdsConstants.batch1ParticipatoryAdsDisabledTitle,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  VotteryAdsConstants.batch1ParticipatoryAdsDisabledBody,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return ErrorBoundaryWrapper(
       screenName: 'ParticipatoryAdsStudio',
       onRetry: _loadAvailableElections,
@@ -239,11 +359,22 @@ class _ParticipatoryAdsStudioState extends State<ParticipatoryAdsStudio>
             ),
           ),
           title: 'Participatory Ads Studio',
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.trending_up),
+              tooltip: 'Dynamic CPE engine',
+              onPressed: () => Navigator.pushNamed(
+                context,
+                AppRoutes.dynamicCpePricingEngineDashboardWebCanonical,
+              ),
+            ),
+          ],
         ),
         body: _isLoading
             ? const SkeletonDashboard()
             : Column(
                 children: [
+                  _buildUnifiedStudioBanner(),
                   _buildProgressIndicator(),
                   Expanded(
                     child: PageView(
@@ -299,6 +430,37 @@ class _ParticipatoryAdsStudioState extends State<ParticipatoryAdsStudio>
                   _buildNavigationButtons(),
                 ],
               ),
+      ),
+    );
+  }
+
+  Widget _buildUnifiedStudioBanner() {
+    return Material(
+      color: AppTheme.primaryLight.withValues(alpha: 0.08),
+      child: InkWell(
+        onTap: () => Navigator.pushNamed(
+          context,
+          AppRoutes.votteryAdsStudioWebCanonical,
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.2.h),
+          child: Row(
+            children: [
+              Icon(Icons.campaign_outlined,
+                  size: 20, color: AppTheme.primaryLight),
+              SizedBox(width: 2.w),
+              Expanded(
+                child: Text(
+                  'Unified ads: display, video, participatory & Spark — open Vottery Ads Studio',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.textPrimaryLight,
+                      ),
+                ),
+              ),
+              Icon(Icons.chevron_right, color: AppTheme.textSecondaryLight),
+            ],
+          ),
+        ),
       ),
     );
   }

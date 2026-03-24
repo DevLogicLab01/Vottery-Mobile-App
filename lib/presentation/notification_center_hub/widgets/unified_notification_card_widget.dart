@@ -35,6 +35,8 @@ class UnifiedNotificationCardWidget extends StatelessWidget {
         return {'icon': Icons.campaign, 'color': Colors.purple};
       case 'campaigns':
         return {'icon': Icons.business, 'color': Colors.orange};
+      case 'payments':
+        return {'icon': Icons.payments, 'color': Colors.teal};
       default:
         return {'icon': Icons.notifications, 'color': Colors.grey};
     }
@@ -45,7 +47,9 @@ class UnifiedNotificationCardWidget extends StatelessWidget {
     final type = notification['notification_type'] as String? ?? 'general';
     final isRead = notification['is_read'] as bool? ?? false;
     final title = notification['title'] as String? ?? 'Notification';
-    final body = notification['body'] as String? ?? '';
+    final body = (notification['body'] as String?)?.isNotEmpty == true
+        ? notification['body'] as String
+        : (notification['description'] as String? ?? '');
     final createdAt = notification['created_at'] != null
         ? DateTime.parse(notification['created_at'])
         : DateTime.now();

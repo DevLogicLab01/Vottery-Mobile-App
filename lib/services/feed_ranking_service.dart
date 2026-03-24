@@ -154,6 +154,20 @@ class FeedRankingService {
       final allContent = await _getContentByType(contentType);
       if (allContent.isEmpty) return [];
 
+      final sponsoredElectionIds = <String>{};
+      try {
+        final raw = await _supabase
+            .from('sponsored_elections')
+            .select('election_id')
+            .eq('status', 'active');
+        for (final row in raw as List) {
+          final id = (row as Map)['election_id']?.toString();
+          if (id != null && id.isNotEmpty) sponsoredElectionIds.add(id);
+        }
+      } catch (e) {
+        debugPrint('FeedRankingService sponsored election ids: $e');
+      }
+
       final rankings = <Map<String, dynamic>>[];
 
       for (final content in allContent) {
@@ -196,7 +210,7 @@ class FeedRankingService {
             (popularityBoost * _popularityWeight) -
             (diversityPenalty * _diversityPenalty));
         if (contentType == 'election' &&
-            sponsoredElectionIds.contains(contentId)) {
+            sponsoredElectionIds.contains(contentId.toString())) {
           finalScore *= SharedConstants.sponsoredElectionRankingWeightMultiplier;
         }
 

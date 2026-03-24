@@ -1,11 +1,11 @@
 import 'dart:convert';
 
-import 'package:dart_openai/dart_openai.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import './ai_feature_adoption_analytics_service.dart';
+import './ai/ai_service_base.dart';
 import './auth_service.dart';
 import './supabase_service.dart';
 
@@ -18,22 +18,10 @@ class OpenAIQuestService {
 
   OpenAIQuestService._();
 
-  static const String apiKey = String.fromEnvironment('OPENAI_API_KEY');
-  bool _initialized = false;
   static const String _questTemplatesKey = 'ai_quest_templates_v1';
 
   AuthService get _auth => AuthService.instance;
   SupabaseClient get _client => SupabaseService.instance.client;
-
-  void _initializeService() {
-    if (_initialized) return;
-    if (apiKey.isEmpty) {
-      debugPrint('OPENAI_API_KEY not configured');
-      return;
-    }
-    OpenAI.apiKey = apiKey;
-    _initialized = true;
-  }
 
   /// Generate personalized quests based on user behavior
   Future<List<Map<String, dynamic>>> generatePersonalizedQuests({
@@ -41,37 +29,31 @@ class OpenAIQuestService {
     String questType = 'daily',
   }) async {
     try {
-      _initializeService();
-      if (!_initialized || !_auth.isAuthenticated) {
+      if (!_auth.isAuthenticated) {
         return _getFallbackQuests(questType);
       }
 
       final userBehavior = await _analyzeUserBehavior(userId);
       final prompt = _buildQuestPrompt(userBehavior, questType);
 
-      final response = await OpenAI.instance.chat.create(
-        model: 'gpt-4o',
-        messages: [
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.system,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(
-                'You are a gamification AI that creates engaging civic participation quests. Generate quests in JSON format.',
-              ),
-            ],
-          ),
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.user,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(prompt),
-            ],
-          ),
-        ],
-        temperature: 0.7,
-        maxTokens: 1000,
+      final response = await AIServiceBase.invokeAIFunction(
+        'gemini-fallback-handler',
+        {
+          'original_function': 'quest_generation',
+          'params': {
+            'provider': 'gemini',
+            'prompt': prompt,
+            'quest_type': questType,
+            'user_id': userId,
+          },
+          'timestamp': DateTime.now().toIso8601String(),
+        },
       );
-
-      final content = response.choices.first.message.content?.first.text ?? '';
+      final content = (response['content'] ??
+              response['text'] ??
+              response['result'] ??
+              '')
+          .toString();
       final quests = _parseQuestResponse(content, userId, questType);
 
       if (quests.isEmpty) {
@@ -104,34 +86,23 @@ class OpenAIQuestService {
     required Map<String, dynamic> threatData,
   }) async {
     try {
-      if (apiKey.isEmpty) {
-        return _getDefaultThreatAnalysis();
-      }
-
       final prompt = _buildThreatPrompt(threatData);
-      final response = await OpenAI.instance.chat.create(
-        model: 'gpt-4o',
-        messages: [
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.system,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(
-                'You are a security threat intelligence analyst. Analyze threats and provide comprehensive intelligence in JSON format.',
-              ),
-            ],
-          ),
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.user,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(prompt),
-            ],
-          ),
-        ],
-        temperature: 0.7,
-        maxTokens: 1000,
+      final response = await AIServiceBase.invokeAIFunction(
+        'gemini-fallback-handler',
+        {
+          'original_function': 'threat_intelligence',
+          'params': {
+            'provider': 'gemini',
+            'prompt': prompt,
+          },
+          'timestamp': DateTime.now().toIso8601String(),
+        },
       );
-
-      final content = response.choices.first.message.content?.first.text ?? '';
+      final content = (response['content'] ??
+              response['text'] ??
+              response['result'] ??
+              '')
+          .toString();
       final analysis = _parseThreatResponse(content);
 
       await _logThreatAnalysis(threatData, analysis);
@@ -180,8 +151,8 @@ Provide analysis in JSON format:
       await _client.from('threat_intelligence_logs').insert({
         'threat_data': threatData,
         'analysis_result': analysis,
-        'ai_service': 'openai',
-        'model': 'gpt-4o',
+        'ai_service': 'gemini',
+        'model': 'gemini',
       });
     } catch (e) {
       debugPrint('Log threat analysis error: $e');

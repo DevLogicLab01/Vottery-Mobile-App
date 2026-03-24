@@ -73,4 +73,24 @@ class AbstentionService {
       return {'list': [], 'total': 0, 'bySource': <String, int>{}};
     }
   }
+
+  /// Dashboard: time-series placeholder until analytics views exist in Supabase.
+  Future<List<Map<String, dynamic>>> getAbstentionTrends({int days = 7}) async {
+    return [];
+  }
+
+  /// Dashboard: elections with elevated abstention (placeholder).
+  Future<List<Map<String, dynamic>>> getHighAbstentionElections() async {
+    return [];
+  }
+
+  /// Dashboard: engagement vs abstention correlation (placeholder).
+  Future<Map<String, dynamic>> getEngagementCorrelation() async {
+    return {};
+  }
+
+  /// Dashboard: suggested copy/actions (placeholder until analytics RPC exists).
+  Future<List<String>> getImprovementRecommendations(dynamic electionId) async {
+    return [];
+  }
 }

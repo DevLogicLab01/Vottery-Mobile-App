@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../config/batch1_route_allowlist.dart';
 import '../user_profile/widgets/settings_section_widget.dart';
 import './widgets/account_management_section_widget.dart';
 import './widgets/privacy_controls_section_widget.dart';
@@ -178,30 +179,36 @@ class _ComprehensiveSettingsHubState extends State<ComprehensiveSettingsHub> {
                     SettingsSectionWidget(
                       title: 'SMS & Security Management',
                       items: [
-                        {
-                          'icon': 'sms',
-                          'title': 'SMS Emergency Alerts Hub',
-                          'subtitle':
-                              'Manage emergency SMS notifications and contacts',
-                          'onTap': () {
-                            Navigator.pushNamed(
-                              context,
-                              AppRoutes.smsEmergencyAlertsHub,
-                            );
+                        if (Batch1RouteAllowlist.isAllowed(
+                          AppRoutes.smsEmergencyAlertsHub,
+                        ))
+                          {
+                            'icon': 'sms',
+                            'title': 'SMS Emergency Alerts Hub',
+                            'subtitle':
+                                'Manage emergency SMS notifications and contacts',
+                            'onTap': () {
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.smsEmergencyAlertsHub,
+                              );
+                            },
                           },
-                        },
-                        {
-                          'icon': 'security',
-                          'title': 'User Security Center',
-                          'subtitle':
-                              'View fraud risk score and manage device security',
-                          'onTap': () {
-                            Navigator.pushNamed(
-                              context,
-                              AppRoutes.userSecurityCenter,
-                            );
+                        if (Batch1RouteAllowlist.isAllowed(
+                          AppRoutes.userSecurityCenter,
+                        ))
+                          {
+                            'icon': 'security',
+                            'title': 'User Security Center',
+                            'subtitle':
+                                'View fraud risk score and manage device security',
+                            'onTap': () {
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.userSecurityCenter,
+                              );
+                            },
                           },
-                        },
                       ],
                     ),
                     if (_showContextualHelp)
@@ -321,35 +328,47 @@ class _ComprehensiveSettingsHubState extends State<ComprehensiveSettingsHub> {
                     SizedBox(height: 2.h),
 
                     // Batch 8 Features
-                    SettingsSectionWidget(
-                      title: 'Batch 8 Features',
-                      items: [
-                        {
-                          'icon': 'account_balance',
-                          'title': 'Settlement Reconciliation Hub',
-                          'subtitle':
-                              'View discrepancy alerts and automated retry timeline',
-                          'onTap': () {
-                            Navigator.pushNamed(
-                              context,
-                              AppRoutes.settlementReconciliationHub,
-                            );
-                          },
-                        },
-                        {
-                          'icon': 'accessibility',
-                          'title': 'Accessibility Settings',
-                          'subtitle':
-                              'Font scaling, offline mode, and visual preferences',
-                          'onTap': () {
-                            Navigator.pushNamed(
-                              context,
-                              AppRoutes.accessibilitySettingsHub,
-                            );
-                          },
-                        },
-                      ],
-                    ),
+                    if (Batch1RouteAllowlist.isAllowed(
+                          AppRoutes.settlementReconciliationHub,
+                        ) ||
+                        Batch1RouteAllowlist.isAllowed(
+                          AppRoutes.accessibilitySettingsHub,
+                        ))
+                      SettingsSectionWidget(
+                        title: 'Batch 8 Features',
+                        items: [
+                          if (Batch1RouteAllowlist.isAllowed(
+                            AppRoutes.settlementReconciliationHub,
+                          ))
+                            {
+                              'icon': 'account_balance',
+                              'title': 'Settlement Reconciliation Hub',
+                              'subtitle':
+                                  'View discrepancy alerts and automated retry timeline',
+                              'onTap': () {
+                                Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.settlementReconciliationHub,
+                                );
+                              },
+                            },
+                          if (Batch1RouteAllowlist.isAllowed(
+                            AppRoutes.accessibilitySettingsHub,
+                          ))
+                            {
+                              'icon': 'accessibility',
+                              'title': 'Accessibility Settings',
+                              'subtitle':
+                                  'Font scaling, offline mode, and visual preferences',
+                              'onTap': () {
+                                Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.accessibilitySettingsHub,
+                                );
+                              },
+                            },
+                        ],
+                      ),
 
                     SizedBox(height: 2.h),
 

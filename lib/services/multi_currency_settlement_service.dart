@@ -31,7 +31,6 @@ class MultiCurrencySettlementService {
     'bank_transfer': '3-5 days',
     'PayPal': 'instant',
     'Stripe': '2-7 days',
-    'crypto': '1-24 hours',
   };
 
   /// Get pending payouts summary
@@ -248,8 +247,6 @@ class MultiCurrencySettlementService {
         return now.add(const Duration(days: 4)); // 3-5 days average
       case 'Stripe':
         return now.add(const Duration(days: 4)); // 2-7 days average
-      case 'crypto':
-        return now.add(const Duration(hours: 12)); // 1-24 hours average
       default:
         return now.add(const Duration(days: 3));
     }

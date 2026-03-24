@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../config/batch1_route_allowlist.dart';
 import '../../core/app_export.dart';
 import '../../routes/app_routes.dart';
 import '../../services/supabase_service.dart';
@@ -529,7 +530,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     title: Text('Country revenue share'),
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.countryRevenueShareAdmin);
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.countryRevenueShareManagementCenterWebCanonical,
+                      );
                     },
                   ),
                   ListTile(
@@ -537,7 +541,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     title: Text('Regional revenue analytics'),
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, AppRoutes.regionalRevenueAnalyticsAdmin);
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.regionalRevenueAnalyticsDashboardWebCanonical,
+                      );
                     },
                   ),
                   ListTile(
@@ -784,6 +791,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget _buildQuickActionsSection(BuildContext context) {
     final theme = Theme.of(context);
+    final canOpenNotificationCenter =
+        Batch1RouteAllowlist.isAllowed(AppRoutes.notificationCenterHub);
+    final canOpenModeration = Batch1RouteAllowlist.isAllowed(
+      AppRoutes.contentModerationControlCenter,
+    );
+    final canOpenExport = Batch1RouteAllowlist.isAllowed(
+      AppRoutes.analyticsExportReportingHub,
+    );
+    final canOpenSystemLogs = Batch1RouteAllowlist.isAllowed(
+      AppRoutes.mobileLoggingDashboard,
+    );
+    final canOpenPayoutSettings = Batch1RouteAllowlist.isAllowed(
+      AppRoutes.payoutScheduleSettingsScreen,
+    );
+    final canOpenFraudMonitor = Batch1RouteAllowlist.isAllowed(
+      AppRoutes.fraudMonitoringDashboard,
+    );
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 4.w),
@@ -791,48 +815,71 @@ class _AdminDashboardState extends State<AdminDashboard> {
         spacing: 2.w,
         runSpacing: 1.h,
         children: [
-          QuickActionButtonWidget(
-            label: 'Announcement',
-            iconName: 'campaign',
-            color: theme.colorScheme.primary,
-            onTap: () => Navigator.of(context, rootNavigator: true)
-                .pushNamed(AppRoutes.notificationCenterHub),
-          ).build(context),
-          QuickActionButtonWidget(
-            label: 'Moderate',
-            iconName: 'verified_user',
-            color: const Color(0xFF10B981),
-            onTap: () => Navigator.of(context, rootNavigator: true)
-                .pushNamed(AppRoutes.contentModerationControlCenter),
-          ).build(context),
-          QuickActionButtonWidget(
-            label: 'Export Data',
-            iconName: 'download',
-            color: const Color(0xFF3B82F6),
-            onTap: () => Navigator.of(context, rootNavigator: true)
-                .pushNamed(AppRoutes.analyticsExportReportingHub),
-          ).build(context),
-          QuickActionButtonWidget(
-            label: 'System Logs',
-            iconName: 'article',
-            color: const Color(0xFFEF4444),
-            onTap: () =>
-                Navigator.pushNamed(context, AppRoutes.mobileLoggingDashboard),
-          ).build(context),
-          QuickActionButtonWidget(
-            label: 'Payout Settings',
-            iconName: 'schedule',
-            color: const Color(0xFF10B981),
-            onTap: () => Navigator.of(context, rootNavigator: true)
-                .pushNamed(AppRoutes.payoutScheduleSettingsScreen),
-          ).build(context),
-          QuickActionButtonWidget(
-            label: 'Fraud Monitor',
-            iconName: 'security',
-            color: const Color(0xFFEF4444),
-            onTap: () => Navigator.of(context, rootNavigator: true)
-                .pushNamed(AppRoutes.fraudMonitoringDashboard),
-          ).build(context),
+          if (canOpenNotificationCenter)
+            QuickActionButtonWidget(
+              label: 'Announcement',
+              iconName: 'campaign',
+              color: theme.colorScheme.primary,
+              onTap: () => _pushNamedIfAllowed(
+                context,
+                AppRoutes.notificationCenterHub,
+                rootNavigator: true,
+              ),
+            ).build(context),
+          if (canOpenModeration)
+            QuickActionButtonWidget(
+              label: 'Moderate',
+              iconName: 'verified_user',
+              color: const Color(0xFF10B981),
+              onTap: () => _pushNamedIfAllowed(
+                context,
+                AppRoutes.contentModerationControlCenter,
+                rootNavigator: true,
+              ),
+            ).build(context),
+          if (canOpenExport)
+            QuickActionButtonWidget(
+              label: 'Export Data',
+              iconName: 'download',
+              color: const Color(0xFF3B82F6),
+              onTap: () => _pushNamedIfAllowed(
+                context,
+                AppRoutes.analyticsExportReportingHub,
+                rootNavigator: true,
+              ),
+            ).build(context),
+          if (canOpenSystemLogs)
+            QuickActionButtonWidget(
+              label: 'System Logs',
+              iconName: 'article',
+              color: const Color(0xFFEF4444),
+              onTap: () => _pushNamedIfAllowed(
+                context,
+                AppRoutes.mobileLoggingDashboard,
+              ),
+            ).build(context),
+          if (canOpenPayoutSettings)
+            QuickActionButtonWidget(
+              label: 'Payout Settings',
+              iconName: 'schedule',
+              color: const Color(0xFF10B981),
+              onTap: () => _pushNamedIfAllowed(
+                context,
+                AppRoutes.payoutScheduleSettingsScreen,
+                rootNavigator: true,
+              ),
+            ).build(context),
+          if (canOpenFraudMonitor)
+            QuickActionButtonWidget(
+              label: 'Fraud Monitor',
+              iconName: 'security',
+              color: const Color(0xFFEF4444),
+              onTap: () => _pushNamedIfAllowed(
+                context,
+                AppRoutes.fraudMonitoringDashboard,
+                rootNavigator: true,
+              ),
+            ).build(context),
         ],
       ),
     );
@@ -924,10 +971,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
               ),
               TextButton(
-                onPressed: () => Navigator.of(
+                onPressed: () => _pushNamedIfAllowed(
                   context,
+                  AppRoutes.voteDashboard,
                   rootNavigator: true,
-                ).pushNamed(AppRoutes.voteDashboard),
+                ),
                 child: Text('View All'),
               ),
             ],
@@ -1210,8 +1258,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
               'campaign',
               () {
                 Navigator.pop(context);
-                Navigator.of(context, rootNavigator: true)
-                    .pushNamed(AppRoutes.notificationCenterHub);
+                _pushNamedIfAllowed(
+                  context,
+                  AppRoutes.notificationCenterHub,
+                  rootNavigator: true,
+                );
               },
             ),
             _buildQuickActionTile(
@@ -1220,21 +1271,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
               'verified_user',
               () {
                 Navigator.pop(context);
-                Navigator.of(context, rootNavigator: true)
-                    .pushNamed(AppRoutes.contentModerationControlCenter);
+                _pushNamedIfAllowed(
+                  context,
+                  AppRoutes.contentModerationControlCenter,
+                  rootNavigator: true,
+                );
               },
             ),
             _buildQuickActionTile(context, 'Export Data', 'download', () {
               Navigator.pop(context);
-              Navigator.of(context, rootNavigator: true)
-                  .pushNamed(AppRoutes.analyticsExportReportingHub);
+              _pushNamedIfAllowed(
+                context,
+                AppRoutes.analyticsExportReportingHub,
+                rootNavigator: true,
+              );
             }),
             _buildQuickActionTile(context, 'System Settings', 'settings', () {
               Navigator.pop(context);
-              Navigator.of(
+              _pushNamedIfAllowed(
                 context,
+                AppRoutes.userProfile,
                 rootNavigator: true,
-              ).pushNamed(AppRoutes.userProfile);
+              );
             }),
             SizedBox(height: 2.h),
           ],
@@ -1275,6 +1333,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
       onTap: onTap,
     );
+  }
+
+  void _pushNamedIfAllowed(
+    BuildContext context,
+    String route, {
+    bool rootNavigator = false,
+  }) {
+    if (!Batch1RouteAllowlist.isAllowed(route)) return;
+    Navigator.of(context, rootNavigator: rootNavigator).pushNamed(route);
   }
 
   void _showNotifications(BuildContext context) {

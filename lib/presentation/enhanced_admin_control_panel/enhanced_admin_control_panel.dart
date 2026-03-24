@@ -408,7 +408,7 @@ class _EnhancedAdminControlPanelState extends State<EnhancedAdminControlPanel> {
         SizedBox(height: 3.h),
         FilledButton.icon(
           onPressed: () => Navigator.of(context, rootNavigator: true)
-              .pushNamed(AppRoutes.unifiedRevenueIntelligenceDashboard),
+              .pushNamed(AppRoutes.unifiedRevenueIntelligenceDashboardWebCanonical),
           icon: const Icon(Icons.insights, size: 18),
           label: const Text('Revenue intelligence'),
         ),

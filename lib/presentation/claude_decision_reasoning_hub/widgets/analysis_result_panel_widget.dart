@@ -53,8 +53,8 @@ class DisputeAnalysisResultPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ConfidenceScoreGaugeWidget(
-            userFavor: result.confidence,
-            merchantFavor: 100 - result.confidence,
+            userFavor: result.userFavorScore,
+            merchantFavor: result.merchantFavorScore,
           ),
           SizedBox(height: 2.h),
           Container(
@@ -139,29 +139,9 @@ class DisputeAnalysisResultPanel extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8.0),
                   border: Border.all(color: Colors.blue.shade200),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      (citation['policy_id'].toString() ?? ''),
-                      style: GoogleFonts.inter(
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.blue.shade700,
-                      ),
-                    ),
-                    Text(
-                      (citation['policy_text'].toString() ?? ''),
-                      style: GoogleFonts.inter(fontSize: 11.sp),
-                    ),
-                    Text(
-                      'Relevance: ${(citation['relevance_to_case'].toString() ?? 'N/A')}',
-                      style: GoogleFonts.inter(
-                        fontSize: 10.sp,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  citation,
+                  style: GoogleFonts.inter(fontSize: 11.sp),
                 ),
               ),
             ),
@@ -195,7 +175,7 @@ class DisputeAnalysisResultPanel extends StatelessWidget {
           SizedBox(height: 2.h),
           Row(
             children: [
-              if (result.confidence > 90 && onApprove != null)
+              if (result.userFavorScore > 90 && onApprove != null)
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: onApprove,
@@ -213,8 +193,8 @@ class DisputeAnalysisResultPanel extends StatelessWidget {
                     ),
                   ),
                 ),
-              if (result.confidence >= 60 &&
-                  result.confidence <= 90 &&
+              if (result.userFavorScore >= 60 &&
+                  result.userFavorScore <= 90 &&
                   onManualReview != null)
                 Expanded(
                   child: ElevatedButton.icon(
@@ -233,7 +213,7 @@ class DisputeAnalysisResultPanel extends StatelessWidget {
                     ),
                   ),
                 ),
-              if (result.confidence < 40 && onReject != null) ...[
+              if (result.userFavorScore < 40 && onReject != null) ...[
                 SizedBox(width: 2.w),
                 Expanded(
                   child: ElevatedButton.icon(

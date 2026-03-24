@@ -1,5 +1,7 @@
+import 'dart:io' show File;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
@@ -30,8 +32,6 @@ class ElectionUrlQrWidget extends StatefulWidget {
 
 class _ElectionUrlQrWidgetState extends State<ElectionUrlQrWidget> {
   late String _electionUrl;
-  late QrCode _qrCode;
-  late QrImage _qrImage;
   bool _isGenerating = false;
   final GlobalKey _qrKey = GlobalKey();
 
@@ -39,24 +39,6 @@ class _ElectionUrlQrWidgetState extends State<ElectionUrlQrWidget> {
   void initState() {
     super.initState();
     _electionUrl = 'https://vottery.com/election/${widget.electionId}';
-    _generateQrCode();
-  }
-
-  void _generateQrCode() {
-    setState(() => _isGenerating = true);
-
-    try {
-      _qrCode = QrCode.fromData(
-        data: _electionUrl,
-        errorCorrectLevel: QrErrorCorrectLevel.H,
-      );
-
-      _qrImage = QrImage(_qrCode);
-    } catch (e) {
-      debugPrint('QR code generation error: $e');
-    } finally {
-      setState(() => _isGenerating = false);
-    }
   }
 
   Future<void> _copyUrl() async {
@@ -101,7 +83,7 @@ class _ElectionUrlQrWidgetState extends State<ElectionUrlQrWidget> {
       // Trigger download
       final blob = universal_html.Blob([bytes]);
       final url = universal_html.Url.createObjectUrlFromBlob(blob);
-      final anchor = universal_html.AnchorElement(href: url)
+      universal_html.AnchorElement(href: url)
         ..setAttribute(
           'download',
           'vottery_election_${widget.electionId}_qr.png',
@@ -250,8 +232,7 @@ class _ElectionUrlQrWidgetState extends State<ElectionUrlQrWidget> {
               : RepaintBoundary(
                   key: _qrKey,
                   child: Container(
-                    width: 50.w,
-                    height: 50.w,
+                    color: Colors.white,
                     padding: EdgeInsets.all(3.w),
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -259,19 +240,43 @@ class _ElectionUrlQrWidgetState extends State<ElectionUrlQrWidget> {
                       border:
                           Border.all(color: Colors.grey.shade300, width: 2.0),
                     ),
-                    child: Stack(
-                      alignment: Alignment.center,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        PrettyQrView.data(
-                          data: _electionUrl,
-                          errorCorrectLevel: QrErrorCorrectLevel.H,
-                          decoration: PrettyQrDecoration(
-                            shape: PrettyQrSmoothSymbol(
-                              color: AppTheme.primaryLight,
-                            ),
+                        SizedBox(
+                          width: 50.w,
+                          height: 50.w,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              PrettyQrView.data(
+                                data: _electionUrl,
+                                errorCorrectLevel: QrErrorCorrectLevel.H,
+                                decoration: const PrettyQrDecoration(
+                                  shape: PrettyQrSmoothSymbol(
+                                    color: AppTheme.primaryLight,
+                                  ),
+                                ),
+                              ),
+                              const _VotteryQrCenterMark(),
+                            ],
                           ),
                         ),
-                        _BrandedQrOverlay(logoUrl: widget.logoUrl),
+                        if (widget.logoUrl != null &&
+                            widget.logoUrl!.isNotEmpty) ...[
+                          SizedBox(height: 1.5.h),
+                          Text(
+                            'ELECTION BRAND',
+                            style: TextStyle(
+                              fontSize: 9.sp,
+                              letterSpacing: 0.6,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 0.6.h),
+                          _ElectionBrandLogo(logoPathOrUrl: widget.logoUrl!),
+                        ],
                       ],
                     ),
                   ),
@@ -377,64 +382,92 @@ class _ElectionUrlQrWidgetState extends State<ElectionUrlQrWidget> {
   }
 }
 
-/// Overlay widget that places the creator logo in the center of the QR
-/// and the Vottery logo directly below it.
-class _BrandedQrOverlay extends StatelessWidget {
-  final String? logoUrl;
-
-  const _BrandedQrOverlay({this.logoUrl});
-
-  bool get _hasNetworkLogo {
-    if (logoUrl == null || logoUrl!.isEmpty) return false;
-    final lower = logoUrl!.toLowerCase();
-    return lower.startsWith('http://') || lower.startsWith('https://');
-  }
+/// Vottery app-style mark in the QR center (blue + gold stroke + check).
+class _VotteryQrCenterMark extends StatelessWidget {
+  const _VotteryQrCenterMark();
 
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.h),
+        width: 18.w,
+        height: 18.w,
+        constraints: const BoxConstraints(maxWidth: 72, maxHeight: 72),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
+          color: const Color(0xFF0F5FFF),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFD4AF37), width: 3),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
-              blurRadius: 8,
+              color: Colors.black.withAlpha(40),
+              blurRadius: 6,
               offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (_hasNetworkLogo)
-              Container(
-                height: 10.w,
-                width: 10.w,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
-                  color: Colors.white,
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Image.network(
-                  logoUrl!,
-                  fit: BoxFit.contain,
-                ),
+            Text(
+              '✓',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w800,
+                height: 1,
               ),
-            if (_hasNetworkLogo) SizedBox(height: 0.8.h),
-            Image.asset(
-              'assets/images/upscalemedia-transformed_2_-1770683357845.png',
-              height: 4.h,
-              fit: BoxFit.contain,
-              semanticLabel: 'Vottery logo shown beneath creator brand inside QR code',
+            ),
+            Text(
+              '⌁',
+              style: TextStyle(
+                color: Colors.white.withAlpha(230),
+                fontSize: 10.sp,
+                height: 1,
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+class _ElectionBrandLogo extends StatelessWidget {
+  final String logoPathOrUrl;
+
+  const _ElectionBrandLogo({required this.logoPathOrUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final lower = logoPathOrUrl.toLowerCase();
+    final isHttp =
+        lower.startsWith('http://') || lower.startsWith('https://');
+    final box = Container(
+      width: 22.w,
+      height: 22.w,
+      constraints: const BoxConstraints(maxWidth: 96, maxHeight: 96),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade300),
+        color: Colors.white,
+      ),
+      clipBehavior: Clip.antiAlias,
+      alignment: Alignment.center,
+      child: isHttp
+          ? Image.network(
+              logoPathOrUrl,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => Icon(Icons.image_not_supported,
+                  color: Colors.grey.shade400),
+            )
+          : (!kIsWeb && File(logoPathOrUrl).existsSync())
+              ? Image.file(
+                  File(logoPathOrUrl),
+                  fit: BoxFit.contain,
+                )
+              : Icon(Icons.business, color: Colors.grey.shade500, size: 8.w),
+    );
+    return box;
   }
 }
 

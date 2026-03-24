@@ -15,6 +15,9 @@ import '../../widgets/error_boundary_wrapper.dart';
 import '../../widgets/shimmer_skeleton_loader.dart';
 import './widgets/campaign_card_widget.dart';
 import './widgets/campaign_stats_header_widget.dart';
+import './widgets/cpe_schema_hub_section.dart';
+
+enum _CampaignMgmtWorkspace { operations, cpeHub }
 
 class CampaignManagementDashboard extends StatefulWidget {
   const CampaignManagementDashboard({super.key});
@@ -29,6 +32,9 @@ class _CampaignManagementDashboardState
   final SponsoredElectionsService _service = SponsoredElectionsService.instance;
   final AuthService _auth = AuthService.instance;
 
+  _CampaignMgmtWorkspace _workspace = _CampaignMgmtWorkspace.operations;
+  bool _routeWorkspaceResolved = false;
+
   List<Map<String, dynamic>> _campaigns = [];
   bool _isLoading = true;
   String? _error;
@@ -39,25 +45,41 @@ class _CampaignManagementDashboardState
   @override
   void initState() {
     super.initState();
-    _loadCampaigns();
-    _setupAutoRefresh();
-    _setupRealtimeSubscription();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _applyInitialRouteWorkspace());
   }
 
-  @override
-  void dispose() {
-    _refreshTimer?.cancel();
-    _realtimeChannel?.unsubscribe();
-    super.dispose();
+  void _applyInitialRouteWorkspace() {
+    if (!mounted || _routeWorkspaceResolved) return;
+    _routeWorkspaceResolved = true;
+    final name = ModalRoute.of(context)?.settings.name ?? '';
+    final openCpe =
+        name == AppRoutes.sponsoredElectionsSchemaCpeManagementHubWebCanonical;
+    setState(() {
+      _workspace =
+          openCpe ? _CampaignMgmtWorkspace.cpeHub : _CampaignMgmtWorkspace.operations;
+    });
+    if (!openCpe) {
+      _startOperationsSideEffects();
+      _loadCampaigns();
+    }
   }
 
-  void _setupAutoRefresh() {
+  void _startOperationsSideEffects() {
+    _stopOperationsSideEffects();
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _loadCampaigns(silent: true);
     });
+    _subscribeRealtime();
   }
 
-  void _setupRealtimeSubscription() {
+  void _stopOperationsSideEffects() {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+    _realtimeChannel?.unsubscribe();
+    _realtimeChannel = null;
+  }
+
+  void _subscribeRealtime() {
     try {
       _realtimeChannel = Supabase.instance.client
           .channel('sponsored_elections_changes')
@@ -72,6 +94,23 @@ class _CampaignManagementDashboardState
           .subscribe();
     } catch (e) {
       debugPrint('Realtime subscription error: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _stopOperationsSideEffects();
+    super.dispose();
+  }
+
+  void _onWorkspaceChanged(_CampaignMgmtWorkspace next) {
+    if (_workspace == next) return;
+    setState(() => _workspace = next);
+    if (next == _CampaignMgmtWorkspace.operations) {
+      _startOperationsSideEffects();
+      _loadCampaigns();
+    } else {
+      _stopOperationsSideEffects();
     }
   }
 
@@ -104,6 +143,12 @@ class _CampaignManagementDashboardState
 
   List<Map<String, dynamic>> get _filteredCampaigns {
     if (_filterStatus == 'all') return _campaigns;
+    if (_filterStatus == 'archived') {
+      return _campaigns.where((c) {
+        final s = (c['status'] as String? ?? '').toLowerCase();
+        return s == 'archived' || s == 'completed' || s == 'ended';
+      }).toList();
+    }
     return _campaigns
         .where(
           (c) => (c['status'] as String? ?? '').toLowerCase() == _filterStatus,
@@ -112,7 +157,7 @@ class _CampaignManagementDashboardState
   }
 
   int get _activeCampaigns => _campaigns
-      .where((c) => (c['status'] as String? ?? '').toUpperCase() == 'ACTIVE')
+      .where((c) => (c['status'] as String? ?? '').toLowerCase() == 'active')
       .length;
 
   int get _totalReach => _campaigns.fold(
@@ -137,19 +182,22 @@ class _CampaignManagementDashboardState
   Future<void> _handlePause(Map<String, dynamic> campaign) async {
     final id = campaign['id'] as String?;
     if (id == null) return;
-    final currentStatus = (campaign['status'] as String? ?? 'ACTIVE').toUpperCase();
-    final newStatus = currentStatus == 'PAUSED' ? 'ACTIVE' : 'PAUSED';
+    final current = (campaign['status'] as String? ?? 'active').toLowerCase();
+    final newStatus = current == 'paused' ? 'active' : 'paused';
     try {
       await Supabase.instance.client
           .from('sponsored_elections')
-          .update({'status': newStatus})
+          .update({
+            'status': newStatus,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          })
           .eq('id', id);
       _loadCampaigns(silent: true);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Campaign ${newStatus == 'PAUSED' ? 'paused' : 'resumed'}',
+              'Campaign ${newStatus == 'paused' ? 'paused' : 'resumed'}',
             ),
             backgroundColor: const Color(0xFF22C55E),
           ),
@@ -190,7 +238,10 @@ class _CampaignManagementDashboardState
     try {
       await Supabase.instance.client
           .from('sponsored_elections')
-          .update({'status': 'ended'})
+          .update({
+            'status': 'archived',
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          })
           .eq('id', id);
       _loadCampaigns(silent: true);
       if (mounted) {
@@ -218,96 +269,159 @@ class _CampaignManagementDashboardState
     );
   }
 
+  String get _appBarTitle {
+    switch (_workspace) {
+      case _CampaignMgmtWorkspace.operations:
+        return 'Campaign Management';
+      case _CampaignMgmtWorkspace.cpeHub:
+        return 'CPE & schema hub';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final ops = _workspace == _CampaignMgmtWorkspace.operations;
+
     return ErrorBoundaryWrapper(
       screenName: 'CampaignManagementDashboard',
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         appBar: CustomAppBar(
-          title: 'Campaign Management',
+          title: _appBarTitle,
           actions: [
             IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: () => _loadCampaigns(),
-              tooltip: 'Refresh',
-            ),
-              IconButton(
-                icon: const Icon(Icons.add_circle_outline),
-                onPressed: () => Navigator.pushNamed(
-                  context,
-                  VotteryAdsConstants.votteryAdsStudioRoute,
-                ),
-                tooltip: 'New Campaign',
+              icon: const Icon(Icons.collections_bookmark_outlined),
+              onPressed: () => Navigator.pushNamed(
+                context,
+                AppRoutes.campaignTemplateGalleryWebCanonical,
               ),
+              tooltip: 'Campaign template gallery',
+            ),
+            IconButton(
+              icon: const Icon(Icons.trending_up),
+              onPressed: () => Navigator.pushNamed(
+                context,
+                AppRoutes.dynamicCpePricingEngineDashboardWebCanonical,
+              ),
+              tooltip: 'Dynamic CPE engine',
+            ),
+            if (ops)
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: () => _loadCampaigns(),
+                tooltip: 'Refresh',
+              ),
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline),
+              onPressed: () => Navigator.pushNamed(
+                context,
+                VotteryAdsConstants.votteryAdsStudioRoute,
+              ),
+              tooltip: 'New Campaign',
+            ),
           ],
         ),
-        body: RefreshIndicator(
-          onRefresh: () => _loadCampaigns(),
-          child: Column(
-            children: [
-              SizedBox(height: 1.h),
-              CampaignStatsHeaderWidget(
-                activeCampaigns: _activeCampaigns,
-                totalReach: _totalReach,
-                avgCpe: _avgCpe,
-                isLoading: _isLoading,
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(4.w, 1.h, 4.w, 1.h),
+              child: SegmentedButton<_CampaignMgmtWorkspace>(
+                segments: const [
+                  ButtonSegment(
+                    value: _CampaignMgmtWorkspace.operations,
+                    label: Text('Campaign ops'),
+                    icon: Icon(Icons.dashboard_outlined, size: 18),
+                  ),
+                  ButtonSegment(
+                    value: _CampaignMgmtWorkspace.cpeHub,
+                    label: Text('CPE & schema'),
+                    icon: Icon(Icons.hub_outlined, size: 18),
+                  ),
+                ],
+                selected: {_workspace},
+                onSelectionChanged: (s) => _onWorkspaceChanged(s.first),
               ),
-              SizedBox(height: 1.h),
-              // Filter chips
-              SizedBox(
-                height: 5.h,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: EdgeInsets.symmetric(horizontal: 4.w),
-                  children: [
-                    _FilterChip(
-                      label: 'All',
-                      isSelected: _filterStatus == 'all',
-                      onTap: () => setState(() => _filterStatus = 'all'),
-                    ),
-                    SizedBox(width: 2.w),
-                    _FilterChip(
-                      label: 'Active',
-                      isSelected: _filterStatus == 'active',
-                      color: const Color(0xFF22C55E),
-                      onTap: () => setState(() => _filterStatus = 'active'),
-                    ),
-                    SizedBox(width: 2.w),
-                    _FilterChip(
-                      label: 'Paused',
-                      isSelected: _filterStatus == 'paused',
-                      color: const Color(0xFFF59E0B),
-                      onTap: () => setState(() => _filterStatus = 'paused'),
-                    ),
-                    SizedBox(width: 2.w),
-                    _FilterChip(
-                      label: 'Ended',
-                      isSelected: _filterStatus == 'ended',
-                      color: const Color(0xFF6B7280),
-                      onTap: () => setState(() => _filterStatus = 'ended'),
-                    ),
-                  ],
+            ),
+            Expanded(
+              child: ops
+                  ? RefreshIndicator(
+                      onRefresh: () => _loadCampaigns(),
+                      child: Column(
+                        children: [
+                          SizedBox(height: 0.5.h),
+                          CampaignStatsHeaderWidget(
+                            activeCampaigns: _activeCampaigns,
+                            totalReach: _totalReach,
+                            avgCpe: _avgCpe,
+                            isLoading: _isLoading,
+                          ),
+                          SizedBox(height: 1.h),
+                          SizedBox(
+                            height: 5.h,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              padding: EdgeInsets.symmetric(horizontal: 4.w),
+                              children: [
+                                _FilterChip(
+                                  label: 'All',
+                                  isSelected: _filterStatus == 'all',
+                                  onTap: () =>
+                                      setState(() => _filterStatus = 'all'),
+                                ),
+                                SizedBox(width: 2.w),
+                                _FilterChip(
+                                  label: 'Active',
+                                  isSelected: _filterStatus == 'active',
+                                  color: const Color(0xFF22C55E),
+                                  onTap: () =>
+                                      setState(() => _filterStatus = 'active'),
+                                ),
+                                SizedBox(width: 2.w),
+                                _FilterChip(
+                                  label: 'Paused',
+                                  isSelected: _filterStatus == 'paused',
+                                  color: const Color(0xFFF59E0B),
+                                  onTap: () =>
+                                      setState(() => _filterStatus = 'paused'),
+                                ),
+                                SizedBox(width: 2.w),
+                                _FilterChip(
+                                  label: 'Archived',
+                                  isSelected: _filterStatus == 'archived',
+                                  color: const Color(0xFF6B7280),
+                                  onTap: () =>
+                                      setState(() => _filterStatus = 'archived'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 0.5.h),
+                          Expanded(child: _buildOperationsBody()),
+                        ],
+                      ),
+                    )
+                  : const CpeSchemaHubSection(),
+            ),
+          ],
+        ),
+        floatingActionButton: ops
+            ? FloatingActionButton.extended(
+                onPressed: () => Navigator.pushNamed(
+                  context,
+                  AppRoutes.participatoryAdsStudio,
                 ),
-              ),
-              SizedBox(height: 1.h),
-              Expanded(child: _buildBody()),
-            ],
-          ),
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () =>
-              Navigator.pushNamed(context, AppRoutes.participatoryAdsStudio),
-          icon: const Icon(Icons.add),
-          label: const Text('New Campaign'),
-          backgroundColor: const Color(0xFF6366F1),
-        ),
+                icon: const Icon(Icons.add),
+                label: const Text('New Campaign'),
+                backgroundColor: const Color(0xFF6366F1),
+              )
+            : null,
       ),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildOperationsBody() {
     if (_isLoading) {
       return ListView.builder(
         itemCount: 3,
@@ -327,37 +441,41 @@ class _CampaignManagementDashboardState
       );
     }
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 48),
-            SizedBox(height: 2.h),
-            Text(
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: 15.h),
+          Icon(Icons.error_outline, color: Colors.red, size: 48),
+          SizedBox(height: 2.h),
+          Center(
+            child: Text(
               'Failed to load campaigns',
               style: GoogleFonts.inter(fontSize: 14.sp),
             ),
-            SizedBox(height: 1.h),
-            ElevatedButton(
+          ),
+          SizedBox(height: 1.h),
+          Center(
+            child: ElevatedButton(
               onPressed: () => _loadCampaigns(),
               child: const Text('Retry'),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
     if (_filteredCampaigns.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.campaign_outlined,
-              size: 15.w,
-              color: Colors.grey.shade400,
-            ),
-            SizedBox(height: 2.h),
-            Text(
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: 12.h),
+          Icon(
+            Icons.campaign_outlined,
+            size: 15.w,
+            color: Colors.grey.shade400,
+          ),
+          SizedBox(height: 2.h),
+          Center(
+            child: Text(
               _filterStatus == 'all'
                   ? 'No campaigns yet'
                   : 'No $_filterStatus campaigns',
@@ -366,8 +484,10 @@ class _CampaignManagementDashboardState
                 color: Colors.grey.shade600,
               ),
             ),
-            SizedBox(height: 1.h),
-            ElevatedButton.icon(
+          ),
+          SizedBox(height: 1.h),
+          Center(
+            child: ElevatedButton.icon(
               onPressed: () => Navigator.pushNamed(
                 context,
                 AppRoutes.participatoryAdsStudio,
@@ -378,11 +498,12 @@ class _CampaignManagementDashboardState
                 backgroundColor: const Color(0xFF6366F1),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
     return ListView.builder(
+      padding: EdgeInsets.only(bottom: 10.h),
       itemCount: _filteredCampaigns.length,
       itemBuilder: (context, index) {
         final campaign = _filteredCampaigns[index];

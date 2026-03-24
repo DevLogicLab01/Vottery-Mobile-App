@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../config/batch1_route_allowlist.dart';
 import '../../../routes/app_routes.dart';
 import '../../../services/ad_slot_orchestration_service.dart';
 import './sponsored_election_card_widget.dart';
@@ -58,6 +59,9 @@ class _AdSlotWidgetState extends State<AdSlotWidget> {
         final adContent = snapshot.data!;
 
         if (adContent is InternalAdContent) {
+          if (!Batch1RouteAllowlist.isAllowed(AppRoutes.voteCasting)) {
+            return const SizedBox.shrink();
+          }
           return SponsoredElectionCardWidget(
             electionId: adContent.electionId,
             adId: adContent.adId,
@@ -71,6 +75,9 @@ class _AdSlotWidgetState extends State<AdSlotWidget> {
             },
           );
         } else if (adContent is InternalVotteryAdContent) {
+          if (!Batch1RouteAllowlist.isAllowed(AppRoutes.voteCasting)) {
+            return const SizedBox.shrink();
+          }
           final adType = adContent.adType;
           final creative = adContent.creative;
 

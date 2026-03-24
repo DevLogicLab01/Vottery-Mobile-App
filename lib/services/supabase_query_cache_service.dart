@@ -401,6 +401,10 @@ class SupabaseQueryCacheService {
     };
   }
 
+  void pruneExpired() {
+    _cache.removeWhere((_, entry) => entry.isExpired);
+  }
+
   void _startPruneScheduler() {
     _pruneTimer?.cancel();
     _pruneTimer = Timer.periodic(_backgroundRefreshInterval, (_) {

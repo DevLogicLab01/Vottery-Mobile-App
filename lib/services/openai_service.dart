@@ -20,9 +20,22 @@ class OpenAIService extends AIServiceBase {
 
   static final SupabaseClient supabase = Supabase.instance.client;
   static bool _notificationsInitialized = false;
+  static const bool _allowLegacyAI = bool.fromEnvironment(
+    'ALLOW_LEGACY_AI',
+    defaultValue: false,
+  );
+
+  static void _assertLegacyOpenAIAllowed() {
+    if (!_allowLegacyAI) {
+      throw AIServiceException(
+        'OpenAI service is disabled by Batch-1 AI policy. Use Gemini/Anthropic routed services.',
+      );
+    }
+  }
 
   /// Generate a text response to a prompt using the AI pipeline
   Future<String> generateResponse(String prompt, {String? systemPrompt}) async {
+    _assertLegacyOpenAIAllowed();
     final response =
         await AIServiceBase.invokeAIFunction('openai-text-generation', {
           'prompt': prompt,
@@ -69,6 +82,7 @@ class OpenAIService extends AIServiceBase {
     required String userId,
     String difficulty = 'adaptive',
   }) async {
+    _assertLegacyOpenAIAllowed();
     try {
       final response =
           await AIServiceBase.invokeAIFunction('openai-quest-generation', {
@@ -105,6 +119,7 @@ class OpenAIService extends AIServiceBase {
     required Map<String, dynamic> voteData,
     required String userId,
   }) async {
+    _assertLegacyOpenAIAllowed();
     try {
       final response =
           await AIServiceBase.invokeAIFunction('openai-fraud-detection', {
@@ -184,6 +199,7 @@ class OpenAIService extends AIServiceBase {
   static Future<List<ContentRecommendation>> getPersonalizedRecommendations(
     String userId,
   ) async {
+    _assertLegacyOpenAIAllowed();
     try {
       final response = await AIServiceBase.invokeAIFunction(
         'openai-content-recommendations',
@@ -249,6 +265,7 @@ class OpenAIService extends AIServiceBase {
     required String questType,
     Map<String, dynamic>? parameters,
   }) async {
+    _assertLegacyOpenAIAllowed();
     try {
       final response =
           await AIServiceBase.invokeAIFunction('openai-quest-generation', {

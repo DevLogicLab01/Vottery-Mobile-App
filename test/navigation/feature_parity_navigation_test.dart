@@ -49,5 +49,32 @@ void main() {
         'voter_education_hub',
       );
     });
+
+    test('unified revenue intelligence Web path maps to DB feature toggle key', () {
+      expect(
+        RouteFeatureKeys.getFeatureKeyForRoute(
+          'unified-revenue-intelligence-dashboard',
+        ),
+        'unified_revenue_intelligence_dashboard',
+      );
+    });
+
+    test('country revenue share management Web path maps to DB feature toggle key', () {
+      expect(
+        RouteFeatureKeys.getFeatureKeyForRoute(
+          'country-revenue-share-management-center',
+        ),
+        'country_revenue_share_management_center',
+      );
+    });
+
+    test('regional revenue analytics Web path maps to DB feature toggle key', () {
+      expect(
+        RouteFeatureKeys.getFeatureKeyForRoute(
+          'regional-revenue-analytics-dashboard',
+        ),
+        'regional_revenue_analytics_dashboard',
+      );
+    });
   });
 }

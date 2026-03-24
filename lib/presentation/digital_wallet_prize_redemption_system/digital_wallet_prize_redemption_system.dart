@@ -23,7 +23,7 @@ import './widgets/revenue_analytics_widget.dart';
 /// Features:
 /// - Wallet balance display (available/pending/lifetime earnings)
 /// - Prize breakdown (lottery prizes, prediction pool rewards, quest bonuses)
-/// - Redemption options (cash, gift cards, crypto)
+/// - Redemption options (cash, gift cards, VP charity & redemption hub)
 /// - Automated payout processing (Stripe/Trolley)
 /// - 70/30 creator revenue split calculator
 /// - Transaction history with filters
@@ -330,26 +330,16 @@ class _DigitalWalletPrizeRedemptionSystemState
             ),
           ),
           SizedBox(height: 2.h),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRoutes.vpCharityHub),
-                  icon: const Icon(Icons.volunteer_activism),
-                  label: const Text('VP Charity Hub'),
-                ),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.pushNamed(
+                context,
+                AppRoutes.vpRedemptionMarketplaceCharityHubWebCanonical,
               ),
-              SizedBox(width: 2.w),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRoutes.vpCryptoConversion),
-                  icon: const Icon(Icons.currency_bitcoin),
-                  label: const Text('Crypto Conversion'),
-                ),
-              ),
-            ],
+              icon: const Icon(Icons.volunteer_activism),
+              label: const Text('VP Charity & Redemption Hub'),
+            ),
           ),
           SizedBox(height: 3.h),
 

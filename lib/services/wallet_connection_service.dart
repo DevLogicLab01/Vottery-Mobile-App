@@ -301,7 +301,7 @@ Issued At: $issuedAt''';
       {
         'id': 'metamask',
         'name': 'MetaMask',
-        'description': 'The most popular Ethereum wallet',
+        'description': 'Browser extension wallet for secure account linking',
         'icon':
             'https://img.rocket.new/generatedImages/rocket_gen_img_11311f8f8-1771191736531.png',
         'type': WalletType.metamask,
@@ -322,7 +322,7 @@ Issued At: $issuedAt''';
       {
         'id': 'coinbase',
         'name': 'Coinbase Wallet',
-        'description': 'Coinbase self-custody wallet',
+        'description': 'Self-custody wallet app',
         'icon': 'https://avatars.githubusercontent.com/u/1885080',
         'type': WalletType.coinbase,
         'deepLink': 'cbwallet://',
@@ -332,7 +332,7 @@ Issued At: $issuedAt''';
       {
         'id': 'trust',
         'name': 'Trust Wallet',
-        'description': 'Multi-chain crypto wallet',
+        'description': 'Multi-chain digital wallet',
         'icon': 'https://img.rocket.new/generatedImages/rocket_gen_img_175c11a6a-1772098452558.png',
         'type': WalletType.trustWallet,
         'deepLink': 'trust://',

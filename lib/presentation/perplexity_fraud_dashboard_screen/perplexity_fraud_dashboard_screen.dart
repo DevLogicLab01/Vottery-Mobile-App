@@ -36,6 +36,7 @@ class _PerplexityFraudDashboardScreenState
   List<Map<String, dynamic>> _threatPredictions = [];
   List<Map<String, dynamic>> _recentAnalyses = [];
   List<Map<String, dynamic>> _searchResults = [];
+  Map<String, dynamic>? _supabaseFraudSignals;
 
   final _searchController = TextEditingController();
   String _selectedEventType = 'all';
@@ -85,6 +86,36 @@ class _PerplexityFraudDashboardScreenState
       setState(() {
         _error = e.toString();
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadSupabaseFraudSignals() async {
+    try {
+      final historical = await _supabase
+          .from('fraud_analysis_results')
+          .select('id')
+          .limit(50);
+      final threat = await _supabase
+          .from('threat_predictions')
+          .select('id')
+          .eq('status', 'active')
+          .limit(50);
+      if (!mounted) return;
+      setState(() {
+        _supabaseFraudSignals = {
+          'historicalData': '${(historical as List).length} rows (sample)',
+          'threatData': '${(threat as List).length} active predictions (sample)',
+        };
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _supabaseFraudSignals = {
+          'historicalData': 'unavailable',
+          'threatData': 'unavailable',
+          'errors': e.toString(),
+        };
       });
     }
   }

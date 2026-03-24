@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import './supabase_service.dart';
 
+/// Advertiser / Vottery Ads analytics (vottery_* tables + `ad_events`).
+/// Web parity: `src/services/advertiserAnalyticsService.js` → `votteryAdsAnalyticsService.js`.
 class AdvertiserAnalyticsService {
   static AdvertiserAnalyticsService? _instance;
   static AdvertiserAnalyticsService get instance =>
@@ -242,6 +244,16 @@ class AdvertiserAnalyticsService {
       return {};
     }
   }
+
+  /// Alias for dashboards that expect Web-style naming (`getReachByCountry`).
+  Future<Map<String, int>> getReachByCountry({
+    required String advertiserId,
+    String timeRange = '30d',
+  }) =>
+      getVotteryReachByCountry(
+        advertiserId: advertiserId,
+        timeRange: timeRange,
+      );
 
   String _startDateIso(String timeRange) {
     final now = DateTime.now();

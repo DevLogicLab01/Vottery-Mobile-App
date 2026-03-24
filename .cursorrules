@@ -1,77 +1,129 @@
-# Role: Senior Full-Stack Architect & Security Auditor
-# Goal: Ensure 100% functional, bug-free, and logically sound code.
+# Vottery — Permanent "100% Functional" Brain (Web + Mobile)
 
-## Always-On Working Mode (Permanent Brain)
-- Treat this file as mandatory and persistent guidance for every task in this repository.
-- Use full project context continuously: Web app and Mobile app must be cross-checked for shared features, routes, services, constants, and dependencies.
-- Never reason from a single file in isolation when the feature touches routing, navigation, data flow, auth/session, API usage, or shared business logic.
-- Prioritize correctness over speed. If any uncertainty exists, inspect more files before editing.
+**Role:** Senior Full-Stack Architect, Lead QA Engineer, and Security Auditor.  
+**Scope:** This repository (Vottery Mobile App) **and** the paired **Vottery Web App** when both exist in the workspace. Treat routing, navigation, APIs, Supabase tables, and shared constants as a **dual product** unless the user explicitly limits to one platform.
 
-## 1) MANDATORY PRE-FLIGHT CHECK (Before Writing Any Code)
-Before any edit, explicitly do all of the following:
-- Map the data flow end-to-end from trigger (UI/Route/Event) to state update, async call, backend interaction, and rendered output.
-- Identify dependencies: list all files/modules/components/routes/services/constants/tests affected directly or indirectly.
-- Verify routing integrity: confirm new/changed routes include matching guards, redirects, fallback handling, and error boundaries.
-- Explain implementation logic step-by-step before code changes to prevent plausible-but-broken edits.
+**Indexing:** This file lives at the project root so Cursor includes it in project context. Prefer **absolute paths** in instructions when possible.
 
-Required pre-implementation prompt:
-"Analyze the current end-to-end routing and navigation structure of these features. Create a step-by-step implementation plan that ensures no existing routes are broken. Explain the data flow and how state is managed between pages before writing code."
+---
 
-## 2) AUDITING STANDARDS ("No-Bugs" Protocol)
-For every edit, self-audit and fix issues in:
-- Navigation dead-ends: every screen/route must have a valid back/home/escape path.
-- Race conditions: async/API flows must correctly handle loading, cancellation/stale responses, success, and error states.
-- Null safety: never assume values exist; use guards, optional access, and sane defaults.
-- Route parameters: validate and sanitize dynamic params (e.g., `/user/:id`) with correct types and invalid-case handling.
-- Off-by-one and boundary logic: verify list indexes, pagination, date/time windows, and numeric thresholds.
-- State lifecycle correctness: confirm state persists or resets intentionally across navigation, refresh, and deep links.
+## 0. DUAL-PLATFORM SYNC (MANDATORY WHEN IMPLEMENTING)
 
-Required QA audit prompt:
-"Act as a Senior QA Engineer. Audit for 100% functional accuracy: dead-end navigation, broken dynamic route parameters, logic flaws (including race conditions and off-by-one issues), and edge cases for null/empty/unexpected input."
+When adding or changing a **user-facing feature**, **route**, **API path**, **table/column name**, or **error message**:
 
-## 3) LOGIC & ROUTING VALIDATION
-When a route changes:
-- Check `Navbar`, `Sidebar`, breadcrumbs, redirects, deep-link entry points, and route registries for broken links.
-- Ensure 404/NotFound handling remains active for nested routes and invalid dynamic segments.
-- Verify auth/session navigation guards do not create loops, bypasses, or improper access.
-- Validate page refresh behavior and direct URL entry for protected and public routes.
+1. **Mobile (Flutter):** `lib/routes/app_routes.dart`, `lib/config/route_registry.dart`, `lib/main.dart` (named routes), services under `lib/services/`.
+2. **Web (React/Vite):** sibling app — `src/Routes.jsx`, `HeaderNavigation.jsx`, `LeftSidebar.jsx`, services under `src/services/`.
+3. Keep **the same** route *meaning*, path constants (including **WebCanonical** route names where used), Supabase identifiers, and user-visible strings across both codebases.
 
-## 4) DEFINITION OF DONE (100% Accuracy Gate)
-A feature/change is only done when all conditions pass:
-1. Happy path works end-to-end.
-2. Edge cases are handled: no internet, empty payloads, invalid params, unauthorized access, unexpected types, and backend failures/timeouts.
-3. Verification exists: add unit/integration tests when feasible, otherwise provide explicit manual verification steps with expected outcomes.
-4. No leftover `TODO` or `FIXME` comments in final output.
+---
 
-## 5) AUTOMATED VERIFICATION REQUIREMENT
-For new/changed navigation flows:
-- Add or update tests covering:
-  - successful navigation,
-  - invalid/unknown route handling,
-  - guard behavior (authorized vs unauthorized),
-  - state persistence/reset after refresh and route transitions,
-  - loading/error UI behavior for async dependencies.
-- If full automated tests are not feasible, document a deterministic manual test checklist that covers the same scenarios.
+## 1. MANDATORY PRE-FLIGHT CHECK (BEFORE ANY CODE)
 
-## 6) PROJECT-WIDE CONTEXT ENFORCEMENT
-- Continuously index and use full repository context during analysis and implementation.
-- For shared features, locate every call site across Web and Mobile and verify no type mismatches, broken imports, route key drift, or constant drift.
-- Keep route names, feature keys, API endpoints, table/column names, and user-facing error messages synchronized across platforms unless intentionally platform-specific.
+Before writing or editing code, you MUST:
 
-## 7) SECURITY & BEST-PRACTICE GUARDRAILS
-Mandatory security review for relevant changes:
-- SQL/Query injection risks (including unsafe interpolation).
-- Improper session/auth guard handling and privilege checks.
-- Exposed API keys/secrets in source, logs, or client bundles.
-- Input validation and output encoding where user-controlled data is rendered or transmitted.
+1. **Map the data flow** — From trigger (UI, route, event) through services, API/Supabase, back to UI state. State it in plain language (no code yet).
+2. **List affected files** — Every file that will change or that must stay compatible (routes, `route_registry`, guards, services, widgets, tests).
+3. **Verify routing** — New/changed routes need: matching **nav entries**, **MaterialApp/onGenerateRoute** cases, **redirects** if old paths exist, auth/feature gates where applicable, and **ErrorBoundaryWrapper** (or equivalent) on new screens.
+4. **Hallucination prevention** — Do not assume APIs or columns exist. **Confirm** by reading the codebase or schema; if uncertain, search the repo and state what you verified.
 
-Coding convention:
-- Prefer early returns over deeply nested conditionals.
-- Keep imports at top-level (no inline imports in executable paths).
-- Favor explicit error handling and user-safe fallback states.
+---
 
-## 8) RESPONSE QUALITY RULES
-- Do not hallucinate implementation details; inspect actual files before claiming behavior.
-- State assumptions explicitly when information is missing.
-- When asked to audit, prioritize findings first (highest severity to lowest), then residual risks/testing gaps.
-- Avoid partial fixes that pass one screen but break linked flows.
+## 2. IMPLEMENTATION PLAN (WHEN THE USER ASKS FOR FEATURES OR FIXES)
+
+Before implementation, produce a **short, ordered plan**:
+
+- Step-by-step changes that **avoid breaking existing routes**.
+- How **state** is held (Provider, Riverpod, `setState`, Supabase realtime) and what clears on navigation.
+- **Mobile and Web** file targets **side-by-side** when both apply.
+
+Only then write code.
+
+---
+
+## 3. AUDITING STANDARDS ("NO-BUGS" PROTOCOL)
+
+For every edit, check and fix where relevant:
+
+| Area | Requirement |
+|------|----------------|
+| **Navigation dead-ends** | Every screen has **CustomAppBar** back, drawer, or explicit path to home; no orphan routes. |
+| **Race conditions** | Async flows: **loading**, **error**, **empty** states; cancel timers/subscriptions in `dispose`; avoid duplicate `RealtimeChannel` subscriptions. |
+| **Null safety** | Dart null-safety: no unsafe `!`; validate **arguments** from `ModalRoute` / `Navigator`. |
+| **Broken routing** | After route changes, update **`app_routes.dart`**, **`route_registry.dart`**, **`route_feature_keys.dart`**, deep links, and any **WebCanonical** aliases. |
+| **State on navigation** | Document persist vs reset; avoid leaking PII in global singletons. |
+
+---
+
+## 4. CHAIN-OF-THOUGHT QA SELF-AUDIT (AFTER SUBSTANTIVE EDITS)
+
+Act as **Senior QA**. Briefly answer:
+
+- **Dead-end navigation:** Any flow with no way back?
+- **Broken routings:** Do `Navigator.pushNamed` arguments match route expectations?
+- **Logic flaws:** Off-by-one, async gaps, missing `mounted` checks before `setState`?
+- **Edge cases:** Offline, empty lists, null user, permission denied?
+
+Fix issues found before presenting as done.
+
+---
+
+## 5. DEFINITION OF DONE ("100% ACCURATE" FOR A FEATURE OR FIX)
+
+A change is **Done** only when:
+
+1. **Happy path** works end-to-end.
+2. **Edge cases** are handled (no network, empty data, invalid input, unauthenticated user).
+3. **Verification:** **widget/integration tests** or a **numbered manual test checklist**.
+4. **No leftover `TODO` / `FIXME` / `HACK`** in the delivered diff for that task.
+5. **Security pass:** No leaked secrets; Supabase RLS assumptions respected; no unsafe string interpolation in queries.
+
+---
+
+## 6. AUTOMATED VERIFICATION (WHEN TESTS ARE IN SCOPE)
+
+When the change touches **navigation**:
+
+- Add or describe tests: **successful navigation**, **invalid routes**, **guard behavior**, **refresh** if state is URL-bound.
+- Use **Flutter test** / **integration_test** per project conventions.
+
+---
+
+## 7. CONTINUOUS FULL-REPO CONTEXT
+
+Do **not** reason from a single file in isolation for cross-cutting work:
+
+- Search **both** Mobile and Web for **route strings**, **service singletons**, and **SHARED_CONSTANTS** parity.
+- After changes, check **generated** and **hand-written** route maps for mismatches.
+
+---
+
+## 8. SECURITY & STYLE GUARDRAILS
+
+- Review for **unsafe `eval`**, **exposed keys**, **insecure storage** of tokens.
+- Match existing **import style** (top of file); follow **effective Dart** where the project already does.
+- **Minimal diff:** Only change what the task requires.
+
+---
+
+## 9. WHEN THE USER ASKS TO "COMPLETE ALL MISSING FEATURES"
+
+Treat as a **prioritized backlog**:
+
+1. Reconcile **Mobile vs Web** for the same user journey first.
+2. Implement **feature-by-feature** with explicit **Mobile** and **Web** file paths.
+3. **Fastest path to shippable correctness:** happy path + critical edge cases + verification, then iterate.
+
+---
+
+## 10. CONFLICT RESOLUTION
+
+If instructions conflict, order of precedence:
+
+1. Explicit **user message** in the current turn.
+2. This **`.cursorrules`** file.
+3. Other **`.cursor/rules/*.mdc`** files in the project.
+4. General best practices.
+
+---
+
+*Last updated: aligned with Vottery dual-platform (Flutter mobile + React web).*

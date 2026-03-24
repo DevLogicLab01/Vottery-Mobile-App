@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../config/batch1_route_allowlist.dart';
 import '../../core/app_export.dart';
 import '../../services/auth_service_new.dart';
 import '../../services/gamification_service.dart';
@@ -90,20 +91,20 @@ class _UserProfileState extends State<UserProfile> {
         appBar: AppBar(
           title: Text('Profile'),
           actions: [
-            GestureDetector(
-              onTap: () {
-                // Navigate to profile menu
-                Navigator.pushNamed(
-                  context,
-                  AppRoutes.facebookStyleProfileMenu,
-                );
-              },
-              child: CustomIconWidget(
-                iconName: 'settings',
-                color: theme.colorScheme.onPrimary,
-                size: 24,
+            if (Batch1RouteAllowlist.isAllowed(AppRoutes.facebookStyleProfileMenu))
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    AppRoutes.facebookStyleProfileMenu,
+                  );
+                },
+                child: CustomIconWidget(
+                  iconName: 'settings',
+                  color: theme.colorScheme.onPrimary,
+                  size: 24,
+                ),
               ),
-            ),
           ],
         ),
         body: isLoadingGamification
@@ -230,15 +231,18 @@ class _UserProfileState extends State<UserProfile> {
                               '${userData['activeSessions']} active sessions',
                           'onTap': () => _navigateToSessionManagement(context),
                         },
-                        {
-                          'icon': 'article',
-                          'title': 'My Activity Log',
-                          'subtitle': 'View your activity history',
-                          'onTap': () => Navigator.pushNamed(
-                            context,
-                            AppRoutes.userActivityLogViewer,
-                          ),
-                        },
+                        if (Batch1RouteAllowlist.isAllowed(
+                          AppRoutes.userActivityLogViewer,
+                        ))
+                          {
+                            'icon': 'article',
+                            'title': 'My Activity Log',
+                            'subtitle': 'View your activity history',
+                            'onTap': () => Navigator.pushNamed(
+                              context,
+                              AppRoutes.userActivityLogViewer,
+                            ),
+                          },
                       ],
                     ),
 

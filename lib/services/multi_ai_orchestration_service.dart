@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import './openai_fraud_service.dart';
 import './claude_service.dart';
 import './perplexity_service.dart';
 import './supabase_service.dart';
@@ -13,7 +12,6 @@ class MultiAIOrchestrationService {
 
   MultiAIOrchestrationService._();
 
-  OpenAIFraudService get _openai => OpenAIFraudService.instance;
   ClaudeService get _claude => ClaudeService.instance;
   PerplexityService get _perplexity => PerplexityService.instance;
   SupabaseClient get _client => SupabaseService.instance.client;
@@ -24,7 +22,6 @@ class MultiAIOrchestrationService {
   }) async {
     try {
       final results = await Future.wait([
-        _runOpenAIAnalysis(analysisType, inputData),
         _runClaudeAnalysis(analysisType, inputData),
         _runPerplexityAnalysis(analysisType, inputData),
       ]);
@@ -63,29 +60,6 @@ class MultiAIOrchestrationService {
         'error': e.toString(),
         'execution_status': 'failed',
       };
-    }
-  }
-
-  Future<Map<String, dynamic>> _runOpenAIAnalysis(
-    String analysisType,
-    Map<String, dynamic> inputData,
-  ) async {
-    try {
-      if (analysisType == 'fraud_detection') {
-        final result = await _openai.analyzeFraudRisk(
-          voteId: inputData['vote_id'] ?? 'unknown',
-          voteData: inputData,
-        );
-        return {
-          'ai_service': 'openai',
-          'model': 'gpt-4o',
-          'confidence': result['confidence'] ?? 0.0,
-          'result': result,
-        };
-      }
-      return {'ai_service': 'openai', 'confidence': 0.0, 'result': {}};
-    } catch (e) {
-      return {'ai_service': 'openai', 'confidence': 0.0, 'error': e.toString()};
     }
   }
 
@@ -134,8 +108,8 @@ class MultiAIOrchestrationService {
           threatData: inputData,
         );
         return {
-          'ai_service': 'perplexity',
-          'model': 'sonar-reasoning',
+          'ai_service': 'gemini',
+          'model': 'gemini',
           'confidence': result['forecast_60d']?['confidence'] ?? 0.0,
           'result': result,
         };
@@ -145,16 +119,16 @@ class MultiAIOrchestrationService {
           category: inputData['category'],
         );
         return {
-          'ai_service': 'perplexity',
-          'model': 'sonar-pro',
+          'ai_service': 'gemini',
+          'model': 'gemini',
           'confidence': result['trend_forecast_30d']?['confidence'] ?? 0.0,
           'result': result,
         };
       }
-      return {'ai_service': 'perplexity', 'confidence': 0.0, 'result': {}};
+      return {'ai_service': 'gemini', 'confidence': 0.0, 'result': {}};
     } catch (e) {
       return {
-        'ai_service': 'perplexity',
+        'ai_service': 'gemini',
         'confidence': 0.0,
         'error': e.toString(),
       };

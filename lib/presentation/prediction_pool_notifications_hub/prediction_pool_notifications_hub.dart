@@ -49,7 +49,7 @@ class _PredictionPoolNotificationsHubState
           .select('notification_settings')
           .eq('user_id', userId)
           .maybeSingle();
-      final settings = res?.data?['notification_settings'];
+      final settings = res?['notification_settings'];
       if (settings is Map) {
         setState(() {
           for (final k in _prefs.keys) {
@@ -78,7 +78,7 @@ class _PredictionPoolNotificationsHubState
           .select('id')
           .eq('user_id', userId)
           .maybeSingle();
-      if (existing.data != null) {
+      if (existing != null) {
         await _client
             .from('user_preferences')
             .update({'notification_settings': _prefs})

@@ -12,6 +12,33 @@ class IntegrationManagementService {
 
   SupabaseClient get _client => SupabaseService.instance.client;
   AuthService get _auth => AuthService.instance;
+  static const Map<String, String> _integrationNameAliases = {
+    'gemini': 'Gemini',
+    'anthropic': 'Anthropic',
+    'resend': 'Resend',
+    'twilio': 'Twilio',
+    'telnyx': 'Telnyx',
+    'whatsapp': 'WhatsApp (Twilio)',
+    'push': 'Push Notifications',
+    'google_analytics': 'Google Analytics',
+    'google_adsense': 'Google AdSense',
+    'stripe': 'Stripe',
+  };
+  static const List<Map<String, String>> _externalAdNetworkDefaults = [
+    {
+      'integration_name': 'Google AdSense',
+      'integration_type': 'advertising',
+    },
+    {
+      'integration_name': 'Google Analytics',
+      'integration_type': 'analytics',
+    },
+  ];
+
+  String _normalizeIntegrationName(String name) {
+    final key = name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), '_');
+    return _integrationNameAliases[key] ?? name;
+  }
 
   /// Get all integration settings
   Future<List<Map<String, dynamic>>> getAllIntegrations() async {
@@ -42,6 +69,112 @@ class IntegrationManagementService {
     } catch (e) {
       debugPrint('Get integrations by type error: $e');
       return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> getIntegrationByName(String integrationName) async {
+    try {
+      final normalized = _normalizeIntegrationName(integrationName);
+      final response = await _client
+          .from('integration_settings')
+          .select()
+          .eq('integration_name', normalized)
+          .maybeSingle();
+      return response == null ? null : Map<String, dynamic>.from(response);
+    } catch (e) {
+      debugPrint('Get integration by name error: $e');
+      return null;
+    }
+  }
+
+  Future<void> ensureBatch1ExternalAdDefaults() async {
+    try {
+      final userId = _auth.currentUser?.id;
+      for (final row in _externalAdNetworkDefaults) {
+        final integrationName = row['integration_name']!;
+        final existing = await getIntegrationByName(integrationName);
+        await _client.from('integration_settings').upsert({
+          'integration_name': integrationName,
+          'integration_type':
+              existing?['integration_type'] ?? row['integration_type'],
+          'is_enabled': existing?['is_enabled'] ?? true,
+          'weekly_budget_cap': existing?['weekly_budget_cap'] ?? 0,
+          'monthly_budget_cap': existing?['monthly_budget_cap'] ?? 0,
+          'current_weekly_usage': existing?['current_weekly_usage'] ?? 0,
+          'current_monthly_usage': existing?['current_monthly_usage'] ?? 0,
+          'rate_limit_per_minute': existing?['rate_limit_per_minute'] ?? 60,
+          'config': existing?['config'] ?? <String, dynamic>{},
+          'updated_at': DateTime.now().toIso8601String(),
+          'last_modified_by': userId,
+        }, onConflict: 'integration_name');
+      }
+    } catch (e) {
+      debugPrint('Ensure Batch-1 external ad defaults error: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> canUseIntegration(
+    String integrationName, {
+    double projectedCost = 0,
+  }) async {
+    final config = await getIntegrationByName(integrationName);
+    if (config == null) {
+      return {
+        'allowed': false,
+        'reason': 'Integration "$integrationName" is not configured',
+      };
+    }
+    if (config['is_enabled'] != true) {
+      return {
+        'allowed': false,
+        'reason': '${config['integration_name']} is disabled',
+      };
+    }
+
+    final weeklyCap = (config['weekly_budget_cap'] as num?)?.toDouble() ?? 0;
+    final monthlyCap = (config['monthly_budget_cap'] as num?)?.toDouble() ?? 0;
+    final weeklyUsage =
+        (config['current_weekly_usage'] as num?)?.toDouble() ?? 0;
+    final monthlyUsage =
+        (config['current_monthly_usage'] as num?)?.toDouble() ?? 0;
+
+    if (weeklyCap > 0 && (weeklyUsage + projectedCost) > weeklyCap) {
+      return {
+        'allowed': false,
+        'reason': '${config['integration_name']} weekly cap exceeded',
+      };
+    }
+    if (monthlyCap > 0 && (monthlyUsage + projectedCost) > monthlyCap) {
+      return {
+        'allowed': false,
+        'reason': '${config['integration_name']} monthly cap exceeded',
+      };
+    }
+    return {'allowed': true, 'reason': null, 'config': config};
+  }
+
+  Future<bool> recordUsage(String integrationName, {double costDelta = 0}) async {
+    try {
+      final config = await getIntegrationByName(integrationName);
+      if (config == null) return false;
+      final id = config['id'];
+      if (id == null) return false;
+      await _client
+          .from('integration_settings')
+          .update({
+            'current_weekly_usage':
+                ((config['current_weekly_usage'] as num?)?.toDouble() ?? 0) +
+                    costDelta,
+            'current_monthly_usage':
+                ((config['current_monthly_usage'] as num?)?.toDouble() ?? 0) +
+                    costDelta,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', id);
+      return true;
+    } catch (e) {
+      debugPrint('Record integration usage error: $e');
+      return false;
     }
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../config/batch1_route_allowlist.dart';
 import '../../core/app_export.dart';
 import '../../services/auth_service.dart';
 import '../../services/carousel_content_service.dart';
@@ -672,6 +673,7 @@ class _SocialMediaHomeFeedState extends State<SocialMediaHomeFeed>
         bottomNavigationBar: DualHeaderBottomBar(
           currentRoute: AppRoutes.socialMediaHomeFeed,
           onNavigate: (route) {
+            if (!Batch1RouteAllowlist.isAllowed(route)) return;
             Navigator.pushNamed(context, route);
           },
         ),
@@ -699,6 +701,11 @@ class _SocialMediaHomeFeedState extends State<SocialMediaHomeFeed>
                 ),
                 TextButton(
                   onPressed: () {
+                    if (!Batch1RouteAllowlist.isAllowed(
+                      AppRoutes.momentsStoriesHub,
+                    )) {
+                      return;
+                    }
                     Navigator.pushNamed(context, AppRoutes.momentsStoriesHub);
                   },
                   child: Text(
@@ -734,6 +741,9 @@ class _SocialMediaHomeFeedState extends State<SocialMediaHomeFeed>
   }
 
   Widget _buildCreateMomentCard() {
+    if (!Batch1RouteAllowlist.isAllowed(AppRoutes.momentsStoriesHub)) {
+      return const SizedBox.shrink();
+    }
     return GestureDetector(
       onTap: () {
         Navigator.pushNamed(context, AppRoutes.momentsStoriesHub);
@@ -785,6 +795,9 @@ class _SocialMediaHomeFeedState extends State<SocialMediaHomeFeed>
 
     return GestureDetector(
       onTap: () {
+        if (!Batch1RouteAllowlist.isAllowed(AppRoutes.momentsStoriesHub)) {
+          return;
+        }
         Navigator.pushNamed(context, AppRoutes.momentsStoriesHub);
       },
       child: Container(
@@ -849,6 +862,11 @@ class _SocialMediaHomeFeedState extends State<SocialMediaHomeFeed>
                 ),
                 TextButton(
                   onPressed: () {
+                    if (!Batch1RouteAllowlist.isAllowed(
+                      AppRoutes.friendRequestsHub,
+                    )) {
+                      return;
+                    }
                     Navigator.pushNamed(context, AppRoutes.friendRequestsHub);
                   },
                   child: Text(

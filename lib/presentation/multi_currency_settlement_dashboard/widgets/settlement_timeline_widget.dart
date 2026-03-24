@@ -69,10 +69,6 @@ class SettlementTimelineWidget extends StatelessWidget {
         icon = Icons.account_balance;
         color = Colors.green;
         break;
-      case 'crypto':
-        icon = Icons.currency_bitcoin;
-        color = Colors.orange;
-        break;
       default:
         icon = Icons.payment;
         color = Colors.grey;

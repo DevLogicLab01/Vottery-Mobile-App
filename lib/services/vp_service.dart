@@ -227,19 +227,6 @@ class VPService {
     );
   }
 
-  Future<bool> convertVPToCrypto({
-    required String token,
-    required int vpAmount,
-    required double exchangeRate,
-  }) async {
-    return await _spendVP(
-      amount: vpAmount,
-      description:
-          'VP crypto conversion to $token at rate $exchangeRate',
-      referenceType: 'crypto_conversion',
-    );
-  }
-
   /// Get VP transaction history
   Future<List<Map<String, dynamic>>> getVPTransactionHistory({
     int limit = 100,
@@ -343,14 +330,6 @@ class VPService {
         'vp_cost': vpVipTierUnlock,
         'icon': 'workspace_premium',
         'duration': '30 days',
-      },
-      {
-        'id': 'crypto_conversion',
-        'title': 'Crypto Conversion',
-        'description': 'Convert VP to supported cryptocurrency',
-        'vp_cost': 0,
-        'icon': 'currency_bitcoin',
-        'duration': 'Instant',
       },
       {
         'id': 'charity_donation',

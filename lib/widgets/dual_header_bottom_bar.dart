@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../config/batch1_route_allowlist.dart';
 import '../../services/auth_service.dart';
 
 /// Dual Header Navigation System - Bottom Header
@@ -31,6 +32,7 @@ class _DualHeaderBottomBarState extends State<DualHeaderBottomBar> {
   }
 
   void _navigate(String route) {
+    if (!Batch1RouteAllowlist.isAllowed(route)) return;
     setState(() => _activeDropdown = null);
     widget.onNavigate(route);
   }
@@ -112,6 +114,9 @@ class _DualHeaderBottomBarState extends State<DualHeaderBottomBar> {
     String label,
     String route,
   ) {
+    if (!Batch1RouteAllowlist.isAllowed(route)) {
+      return const SizedBox.shrink();
+    }
     final isActive = widget.currentRoute == route;
 
     return GestureDetector(
@@ -207,7 +212,17 @@ class _DualHeaderBottomBarState extends State<DualHeaderBottomBar> {
   }
 
   Widget _buildDropdownMenu() {
-    final items = _getDropdownItems();
+    final items = _getDropdownItems()
+        .where(
+          (item) =>
+              item['isLogout'] == true ||
+              Batch1RouteAllowlist.isAllowed(item['route'] as String?),
+        )
+        .toList();
+
+    if (items.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return Container(
       decoration: BoxDecoration(

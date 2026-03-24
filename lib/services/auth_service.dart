@@ -88,6 +88,51 @@ class AuthService {
     }
   }
 
+  Future<Map<String, dynamic>> signInPasskeyFirst({
+    required String email,
+    required String password,
+    bool allowPasswordFallback = true,
+  }) async {
+    final passkeyAttempt = await signInWithPasskey(email: email);
+    if (passkeyAttempt['success'] == true) {
+      return passkeyAttempt;
+    }
+    if (!allowPasswordFallback) {
+      return {
+        'success': false,
+        'error': passkeyAttempt['error'] ?? 'Passkey sign-in required',
+      };
+    }
+    try {
+      final response = await signInWithEmail(email: email, password: password);
+      return {'success': response.user != null, 'user': response.user};
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> signInWithPasskey({required String email}) async {
+    try {
+      final optionsResponse = await _client.functions.invoke(
+        'passkey-auth-options',
+        body: {'email': email},
+      );
+      if (optionsResponse.status >= 400) {
+        return {'success': false, 'error': 'Passkey auth options unavailable'};
+      }
+      final verifyResponse = await _client.functions.invoke(
+        'passkey-verify',
+        body: {'email': email, 'platform': kIsWeb ? 'web' : 'mobile'},
+      );
+      if (verifyResponse.status >= 400) {
+        return {'success': false, 'error': 'Passkey verification failed'};
+      }
+      return {'success': true, 'data': verifyResponse.data};
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
   // Sign in with Google
   Future<bool> signInWithGoogle() async {
     try {

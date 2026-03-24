@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../config/batch1_route_allowlist.dart';
+import '../../../routes/app_routes.dart';
 import '../../../theme/app_theme.dart';
 
 class RedemptionOptionsWidget extends StatelessWidget {
@@ -71,19 +73,24 @@ class RedemptionOptionsWidget extends StatelessWidget {
             onTap: () => _showGiftCardDialog(context, availableVP),
           ),
           SizedBox(height: 2.h),
-          _buildRedemptionCard(
-            context,
-            title: 'Crypto Redemption (USDC)',
-            subtitle:
-                'Stablecoin conversion | 1-2 hours | Current rate: 1 VP = \$0.005',
-            icon: Icons.currency_bitcoin,
-            color: AppTheme.secondaryLight,
-            minVP: 2000,
-            availableVP: availableVP,
-            isVerified: isVerified,
-            onTap: () =>
-                _showCryptoRedemptionDialog(context, availableVP, isVerified),
-          ),
+          if (Batch1RouteAllowlist.isAllowed(
+            AppRoutes.vpRedemptionMarketplaceCharityHubWebCanonical,
+          ))
+            _buildRedemptionCard(
+              context,
+              title: 'VP Charity & Redemption Hub',
+              subtitle:
+                  'Charity donations, marketplace redemptions, and partner offers',
+              icon: Icons.volunteer_activism,
+              color: AppTheme.secondaryLight,
+              minVP: 0,
+              availableVP: availableVP,
+              isVerified: true,
+              onTap: () => Navigator.pushNamed(
+                context,
+                AppRoutes.vpRedemptionMarketplaceCharityHubWebCanonical,
+              ),
+            ),
         ],
       ),
     );
@@ -347,98 +354,4 @@ class RedemptionOptionsWidget extends StatelessWidget {
     );
   }
 
-  void _showCryptoRedemptionDialog(
-    BuildContext context,
-    int availableVP,
-    bool isVerified,
-  ) {
-    if (!isVerified) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please complete KYC verification to redeem crypto'),
-          backgroundColor: AppTheme.warningLight,
-        ),
-      );
-      return;
-    }
-
-    final amountController = TextEditingController();
-    final walletController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Crypto Redemption (USDC)'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Available: $availableVP VP',
-              style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-            ),
-            SizedBox(height: 2.h),
-            TextField(
-              controller: amountController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'VP Amount',
-                hintText: 'Minimum 2,000 VP',
-                border: OutlineInputBorder(),
-                suffixText: 'VP',
-              ),
-            ),
-            SizedBox(height: 2.h),
-            TextField(
-              controller: walletController,
-              decoration: InputDecoration(
-                labelText: 'USDC Wallet Address',
-                hintText: '0x...',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            SizedBox(height: 1.h),
-            Text(
-              'Current rate: 1 VP = \$0.005 USDC',
-              style: GoogleFonts.inter(
-                fontSize: 12.sp,
-                color: Colors.grey.shade600,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final amount = int.tryParse(amountController.text) ?? 0;
-              if (amount >= 2000 &&
-                  amount <= availableVP &&
-                  walletController.text.isNotEmpty) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Crypto redemption request submitted'),
-                    backgroundColor: AppTheme.accentLight,
-                  ),
-                );
-                onRedemptionComplete();
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Invalid amount or wallet address'),
-                    backgroundColor: AppTheme.errorLight,
-                  ),
-                );
-              }
-            },
-            child: Text('Redeem Now'),
-          ),
-        ],
-      ),
-    );
-  }
 }

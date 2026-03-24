@@ -40,7 +40,10 @@ class RevenueIntelligenceService {
   ];
 
   static String _normalizeZoneLabel(dynamic label) {
-    final s = label?.toString().toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+    final s = (label?.toString() ?? '')
+        .toLowerCase()
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
     if (RegExp(r'\busa\b|united states|u\.s\.|u\.s\.a').hasMatch(s)) {
       return 'USA';
     }
@@ -124,7 +127,7 @@ class RevenueIntelligenceService {
       final data = await _client
           .from('sponsored_elections')
           .select('budget_total, created_at, status')
-          .eq('status', 'ACTIVE')
+          .eq('status', 'active')
           .gte('created_at', start);
       var total = 0.0;
       if (data is List) {
@@ -389,7 +392,7 @@ class RevenueIntelligenceService {
       final electionsData = await _client
           .from('sponsored_elections')
           .select('budget_total, created_at, status')
-          .eq('status', 'ACTIVE')
+          .eq('status', 'active')
           .gte('created_at', startIso);
       final subscriptionsData = await _client
           .from('carousel_creator_subscriptions')
@@ -526,9 +529,10 @@ class RevenueIntelligenceService {
   }) async {
     final totalCurrent =
         streams.fold<double>(0, (s, x) => s + (x['total'] as double));
+    final denom = streams.isEmpty ? 1 : streams.length;
     final avgGrowth = streams.fold<double>(
             0, (s, x) => s + (x['growth'] as num).toDouble()) /
-        max(streams.length, 1);
+        denom;
 
     final prompt = '''
 You are a revenue intelligence analyst for Vottery, a participatory voting and social platform. Analyze the following revenue data and provide a $forecastDays-day revenue forecast.

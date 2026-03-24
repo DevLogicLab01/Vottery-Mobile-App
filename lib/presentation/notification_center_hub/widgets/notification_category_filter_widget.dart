@@ -39,6 +39,11 @@ class NotificationCategoryFilterWidget extends StatelessWidget {
       'icon': Icons.business,
       'color': Colors.orange,
     },
+    'payments': {
+      'label': 'Payments',
+      'icon': Icons.credit_card,
+      'color': Colors.teal,
+    },
   };
 
   void _toggleFilter(String category) {

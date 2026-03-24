@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import './supabase_service.dart';
 import './auth_service.dart';
+import './notification_cost_optimizer_service.dart';
 
 /// SMS Rate Limiter Service
 /// Implements per-user and per-provider rate limiting with intelligent queue management
@@ -40,6 +41,48 @@ class SMSRateLimiterService {
       debugPrint('Check user rate limit error: $e');
       return false;
     }
+  }
+
+  String prepareOptimizedSms(String rawMessage) {
+    return NotificationCostOptimizerService.instance.optimizeSmsMessage(
+      rawMessage,
+    );
+  }
+
+  Future<Map<String, dynamic>> validateSmsRecipient(String phoneNumber) async {
+    final phone = phoneNumber.trim();
+    if (phone.isEmpty) {
+      return {'allowed': false, 'reason': 'Missing phone number'};
+    }
+    final formatOk = RegExp(r'^\+?[1-9]\d{7,14}$').hasMatch(phone);
+    if (!formatOk) {
+      return {'allowed': false, 'reason': 'Invalid phone format'};
+    }
+    try {
+      final consent = await _supabase
+          .from('sms_consent')
+          .select('consent_status')
+          .eq('phone_number', phone)
+          .maybeSingle();
+      if (consent != null && consent['consent_status'] == 'opted_out') {
+        return {'allowed': false, 'reason': 'Recipient opted out'};
+      }
+    } catch (_) {
+      // Ignore consent lookup failures and continue with best-effort checks.
+    }
+    try {
+      final hlr = await _supabase
+          .from('phone_hlr_status')
+          .select('is_active')
+          .eq('phone_number', phone)
+          .maybeSingle();
+      if (hlr != null && hlr['is_active'] == false) {
+        return {'allowed': false, 'reason': 'Phone failed HLR active check'};
+      }
+    } catch (_) {
+      // Ignore HLR lookup failures if table is unavailable.
+    }
+    return {'allowed': true, 'reason': null};
   }
 
   /// Increment user message count
@@ -263,6 +306,14 @@ class SMSQueueManagerService {
   }) async {
     try {
       if (!_auth.isAuthenticated) return null;
+      final recipientCheck =
+          await SMSRateLimiterService.instance.validateSmsRecipient(
+        recipientPhone,
+      );
+      if (recipientCheck['allowed'] != true) {
+        debugPrint('SMS enqueue blocked: ${recipientCheck['reason']}');
+        return null;
+      }
 
       final response = await _supabase
           .from('sms_queue')

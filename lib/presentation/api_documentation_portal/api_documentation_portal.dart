@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../routes/app_routes.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_icon_widget.dart';
 import '../res_tful_api_management_hub/widgets/swagger_documentation_widget.dart';
@@ -42,7 +43,7 @@ class ApiDocumentationPortalScreen extends StatelessWidget {
               SizedBox(height: 3.h),
               const SwaggerDocumentationWidget(),
               SizedBox(height: 3.h),
-              _buildWebhookSection(theme),
+              _buildWebhookSection(context, theme),
             ],
           ),
         ),
@@ -153,7 +154,7 @@ class ApiDocumentationPortalScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildWebhookSection(ThemeData theme) {
+  Widget _buildWebhookSection(BuildContext context, ThemeData theme) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(4.w),
@@ -200,6 +201,29 @@ class ApiDocumentationPortalScreen extends StatelessWidget {
           _buildBullet(
             theme,
             'Store signing keys and shared secrets in Supabase config, not in client apps.',
+          ),
+          SizedBox(height: 1.5.h),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              TextButton.icon(
+                onPressed: () => Navigator.pushNamed(
+                  context,
+                  AppRoutes.resTfulApiManagementHubWebCanonical,
+                ),
+                icon: const Icon(Icons.api, size: 18),
+                label: const Text('REST API management'),
+              ),
+              TextButton.icon(
+                onPressed: () => Navigator.pushNamed(
+                  context,
+                  AppRoutes.webhookIntegrationHubWebCanonical,
+                ),
+                icon: const Icon(Icons.hub_outlined, size: 18),
+                label: const Text('Webhook integration hub'),
+              ),
+            ],
           ),
         ],
       ),

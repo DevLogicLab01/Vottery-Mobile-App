@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
+import '../../../config/batch1_route_allowlist.dart';
 import '../../../routes/app_routes.dart';
 
 class UpgradeDowngradeControlsWidget extends StatelessWidget {
@@ -51,6 +52,11 @@ class UpgradeDowngradeControlsWidget extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
+              if (!Batch1RouteAllowlist.isAllowed(
+                AppRoutes.premiumSubscriptionCenter,
+              )) {
+                return;
+              }
               Navigator.pushNamed(context, AppRoutes.premiumSubscriptionCenter);
             },
             child: const Text('Proceed'),
@@ -78,6 +84,11 @@ class UpgradeDowngradeControlsWidget extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
+              if (!Batch1RouteAllowlist.isAllowed(
+                AppRoutes.premiumSubscriptionCenter,
+              )) {
+                return;
+              }
               Navigator.pushNamed(context, AppRoutes.premiumSubscriptionCenter);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),

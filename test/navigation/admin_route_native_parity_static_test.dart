@@ -33,6 +33,20 @@ void main() {
         'AppRoutes.securityMonitoringDashboardWebCanonical',
         'AppRoutes.unifiedBusinessIntelligenceHubWebCanonical',
         'AppRoutes.livePlatformMonitoringDashboardWebCanonical',
+        // Feature-key / web-canonical parity (route_feature_keys → screenForRoute)
+        'AppRoutes.userSubscriptionDashboardWebCanonical',
+        'AppRoutes.aiGuidedInteractiveTutorialSystemWebCanonical',
+        'AppRoutes.interactiveOnboardingWizardWebCanonical',
+        'AppRoutes.enhancedHomeFeedDashboardWebCanonical',
+        'AppRoutes.topicBasedCommunityElectionsHubWebCanonical',
+        'AppRoutes.mobileOperationsCommandConsoleWebCanonical',
+        'AppRoutes.statusRouteWebCanonical',
+        'AppRoutes.dedicatedMarketResearchDashboardWebCanonical',
+        'AppRoutes.predictionAnalyticsDashboardWebCanonical',
+        'AppRoutes.unifiedAiPerformanceDashboardWebCanonical',
+        'AppRoutes.aiPoweredPredictiveAnalyticsEngineWebCanonical',
+        'AppRoutes.costAnalyticsRoiDashboard',
+        'AppRoutes.unifiedRevenueIntelligenceDashboardWebCanonical',
       ];
 
       for (final routeCase in expectedNativeCases) {

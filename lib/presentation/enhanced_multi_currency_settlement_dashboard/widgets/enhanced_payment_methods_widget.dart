@@ -44,12 +44,6 @@ class _EnhancedPaymentMethodsWidgetState
       'icon': Icons.credit_card,
       'fee': '2.5%',
     },
-    'crypto': {
-      'name': 'Cryptocurrency',
-      'timeline': '1-24 hours',
-      'icon': Icons.currency_bitcoin,
-      'fee': 'Network fees apply',
-    },
   };
 
   @override

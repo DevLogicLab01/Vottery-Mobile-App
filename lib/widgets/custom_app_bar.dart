@@ -53,6 +53,9 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// Whether to show elevation shadow
   final bool showElevation;
 
+  /// Optional bottom widget (e.g. [TabBar]); included in [preferredSize].
+  final PreferredSizeWidget? bottom;
+
   const CustomAppBar({
     super.key,
     required this.title,
@@ -65,6 +68,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.isOnline,
     this.subtitle,
     this.showElevation = false,
+    this.bottom,
   });
 
   @override
@@ -174,7 +178,10 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize {
+    final bottomHeight = bottom?.preferredSize.height ?? 0.0;
+    return Size.fromHeight(kToolbarHeight + bottomHeight);
+  }
 }
 
 /// Sync status indicator widget showing online/offline state

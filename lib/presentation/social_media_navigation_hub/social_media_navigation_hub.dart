@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../config/batch1_route_allowlist.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/dual_header_bottom_bar.dart';
 import '../../widgets/dual_header_top_bar.dart';
@@ -172,13 +173,33 @@ class _SocialMediaNavigationHubState extends State<SocialMediaNavigationHub> {
                 Icons.account_balance_wallet,
                 'Multi-Currency Settlement',
                 'Global payout management',
-                AppRoutes.multiCurrencySettlementDashboard,
+                AppRoutes.multiCurrencySettlementDashboardWebCanonical,
               ),
               _buildMenuItem(
                 Icons.casino,
                 'Lottery System',
                 'Prize distribution tracking',
                 AppRoutes.walletPrizeDistributionCenter,
+              ),
+            ]),
+            _buildSection('Advertising', [
+              _buildMenuItem(
+                Icons.campaign,
+                'Campaign Management',
+                'Sponsored elections hub',
+                AppRoutes.campaignManagementDashboardWebCanonical,
+              ),
+              _buildMenuItem(
+                Icons.trending_up,
+                'Dynamic CPE Engine',
+                'Zone pricing & demand matrix',
+                AppRoutes.dynamicCpePricingEngineDashboardWebCanonical,
+              ),
+              _buildMenuItem(
+                Icons.ads_click,
+                'Vottery Ads Studio',
+                'Unified campaign builder',
+                AppRoutes.votteryAdsStudioWebCanonical,
               ),
             ]),
             _buildSection('Creator Monetization', [
@@ -232,13 +253,13 @@ class _SocialMediaNavigationHubState extends State<SocialMediaNavigationHub> {
                 Icons.support_agent,
                 'Support Tickets',
                 'Get technical support',
-                AppRoutes.comprehensiveSettingsHub,
+                AppRoutes.supportTicketingSystem,
               ),
               _buildMenuItem(
                 Icons.help,
                 'Help & Support',
                 'Get assistance',
-                AppRoutes.comprehensiveSettingsHub,
+                AppRoutes.helpSupportCenter,
               ),
             ]),
           ],
@@ -254,6 +275,10 @@ class _SocialMediaNavigationHubState extends State<SocialMediaNavigationHub> {
   }
 
   Widget _buildSection(String title, List<Widget> items) {
+    final visibleItems = items.where((item) => item is! SizedBox).toList();
+    if (visibleItems.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -268,7 +293,7 @@ class _SocialMediaNavigationHubState extends State<SocialMediaNavigationHub> {
             ),
           ),
         ),
-        ...items,
+        ...visibleItems,
         Divider(height: 2.h),
       ],
     );
@@ -280,6 +305,9 @@ class _SocialMediaNavigationHubState extends State<SocialMediaNavigationHub> {
     String subtitle,
     String route,
   ) {
+    if (!Batch1RouteAllowlist.isAllowed(route)) {
+      return const SizedBox.shrink();
+    }
     return ListTile(
       leading: Container(
         padding: EdgeInsets.all(2.w),
