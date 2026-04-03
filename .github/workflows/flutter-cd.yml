@@ -3,6 +3,8 @@ name: Flutter CD
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'rn-app/**'
   workflow_dispatch:
 
 jobs:

@@ -3,6 +3,8 @@ name: Security Scan
 on:
   push:
     branches: [ main, develop ]
+    paths-ignore:
+      - 'rn-app/**'
   schedule:
     - cron: '0 0 * * 1'  # Weekly on Monday
   workflow_dispatch:

@@ -5,6 +5,8 @@ on:
     branches: [ main ]
     tags:
       - 'v*'
+    paths-ignore:
+      - 'rn-app/**'
   workflow_dispatch:
 
 jobs:
