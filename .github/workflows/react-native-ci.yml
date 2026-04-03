@@ -3,19 +3,17 @@ name: React Native CI
 on:
   push:
     branches: [ main, develop ]
-    paths:
-      - 'rn-app/**'
+    paths-ignore:
+      - 'flutter_legacy/**'
+      - '.github/workflows/flutter-*.yml'
   pull_request:
     branches: [ main ]
-    paths:
-      - 'rn-app/**'
+    paths-ignore:
+      - 'flutter_legacy/**'
 
 jobs:
   build-check:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./rn-app
 
     steps:
       - name: Checkout code
@@ -26,7 +24,6 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: './rn-app/package-lock.json'
 
       - name: Install dependencies
         run: npm install

@@ -5,8 +5,8 @@ on:
     branches: [ main ]
     tags:
       - 'v*'
-    paths-ignore:
-      - 'rn-app/**'
+    paths:
+      - 'flutter_legacy/**'
   workflow_dispatch:
 
 jobs:
@@ -15,6 +15,9 @@ jobs:
     environment:
       name: staging
       url: https://staging.vottery.com
+    defaults:
+      run:
+        working-directory: ./flutter_legacy
     
     steps:
     - name: Checkout code

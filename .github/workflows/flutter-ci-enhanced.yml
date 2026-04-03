@@ -3,18 +3,21 @@ name: Flutter CI Enhanced
 on:
   push:
     branches: [ main, develop ]
-    paths-ignore:
-      - 'rn-app/**'
+    paths:
+      - 'flutter_legacy/**'
   pull_request:
     branches: [ main ]
-    paths-ignore:
-      - 'rn-app/**'
+    paths:
+      - 'flutter_legacy/**'
   schedule:
     - cron: '0 0 * * *'  # Daily at midnight
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./flutter_legacy
     
     steps:
     - name: Checkout code

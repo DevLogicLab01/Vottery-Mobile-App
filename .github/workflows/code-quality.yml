@@ -3,16 +3,19 @@ name: Code Quality
 on:
   push:
     branches: [ main, develop ]
-    paths-ignore:
-      - 'rn-app/**'
+    paths:
+      - 'flutter_legacy/**'
   pull_request:
     branches: [ main ]
-    paths-ignore:
-      - 'rn-app/**'
+    paths:
+      - 'flutter_legacy/**'
 
 jobs:
   code-quality:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./flutter_legacy
     
     steps:
     - name: Checkout code

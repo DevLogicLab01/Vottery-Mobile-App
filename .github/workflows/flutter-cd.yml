@@ -3,14 +3,17 @@ name: Flutter CD
 on:
   push:
     branches: [ main ]
-    paths-ignore:
-      - 'rn-app/**'
+    paths:
+      - 'flutter_legacy/**'
   workflow_dispatch:
 
 jobs:
   staging-deployment:
     runs-on: ubuntu-latest
     environment: staging
+    defaults:
+      run:
+        working-directory: ./flutter_legacy
     
     steps:
     - name: Checkout code
