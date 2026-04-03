@@ -211,7 +211,7 @@ class _SecurityComplianceAuditScreenState
           ];
         }),
       ];
-      final csv = const ListToCsvConverter().convert(rows);
+      final csv = ListToCsvConverter().convert(rows);
       final dir = await getApplicationDocumentsDirectory();
       final path = '${dir.path}/security-audit-${DateTime.now().toIso8601String().split('T').first}.csv';
       final written = await file_io.writeSecurityAuditFile(path, utf8.encode(csv));

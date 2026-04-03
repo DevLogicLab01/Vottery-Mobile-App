@@ -97,11 +97,20 @@ class PayoutApi {
       if (walletId == null) {
         return (success: false, error: PayoutErrors.requestFailed);
       }
+      // Map UI methods to database redemption_type enum values
+      String dbRedemptionType = 'cash';
+      if (method == 'bank_transfer' || method == 'stripe') {
+        dbRedemptionType = 'bank_transfer';
+      } else if (method == 'gift_card') {
+        dbRedemptionType = 'gift_card';
+      } else if (method == 'crypto') {
+        dbRedemptionType = 'crypto';
+      }
 
       await _client.from('prize_redemptions').insert({
         'user_id': _auth.currentUser!.id,
         'wallet_id': walletId,
-        'redemption_type': 'cash',
+        'redemption_type': dbRedemptionType,
         'amount': amount,
         'conversion_rate': 1.0,
         'final_amount': amount - processingFee,

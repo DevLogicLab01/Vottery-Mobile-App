@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../services/ip_geolocation_service.dart';
+import '../../routes/app_routes.dart';
 
 /// Splash Screen - Branded app launch with biometric initialization
 ///
@@ -56,7 +57,7 @@ class _SplashScreenState extends State<SplashScreen>
       );
     } else {
       // Proceed to home
-      Navigator.pushReplacementNamed(context, '/vote-dashboard');
+      Navigator.pushReplacementNamed(context, AppRoutes.voteDashboard);
     }
   }
 

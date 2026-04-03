@@ -2,6 +2,9 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        maven("https://jitpack.io")                // for logrocket_flutter
+        maven("https://maven.microblink.com")      // for blinkid / yoti_flutter
+        maven("https://maven.logrocket.com")       // extra fallback for logrocket
     }
 }
 

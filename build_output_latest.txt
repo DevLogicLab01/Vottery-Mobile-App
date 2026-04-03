@@ -1,0 +1,46 @@
+lib/presentation/security_compliance_audit_screen/security_compliance_audit_screen.dart:214:19: Error: The method 'ListToCsvConverter' isn't defined for the type '_SecurityComplianceAuditScreenState'.
+ - '_SecurityComplianceAuditScreenState' is from 'package:vottery/presentation/security_compliance_audit_screen/security_compliance_audit_screen.dart' ('lib/presentation/security_compliance_audit_screen/security_compliance_audit_screen.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'ListToCsvConverter'.
+      final csv = ListToCsvConverter().convert(rows);
+                  ^^^^^^^^^^^^^^^^^^
+Running Gradle task 'assembleDebug'...                          
+lib/presentation/mobile_operations_command_console/mobile_operations_command_console.dart:136:9: Error: No named parameter with the name 'stickyAuth'.
+        stickyAuth: true,
+        ^^^^^^^^^^
+lib/presentation/sms_delivery_analytics_dashboard/sms_delivery_analytics_dashboard.dart:392:19: Error: The method 'ListToCsvConverter' isn't defined for the type '_SmsDeliveryAnalyticsDashboardState'.
+ - '_SmsDeliveryAnalyticsDashboardState' is from 'package:vottery/presentation/sms_delivery_analytics_dashboard/sms_delivery_analytics_dashboard.dart' ('lib/presentation/sms_delivery_analytics_dashboard/sms_delivery_analytics_dashboard.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'ListToCsvConverter'.
+      final csv = ListToCsvConverter().convert(rows);
+                  ^^^^^^^^^^^^^^^^^^
+lib/services/wallet_connection_service.dart:232:52: Error: The getter 'hexEip55' isn't defined for the type 'EthereumAddress'.
+ - 'EthereumAddress' is from 'package:wallet/wallet.dart' ('/C:/Users/HP%20PC/AppData/Local/Pub/Cache/hosted/pub.dev/wallet-0.0.18/lib/wallet.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'hexEip55'.
+      final recoveredAddress = credentials.address.hexEip55;
+                                                   ^^^^^^^^
+/C:/Users/HP%20PC/AppData/Local/Pub/Cache/hosted/pub.dev/web3dart-3.0.2/lib/src/crypto/secp256k1.dart:32:21: Error: The getter 'd' isn't defined for the type 'PrivateKey'.
+ - 'PrivateKey' is from 'package:pointycastle/api.dart' ('/C:/Users/HP%20PC/AppData/Local/Pub/Cache/hosted/pub.dev/pointycastle-3.9.1/lib/api.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'd'.
+  return privateKey.d!;
+                    ^
+lib/services/notification_service_io.dart:24:36: Error: Too many positional arguments: 0 allowed, but 1 found.
+Try removing the extra positional arguments.
+    await _notifications.initialize(initSettings);
+                                   ^
+Target kernel_snapshot_program failed: Exception
+
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileFlutterBuildDebug'.
+> Process 'command 'C:\src\flutter\bin\flutter.bat'' finished with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 13m 33s
+Running Gradle task 'assembleDebug'...                            821.7s
+Gradle task assembleDebug failed with exit code 1

@@ -46,3 +46,26 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 android/app/.cxx
+# React Native / Expo specific
+node_modules/
+**/node_modules/
+.expo/
+*.expo*
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Security: Never push .env files to GitHub
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env*.local
+
+# Native builds
+android/build/
+ios/build/
+bin/
+obj/

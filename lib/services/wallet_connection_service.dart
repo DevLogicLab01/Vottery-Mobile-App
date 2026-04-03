@@ -229,7 +229,7 @@ Issued At: $issuedAt''';
       final credentials = EthPrivateKey.fromHex(
         '0x0000000000000000000000000000000000000000000000000000000000000001',
       );
-      final recoveredAddress = credentials.address.hex;
+      final recoveredAddress = credentials.address.hexEip55;
 
       // In production: use web3dart's ecRecover to verify
       // For now: validate address format and signature length

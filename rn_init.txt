@@ -1,0 +1,48 @@
+[0m[36m                                                          
+               ######                ######               
+             ###     ####        ####     ###             
+            ##          ###    ###          ##            
+            ##             ####             ##            
+            ##             ####             ##            
+            ##           ##    ##           ##            
+            ##         ###      ###         ##            
+             ##  ########################  ##             
+          ######    ###            ###    ######          
+      ###     ##    ##              ##    ##     ###      
+   ###         ## ###      ####      ### ##         ###   
+  ##           ####      ########      ####           ##  
+ ##             ###     ##########     ###             ## 
+  ##           ####      ########      ####           ##  
+   ###         ## ###      ####      ### ##         ###   
+      ###     ##    ##              ##    ##     ###      
+          ######    ###            ###    ######          
+             ##  ########################  ##             
+            ##         ###      ###         ##            
+            ##           ##    ##           ##            
+            ##             ####             ##            
+            ##             ####             ##            
+            ##          ###    ###          ##            
+             ###     ####        ####     ###             
+               ######                ######               
+                                                          [39m
+
+[96m[1m              Welcome to React Native 0.84.1!                [22m[39m
+[2m                 Learn once, write anywhere               [22m
+[0m
+- Downloading template
+Γ£ö Downloading template
+- Copying template
+Γ£ö Copying template
+- Processing template
+Γ£ö Processing template
+Γ£ö Dependencies installation skipped
+[0m
+  
+  [32mRun instructions for [1mAndroid[22m[39m:
+    ΓÇó Have an Android emulator running (quickest way to get started), or a device connected.
+    ΓÇó cd "C:\Vottery-Mobile-App\rn-app" && npx react-native run-android
+  
+  [36mRun instructions for [1mWindows[22m[39m:
+    ΓÇó See [4mhttps://microsoft.github.io/react-native-windows[24m for the latest up-to-date instructions.
+    
+  [0m

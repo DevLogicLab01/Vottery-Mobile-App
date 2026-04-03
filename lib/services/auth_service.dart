@@ -142,10 +142,13 @@ class AuthService {
       } else {
         // Native flow
         const webClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
-        final googleSignIn = GoogleSignIn(serverClientId: webClientId);
+        final googleSignIn = GoogleSignIn.instance;
+        await googleSignIn.initialize(
+          serverClientId: webClientId.isNotEmpty ? webClientId : null,
+        );
 
-        GoogleSignInAccount? user = await googleSignIn.signInSilently();
-        user ??= await googleSignIn.signIn();
+        GoogleSignInAccount? user = await googleSignIn.attemptLightweightAuthentication();
+        user ??= await googleSignIn.authenticate();
 
         if (user == null) return false;
 
@@ -192,11 +195,9 @@ class AuthService {
   Future<void> signOut() async {
     try {
       if (!kIsWeb) {
-        final googleSignIn = GoogleSignIn();
-        final bool isSignedIn = await googleSignIn.isSignedIn();
-        if (isSignedIn) {
-          await googleSignIn.signOut();
-        }
+        final googleSignIn = GoogleSignIn.instance;
+        await googleSignIn.signOut();
+        
         // Clear secure credential storage on logout
         await SecureStorageService.instance.deleteAll();
       }

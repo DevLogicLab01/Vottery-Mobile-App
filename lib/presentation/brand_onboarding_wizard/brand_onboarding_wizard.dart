@@ -3,6 +3,7 @@ import 'package:sizer/sizer.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/brand_onboarding_service.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../routes/app_routes.dart';
 import './widgets/company_registration_step_widget.dart';
 import './widgets/brand_verification_step_widget.dart';
 import '../../widgets/error_boundary_wrapper.dart';
@@ -76,7 +77,7 @@ class _BrandOnboardingWizardState extends State<BrandOnboardingWizard> {
       );
     } else {
       // Complete onboarding
-      Navigator.pushReplacementNamed(context, '/brand-account-management-hub');
+      Navigator.pushReplacementNamed(context, AppRoutes.advertiserPortalScreen);
     }
   }
 

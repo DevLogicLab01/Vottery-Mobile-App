@@ -60,12 +60,8 @@ class _WalletDashboardState extends State<WalletDashboard> {
       // Load wallet balance
       final balance = await _walletService.getWalletBalance();
 
-      // Load earnings breakdown
-      final breakdown = <String, dynamic>{
-        'lottery': 0.0,
-        'predictions': 0.0,
-        'quests': 0.0,
-      };
+      // Load earnings breakdown (dynamic instead of hardcoded)
+      final breakdown = await _walletService.getEarningsBreakdown();
 
       // Load transaction history
       final transactions = await _walletService.getTransactions(limit: 50);

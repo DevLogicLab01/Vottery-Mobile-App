@@ -132,10 +132,6 @@ class _MobileOperationsCommandConsoleState
 
       final authenticated = await _localAuth.authenticate(
         localizedReason: 'Confirm $action',
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: true,
-        ),
       );
 
       if (authenticated) {

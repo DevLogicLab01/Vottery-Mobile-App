@@ -16,18 +16,18 @@ class WalletService {
   SupabaseClient get _client => SupabaseService.instance.client;
   AuthService get _auth => AuthService.instance;
 
-  /// Get user's wallet
+  /// Get user's wallet (using user_wallets for Web/Mobile parity)
   Future<Map<String, dynamic>?> getWallet() async {
     try {
       if (!_auth.isAuthenticated) return null;
 
       final response = await _client
-          .from('wallets')
+          .from('user_wallets')
           .select()
           .eq('user_id', _auth.currentUser!.id)
           .maybeSingle();
 
-      return response;
+      return response as Map<String, dynamic>?;
     } catch (e) {
       debugPrint('Get wallet error: $e');
       return null;
@@ -52,19 +52,19 @@ class WalletService {
     }
   }
 
-  /// Get wallet transactions
+  /// Get wallet transactions (aligned with prize_redemptions for payouts)
   Future<List<Map<String, dynamic>>> getTransactions({int limit = 50}) async {
     try {
       if (!_auth.isAuthenticated) return [];
 
       final response = await _client
-          .from('wallet_transactions')
+          .from('prize_redemptions')
           .select()
           .eq('user_id', _auth.currentUser!.id)
           .order('created_at', ascending: false)
           .limit(limit);
 
-      return List<Map<String, dynamic>>.from(response);
+      return List<Map<String, dynamic>>.from(response as List);
     } catch (e) {
       debugPrint('Get transactions error: $e');
       return [];
@@ -202,23 +202,9 @@ class WalletService {
     }
   }
 
-  /// Get payout history for the current user
+  /// Get payout history for the current user (using prize_redemptions via PayoutApi)
   Future<List<Map<String, dynamic>>> getPayoutHistory() async {
-    try {
-      if (!_auth.isAuthenticated) return [];
-
-      final response = await _client
-          .from('wallet_transactions')
-          .select()
-          .eq('user_id', _auth.currentUser!.id)
-          .eq('type', 'payout')
-          .order('created_at', ascending: false);
-
-      return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      debugPrint('Get payout history error: $e');
-      return [];
-    }
+    return PayoutApi.instance.getPayoutHistory();
   }
 
   /// Get all active lottery draws
@@ -310,6 +296,78 @@ class WalletService {
       );
 
       return {'success': false, 'message': 'Distribution failed: $e'};
+    }
+  }
+
+  /// Get earnings breakdown by category for the current user (lottery, predictions, quests)
+  Future<Map<String, double>> getEarningsBreakdown() async {
+    try {
+      if (!_auth.isAuthenticated) {
+        return {
+          'lottery': 0.0,
+          'predictions': 0.0,
+          'quests': 0.0,
+        };
+      }
+
+      final userId = _auth.currentUser!.id;
+
+      // 1. Get Lottery Prizes
+      // Sum up prize_amount from lottery_winners table (using migration schema)
+      final lotteryResponse = await _client
+          .from('lottery_winners')
+          .select('prize_amount')
+          .eq('user_id', userId);
+      
+      double lotteryTotal = 0.0;
+      if (lotteryResponse != null) {
+        for (var row in (lotteryResponse as List)) {
+          lotteryTotal += (row['prize_amount'] as num?)?.toDouble() ?? 0.0;
+        }
+      }
+
+      // 2. Get Prediction Pool Rewards
+      // Although predictions primarily award VP, we'll check prize_distributions for USD
+      final prizeDistResponse = await _client
+          .from('prize_distributions')
+          .select('amount, prizes(distribution_method)')
+          .eq('winner_id', userId)
+          .eq('status', 'completed');
+      
+      double predictionTotal = 0.0;
+      double questTotal = 0.0;
+      
+      if (prizeDistResponse != null) {
+        for (var row in (prizeDistResponse as List)) {
+          final amount = (row['amount'] as num?)?.toDouble() ?? 0.0;
+          final prizes = row['prizes'] as Map<String, dynamic>?;
+          final method = prizes?['distribution_method']?.toString().toLowerCase() ?? '';
+          
+          if (method.contains('prediction')) {
+            predictionTotal += amount;
+          } else if (method.contains('quest') || method.contains('bonus')) {
+            questTotal += amount;
+          } else if (lotteryTotal == 0 && (method.contains('lottery') || method.contains('draw'))) {
+            lotteryTotal += amount;
+          } else {
+            // Default to predictions to show something on the dashboard if categorized elsewhere
+            predictionTotal += amount;
+          }
+        }
+      }
+
+      return {
+        'lottery': lotteryTotal,
+        'predictions': predictionTotal,
+        'quests': questTotal,
+      };
+    } catch (e) {
+      debugPrint('Get earnings breakdown error: $e');
+      return {
+        'lottery': 0.0,
+        'predictions': 0.0,
+        'quests': 0.0,
+      };
     }
   }
 }

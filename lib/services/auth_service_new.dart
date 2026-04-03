@@ -60,12 +60,13 @@ class AuthService {
         return await _client.auth.signInWithOAuth(OAuthProvider.google);
       } else {
         const webClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
-        final googleSignIn = GoogleSignIn(
+        final googleSignIn = GoogleSignIn.instance;
+        await googleSignIn.initialize(
           serverClientId: webClientId.isNotEmpty ? webClientId : null,
         );
 
-        GoogleSignInAccount? user = await googleSignIn.signInSilently();
-        user ??= await googleSignIn.signIn();
+        GoogleSignInAccount? user = await googleSignIn.attemptLightweightAuthentication();
+        user ??= await googleSignIn.authenticate();
 
         if (user == null) return false;
 
@@ -90,10 +91,8 @@ class AuthService {
   Future<void> signOut() async {
     try {
       if (!kIsWeb) {
-        final googleSignIn = GoogleSignIn();
-        if (await googleSignIn.isSignedIn()) {
-          await googleSignIn.signOut();
-        }
+        final googleSignIn = GoogleSignIn.instance;
+        await googleSignIn.signOut();
       }
       await _client.auth.signOut();
     } catch (e) {

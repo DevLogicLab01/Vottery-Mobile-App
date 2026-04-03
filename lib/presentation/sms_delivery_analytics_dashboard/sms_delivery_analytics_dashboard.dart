@@ -389,7 +389,7 @@ class _SmsDeliveryAnalyticsDashboardState
         ]);
       }
 
-      final csv = const ListToCsvConverter().convert(rows);
+      final csv = ListToCsvConverter().convert(rows);
       debugPrint('CSV Export:\n$csv');
 
       if (mounted) {
